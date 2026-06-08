@@ -13,6 +13,13 @@
   "id": "/",
   "screenshots": [
     {
+      "src": "./og-image.jpg",
+      "sizes": "1200x630",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Logo de Fulbito para compartir"
+    },
+    {
       "src": "./social-preview.png",
       "sizes": "1200x630",
       "type": "image/png",

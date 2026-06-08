@@ -5,6 +5,7 @@ const CORE_ASSETS = [
   "./styles.css",
   "./app.js",
   "./brand-reference.png",
+  "./og-image.jpg",
   "./social-preview.png",
   "./manifest.webmanifest",
   "./assets/icon.svg",
