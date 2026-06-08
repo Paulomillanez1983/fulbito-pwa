@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fulbito | PWA de torneos barriales</title>
+  <meta name="description" content="Fulbito es una PWA mobile-first para canchas, equipos y torneos barriales con fixture, tablas, planteles, formaciones y backup JSON." />
+  <meta name="theme-color" content="#07101f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Fulbito" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="./assets/icon-192.png" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+
+  <header class="hero">
+    <img class="hero__reference" src="./brand-reference.png" alt="" aria-hidden="true" />
+    <nav class="topbar" aria-label="Barra principal">
+      <button class="brand" data-route="dashboard" aria-label="Ir al inicio de Fulbito">
+        <img src="./assets/icon.svg" alt="" class="brand__logo" />
+        <span>
+          <strong>Fulbito</strong>
+          <small>Tu cancha. Tu historia. Tu momento.</small>
+        </span>
+      </button>
+      <div class="topbar__actions">
+        <button id="installBtn" class="btn btn--ghost" hidden>Instalar</button>
+        <button class="btn btn--primary" data-route="torneos">Nuevo torneo</button>
+      </div>
+    </nav>
+
+    <section class="hero__content">
+      <div>
+        <p class="eyebrow">Futbol barrial 2026</p>
+        <h1>Fulbito</h1>
+        <p class="hero__text">Liga, canchas, equipos y partidos con pulso de app profesional para jugar, competir y mover reservas de barrio.</p>
+        <div class="hero__actions">
+          <button class="btn btn--primary btn--large" data-route="fixture" data-focus-generator="true">Generar fixture</button>
+          <button class="btn btn--light btn--large" data-route="modelo">Modelo negocio</button>
+        </div>
+      </div>
+      <aside class="hero-card" aria-label="Resumen rápido">
+        <div class="score-card">
+          <span>Partido destacado</span>
+          <strong id="heroMatch">Fulbito Cup</strong>
+          <small id="heroMatchMeta">Fixture, tabla y formaciones en vivo</small>
+        </div>
+        <div class="mini-pitch" aria-hidden="true">
+          <i style="--x: 50%; --y: 12%">1</i>
+          <i style="--x: 30%; --y: 35%">4</i>
+          <i style="--x: 70%; --y: 35%">2</i>
+          <i style="--x: 28%; --y: 64%">8</i>
+          <i style="--x: 72%; --y: 64%">10</i>
+          <i style="--x: 50%; --y: 86%">9</i>
+        </div>
+      </aside>
+    </section>
+  </header>
+
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navegación de Fulbito">
+      <label class="field field--compact">
+        <span>Campeonato activo</span>
+        <select id="tournamentSelect"></select>
+      </label>
+      <nav class="nav-list">
+        <button class="nav-btn is-active" data-route="dashboard">Inicio</button>
+        <button class="nav-btn" data-route="torneos">Campeonatos</button>
+        <button class="nav-btn" data-route="equipos">Equipos</button>
+        <button class="nav-btn" data-route="jugadores">Jugadores</button>
+        <button class="nav-btn" data-route="fixture">Fixture</button>
+        <button class="nav-btn" data-route="tabla">Tabla</button>
+        <button class="nav-btn" data-route="formaciones">Formaciones</button>
+        <button class="nav-btn" data-route="canchas">Canchas</button>
+        <button class="nav-btn" data-route="modelo">Negocio</button>
+        <button class="nav-btn" data-route="ajustes">Datos</button>
+      </nav>
+    </aside>
+
+    <main id="app" class="content" tabindex="-1"></main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="./app.js" defer></script>
+</body>
+</html>

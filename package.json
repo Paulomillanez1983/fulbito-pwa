@@ -1,0 +1,18 @@
+{
+  "name": "fulbito-pwa",
+  "version": "1.0.0",
+  "private": false,
+  "description": "PWA mobile-first para torneos barriales, canchas, equipos, fixture, tablas y formaciones.",
+  "scripts": {
+    "start": "python -m http.server 8080",
+    "serve": "python -m http.server 8080"
+  },
+  "keywords": [
+    "pwa",
+    "futbol",
+    "torneos",
+    "canchas",
+    "fixture"
+  ],
+  "license": "MIT"
+}
