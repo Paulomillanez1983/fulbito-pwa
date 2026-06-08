@@ -5,10 +5,28 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#030712",
   "theme_color": "#07101f",
   "orientation": "portrait-primary",
   "categories": ["sports", "productivity"],
+  "id": "/",
+  "screenshots": [
+    {
+      "src": "./social-preview.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Fulbito con torneo, tabla, equipos y formaciones"
+    },
+    {
+      "src": "./brand-reference.png",
+      "sizes": "1448x1086",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Pantallas mobile de Fulbito"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Fixture",

@@ -6,6 +6,23 @@
   <title>Fulbito | PWA de torneos barriales</title>
   <meta name="description" content="Fulbito es una PWA mobile-first para canchas, equipos y torneos barriales con fixture, tablas, planteles, formaciones y backup JSON." />
   <meta name="theme-color" content="#07101f" />
+  <link rel="canonical" href="https://fulbito-pwa.vercel.app/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Fulbito" />
+  <meta property="og:title" content="Fulbito | Torneos barriales en una PWA instalable" />
+  <meta property="og:description" content="Canchas, equipos, fixture, tabla, resultados y formaciones para futbol barrial." />
+  <meta property="og:url" content="https://fulbito-pwa.vercel.app/" />
+  <meta property="og:image" content="https://fulbito-pwa.vercel.app/social-preview.png" />
+  <meta property="og:image:secure_url" content="https://fulbito-pwa.vercel.app/social-preview.png" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Fulbito, app para torneos barriales con canchas, fixture, tabla y formaciones." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Fulbito | Torneos barriales en una PWA instalable" />
+  <meta name="twitter:description" content="Canchas, equipos, fixture, tabla, resultados y formaciones para futbol barrial." />
+  <meta name="twitter:image" content="https://fulbito-pwa.vercel.app/social-preview.png" />
+  <meta name="twitter:image:alt" content="Fulbito, app para torneos barriales con canchas, fixture, tabla y formaciones." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Fulbito" />
   <link rel="manifest" href="./manifest.webmanifest" />
@@ -27,7 +44,7 @@
         </span>
       </button>
       <div class="topbar__actions">
-        <button id="installBtn" class="btn btn--ghost" hidden>Instalar</button>
+        <button id="installBtn" class="btn btn--ghost btn--download" data-action="installApp">Descargar app</button>
         <button class="btn btn--primary" data-route="torneos">Nuevo torneo</button>
       </div>
     </nav>
@@ -39,6 +56,7 @@
         <p class="hero__text">Liga, canchas, equipos y partidos con pulso de app profesional para jugar, competir y mover reservas de barrio.</p>
         <div class="hero__actions">
           <button class="btn btn--primary btn--large" data-route="fixture" data-focus-generator="true">Generar fixture</button>
+          <button class="btn btn--light btn--large" data-action="installApp">Descargar app</button>
           <button class="btn btn--light btn--large" data-route="modelo">Modelo negocio</button>
         </div>
       </div>
@@ -84,6 +102,21 @@
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <div id="installSheet" class="install-sheet" hidden>
+    <div class="install-sheet__panel" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+      <button class="install-sheet__close" type="button" data-action="closeInstallSheet" aria-label="Cerrar">×</button>
+      <p class="eyebrow">PWA instalable</p>
+      <h2 id="installTitle">Descargar Fulbito</h2>
+      <p>En Android o Chrome, tocá <strong>Instalar</strong> cuando aparezca el aviso. En iPhone, usá Compartir y elegí <strong>Agregar a pantalla de inicio</strong>.</p>
+      <div class="install-steps">
+        <span>1. Abrí este enlace en el navegador.</span>
+        <span>2. Instalá o agregá a pantalla de inicio.</span>
+        <span>3. Entrá a Fulbito como una app.</span>
+      </div>
+      <button class="btn btn--primary btn--large" type="button" data-action="closeInstallSheet">Entendido</button>
+    </div>
+  </div>
 
   <script src="./app.js" defer></script>
 </body>

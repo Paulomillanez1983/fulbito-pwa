@@ -75,6 +75,41 @@ function toast(message) {
   toastTimer = setTimeout(() => toastEl.classList.remove("is-visible"), 2600);
 }
 
+function isStandaloneApp() {
+  return window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
+}
+
+function openInstallSheet() {
+  const sheet = $("#installSheet");
+  if (!sheet) return;
+  sheet.hidden = false;
+  document.body.classList.add("has-install-sheet");
+}
+
+function closeInstallSheet() {
+  const sheet = $("#installSheet");
+  if (!sheet) return;
+  sheet.hidden = true;
+  document.body.classList.remove("has-install-sheet");
+}
+
+async function installApp() {
+  if (isStandaloneApp()) {
+    toast("Fulbito ya está instalada");
+    return;
+  }
+  if (!installPrompt) {
+    openInstallSheet();
+    return;
+  }
+  installPrompt.prompt();
+  const choice = await installPrompt.userChoice;
+  installPrompt = null;
+  const installBtn = $("#installBtn");
+  if (installBtn) installBtn.textContent = choice.outcome === "accepted" ? "App instalada" : "Descargar app";
+  toast(choice.outcome === "accepted" ? "Fulbito instalada" : "Podés instalarla cuando quieras");
+}
+
 function toInputDate(date = new Date()) {
   const copy = new Date(date);
   copy.setMinutes(copy.getMinutes() - copy.getTimezoneOffset());
@@ -1371,6 +1406,14 @@ function handleClick(event) {
     generateFixture(activeTournament()?.startDate || addDays(toInputDate(new Date()), 7));
   }
 
+  if (action === "installApp") {
+    installApp();
+  }
+
+  if (action === "closeInstallSheet") {
+    closeInstallSheet();
+  }
+
   if (action === "activateTournament") {
     activateTournament(actionButton.dataset.tournamentId);
   }
@@ -1541,15 +1584,18 @@ window.addEventListener("beforeinstallprompt", (event) => {
   event.preventDefault();
   installPrompt = event;
   const installBtn = $("#installBtn");
-  if (installBtn) installBtn.hidden = false;
+  if (installBtn) {
+    installBtn.textContent = "Instalar app";
+    installBtn.classList.add("is-ready");
+  }
 });
 
-$("#installBtn")?.addEventListener("click", async () => {
-  if (!installPrompt) return;
-  installPrompt.prompt();
-  await installPrompt.userChoice;
+window.addEventListener("appinstalled", () => {
   installPrompt = null;
-  $("#installBtn").hidden = true;
+  closeInstallSheet();
+  const installBtn = $("#installBtn");
+  if (installBtn) installBtn.textContent = "App instalada";
+  toast("Fulbito instalada");
 });
 
 document.addEventListener("submit", handleSubmit);
