@@ -1,18 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   CalendarDays,
   ChevronRight,
   CircleDollarSign,
   Crown,
+  Flag,
   Gamepad2,
   MapPinned,
   Shield,
+  ShieldCheck,
   Trophy,
-  Users,
-  Workflow
+  Users
 } from "lucide-react";
 import { ArenaActions } from "@/components/arena-actions";
 import { InstallAppButton } from "@/components/install-app-button";
@@ -21,14 +22,14 @@ import { LogoutButton } from "@/components/logout-button";
 import { roleCatalog } from "@/lib/demo";
 import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, FieldMode } from "@/lib/types";
 
-const nav = [
-  { id: "arena", label: "Arena", icon: Gamepad2 },
-  { id: "roles", label: "Roles", icon: Users },
-  { id: "fixture", label: "Fixture", icon: CalendarDays },
-  { id: "tabla", label: "Tabla", icon: Trophy },
-  { id: "equipos", label: "Equipos", icon: Shield },
-  { id: "plantel", label: "Plantel", icon: Crown },
-  { id: "canchas", label: "Canchas", icon: MapPinned }
+type TabId = "home" | "matches" | "league" | "squad" | "venues";
+
+const tabs: Array<{ id: TabId; label: string; icon: typeof Gamepad2 }> = [
+  { id: "home", label: "Inicio", icon: Gamepad2 },
+  { id: "matches", label: "Partidos", icon: CalendarDays },
+  { id: "league", label: "Liga", icon: Trophy },
+  { id: "squad", label: "Equipo", icon: Shield },
+  { id: "venues", label: "Canchas", icon: MapPinned }
 ];
 
 const formatLabels = {
@@ -70,12 +71,21 @@ const formationSlots: Record<FieldMode, Array<{ x: number; y: number; label: str
 };
 
 function money(value: number) {
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(value);
+  return `$ ${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
 function formatDate(value: string | null) {
   if (!value) return "A confirmar";
-  return new Intl.DateTimeFormat("es-AR", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+  const source = new Date(value);
+  const argentinaTime = new Date(source.getTime() - 3 * 60 * 60 * 1000);
+  const days = ["dom", "lun", "mar", "mie", "jue", "vie", "sab"];
+  const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const day = days[argentinaTime.getUTCDay()];
+  const date = String(argentinaTime.getUTCDate()).padStart(2, "0");
+  const month = months[argentinaTime.getUTCMonth()];
+  const hour = String(argentinaTime.getUTCHours()).padStart(2, "0");
+  const minute = String(argentinaTime.getUTCMinutes()).padStart(2, "0");
+  return `${day}, ${date} ${month}, ${hour}:${minute}`;
 }
 
 function TeamCrest({ team, size = "normal" }: { team?: ArenaTeam | null; size?: "normal" | "large" }) {
@@ -83,75 +93,6 @@ function TeamCrest({ team, size = "normal" }: { team?: ArenaTeam | null; size?: 
     <span className={`team-crest ${size === "large" ? "team-crest--large" : ""}`} style={{ "--crest": team?.primary_color ?? "#eec15c" } as CSSProperties}>
       {team?.badge_url ? <img alt="" src={team.badge_url} /> : team?.short_name ?? "FC"}
     </span>
-  );
-}
-
-function MatchCard({ match }: { match: ArenaMatch }) {
-  const isFinal = match.status === "final";
-  return (
-    <article className="match-card">
-      <div className="match-meta">
-        <span>{match.round_name}</span>
-        <span>{formatDate(match.scheduled_at)}</span>
-      </div>
-      <div className="match-line">
-        <div>
-          <TeamCrest team={match.homeTeam} />
-          <strong>{match.homeTeam?.name ?? "Local"}</strong>
-        </div>
-        <b>{isFinal ? `${match.home_score} - ${match.away_score}` : "VS"}</b>
-        <div>
-          <TeamCrest team={match.awayTeam} />
-          <strong>{match.awayTeam?.name ?? "Visitante"}</strong>
-        </div>
-      </div>
-      <footer>
-        <span>{match.venue?.name ?? "Cancha a confirmar"}</span>
-        <span className={`status-pill status-pill--${match.status}`}>{isFinal ? "Final" : "Por jugar"}</span>
-      </footer>
-    </article>
-  );
-}
-
-function StandingRow({ team, index }: { team: ArenaTeam; index: number }) {
-  return (
-    <tr>
-      <td><span className={index === 0 ? "rank rank--top" : "rank"}>{index + 1}</span></td>
-      <td>
-        <div className="table-team">
-          <TeamCrest team={team} />
-          <strong>{team.name}</strong>
-        </div>
-      </td>
-      <td>{team.points ?? 0}</td>
-      <td>{team.played ?? 0}</td>
-      <td>{team.won ?? 0}</td>
-      <td>{team.drawn ?? 0}</td>
-      <td>{team.lost ?? 0}</td>
-      <td>{team.goalsFor ?? 0}</td>
-      <td>{team.goalsAgainst ?? 0}</td>
-      <td>{team.goalDiff ?? 0}</td>
-    </tr>
-  );
-}
-
-function RolePanel({ role }: { role: AppRole }) {
-  const item = roleCatalog[role];
-  return (
-    <article className="role-card">
-      <div>
-        <span>{item.label}</span>
-        <h3>{item.headline}</h3>
-      </div>
-      <div>
-        <strong>Consume</strong>
-        <ul>{item.consumes.map((entry) => <li key={entry}>{entry}</li>)}</ul>
-      </div>
-      <div>
-        <strong>Puede hacer</strong>
-        <ul>{item.actions.map((entry) => <li key={entry}>{entry}</li>)}</ul>
-      </div>
-    </article>
   );
 }
 
@@ -170,8 +111,145 @@ function PlayerAvatar({ player }: { player?: ArenaPlayer | null }) {
   );
 }
 
+function ScreenHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
+  return (
+    <div className="screen-header">
+      <span>{eyebrow}</span>
+      <h1>{title}</h1>
+      {children ? <p>{children}</p> : null}
+    </div>
+  );
+}
+
+function MiniStat({ icon, label, value }: { icon: ReactNode; label: string; value: string | number }) {
+  return (
+    <article className="mini-stat">
+      {icon}
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </article>
+  );
+}
+
+function MatchTile({ match, featured = false }: { match: ArenaMatch; featured?: boolean }) {
+  const isFinal = match.status === "final";
+  return (
+    <article className={featured ? "match-tile match-tile--featured" : "match-tile"}>
+      <div className="match-tile__meta">
+        <span>{match.round_name}</span>
+        <b>{isFinal ? "Final" : "Por jugar"}</b>
+      </div>
+      <div className="match-tile__teams">
+        <div><TeamCrest team={match.homeTeam} /><strong>{match.homeTeam?.short_name ?? "LOC"}</strong></div>
+        <em>{isFinal ? `${match.home_score} - ${match.away_score}` : "VS"}</em>
+        <div><TeamCrest team={match.awayTeam} /><strong>{match.awayTeam?.short_name ?? "VIS"}</strong></div>
+      </div>
+      <footer>
+        <span>{match.venue?.name ?? "Cancha a confirmar"}</span>
+        <span>{formatDate(match.scheduled_at)}</span>
+      </footer>
+    </article>
+  );
+}
+
+function RoleStrip({ role }: { role: AppRole }) {
+  const info = roleCatalog[role];
+  return (
+    <article className="role-strip">
+      <ShieldCheck size={18} />
+      <div>
+        <strong>{info.label}</strong>
+        <span>{info.consumes.slice(0, 3).join(" / ")}</span>
+      </div>
+    </article>
+  );
+}
+
+function TeamRow({ team }: { team: ArenaTeam }) {
+  return (
+    <article className="team-row">
+      <TeamCrest team={team} />
+      <div>
+        <strong>{team.name}</strong>
+        <span>{team.neighborhood ?? "Barrio"} / {team.points ?? 0} pts</span>
+      </div>
+      <ChevronRight size={18} />
+    </article>
+  );
+}
+
+function VenueRow({ venue }: { venue: ArenaData["venues"][number] }) {
+  return (
+    <article className="venue-row">
+      <div>
+        <strong>{venue.name}</strong>
+        <span>{venue.neighborhood} / {venue.surface ?? "Sintetico"}</span>
+      </div>
+      <b>{money(venue.price_per_hour)}</b>
+    </article>
+  );
+}
+
+function StandingCompact({ teams }: { teams: ArenaTeam[] }) {
+  return (
+    <div className="standings-compact">
+      {teams.map((team, index) => (
+        <article key={team.id}>
+          <span>{index + 1}</span>
+          <TeamCrest team={team} />
+          <strong>{team.short_name}</strong>
+          <b>{team.points ?? 0}</b>
+          <small>{team.played ?? 0} PJ / DG {team.goalDiff ?? 0}</small>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function FormationPanel({
+  team,
+  players,
+  mode,
+  onModeChange
+}: {
+  team?: ArenaTeam;
+  players: ArenaPlayer[];
+  mode: FieldMode;
+  onModeChange: (mode: FieldMode) => void;
+}) {
+  return (
+    <article className="console-panel formation-console">
+      <div className="formation-console__head">
+        <div>
+          <TeamCrest team={team} size="large" />
+          <strong>{team?.name ?? "Equipo"}</strong>
+        </div>
+        <div className="formation-controls" aria-label="Modo de cancha">
+          {(["5v5", "7v7", "11v11"] as FieldMode[]).map((item) => (
+            <button className={mode === item ? "is-active" : ""} key={item} onClick={() => onModeChange(item)} type="button">
+              {item}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="formation-pitch formation-pitch--console">
+        {formationSlots[mode].map((slot, index) => {
+          const player = players[index] ?? null;
+          return (
+            <div className="formation-slot" key={`${mode}-${slot.label}-${index}`} style={{ "--x": `${slot.x}%`, "--y": `${slot.y}%` } as CSSProperties}>
+              <PlayerAvatar player={player} />
+              <strong>{player?.jersey_number ?? index + 1}</strong>
+              <span>{player?.alias || player?.display_name || slot.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </article>
+  );
+}
+
 export function ArenaExperience({ data }: { data: ArenaData }) {
-  const [active, setActive] = useState("arena");
+  const [active, setActive] = useState<TabId>("home");
   const [formationMode, setFormationMode] = useState<FieldMode>(data.activeTournament?.field_mode ?? "7v7");
   const currentRole = data.user?.roles[0] ?? "player";
   const currentRoleInfo = roleCatalog[currentRole];
@@ -179,249 +257,159 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
   const totalPot = data.teams.length * (data.activeTournament?.registration_fee ?? 0);
   const featuredTeam = data.teams[0];
   const featuredPlayers = data.players.filter((player) => player.team_id === featuredTeam?.id);
-  const selectedSlots = formationSlots[formationMode];
 
-  function goToSection(sectionId: string) {
-    setActive(sectionId);
-    window.requestAnimationFrame(() => {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
-  }
+  function renderHome() {
+    return (
+      <>
+        <section className="console-hero-panel">
+          <span>Fulbito Arena 2026</span>
+          <h1>Tu liga entra en modo juego.</h1>
+          <p>Partidos, tabla, plantel y canchas en una experiencia compacta para futbol amateur.</p>
+          <div className="hero-actions">
+            <InstallAppButton variant="hero" />
+            <button onClick={() => setActive("matches")} type="button">Ver fecha</button>
+          </div>
+        </section>
 
-  return (
-    <div className="arena-shell">
-      <header className="arena-topbar">
-        <button className="arena-brand" onClick={() => goToSection("arena")} type="button">
-          <img alt="" src="/assets/icon.svg" />
-          <span>
-            <strong>Fulbito Arena</strong>
-            <small>Tu cancha. Tu historia. Tu momento.</small>
-          </span>
-        </button>
-        <nav aria-label="Navegacion principal">
-          {nav.map((item) => {
-            const Icon = item.icon;
-            return (
-              <button className={active === item.id ? "is-active" : ""} key={item.id} onClick={() => goToSection(item.id)} type="button">
-                <Icon size={16} />
-                {item.label}
-              </button>
-            );
-          })}
-        </nav>
-        <div className="top-actions">
-          <InstallAppButton />
+        {nextMatch ? <MatchTile match={nextMatch} featured /> : null}
+
+        <section className="mini-grid">
+          <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} value={data.activeTournament?.name ?? "Torneo"} />
+          <MiniStat icon={<Users />} label="Equipos" value={data.teams.length} />
+          <MiniStat icon={<CalendarDays />} label="Partidos" value={data.matches.length} />
+          <MiniStat icon={<CircleDollarSign />} label="Pozo demo" value={money(totalPot)} />
+        </section>
+
+        <section className="console-panel">
+          <ScreenHeader eyebrow="Rol activo" title={data.user ? currentRoleInfo.label : "Entrar rapido"}>
+            {data.user ? currentRoleInfo.headline : "Google Login con rol inicial para jugador, capitan, cancha, organizador o veedor."}
+          </ScreenHeader>
           {data.user ? (
-            <div className="session-pill">
+            <div className="session-console">
               {data.user.avatarUrl ? <img alt="" src={data.user.avatarUrl} /> : <span>{data.user.name?.[0] ?? "F"}</span>}
-              <strong>{data.user.name}</strong>
+              <div><strong>{data.user.name}</strong><small>{currentRoleInfo.consumes.slice(0, 3).join(" / ")}</small></div>
               <LogoutButton />
             </div>
           ) : (
-            <a className="top-login" href="#login">Entrar</a>
+            <LoginPanel configured={data.configured} />
           )}
-        </div>
-      </header>
-
-      <main>
-        <section className="hero-arena" id="arena">
-          <div className="hero-copy">
-            <p className="eyebrow">Fulbito Arena 2026</p>
-            <h1>El barrio entra en modo torneo.</h1>
-            <p>
-              Plataforma PWA con login Google, roles, canchas, equipos, fixture, tabla, grupos, eliminatorias y resultado validado.
-            </p>
-            <div className="hero-actions">
-              <InstallAppButton variant="hero" />
-              <button onClick={() => goToSection("fixture")} type="button">Ver calendario</button>
-              <button onClick={() => goToSection("roles")} type="button">Definir roles</button>
-            </div>
-          </div>
-
-          <aside className="broadcast-card">
-            <div className="broadcast-top">
-              <span>Proximo partido</span>
-              <b>{nextMatch?.round_name ?? "Fixture"}</b>
-            </div>
-            <div className="versus-stage">
-              <div><TeamCrest team={nextMatch?.homeTeam} size="large" /><strong>{nextMatch?.homeTeam?.name ?? "Local"}</strong></div>
-              <span>VS</span>
-              <div><TeamCrest team={nextMatch?.awayTeam} size="large" /><strong>{nextMatch?.awayTeam?.name ?? "Visitante"}</strong></div>
-            </div>
-            <p>{nextMatch?.venue?.name ?? "Cancha a confirmar"} / {formatDate(nextMatch?.scheduled_at ?? null)}</p>
-          </aside>
         </section>
+      </>
+    );
+  }
 
-        <section className="quick-grid">
-          <article><Trophy /><strong>{data.activeTournament?.name ?? "Torneo"}</strong><span>{data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato pendiente"}</span></article>
-          <article><Users /><strong>{data.teams.length}</strong><span>Equipos activos</span></article>
-          <article><CalendarDays /><strong>{data.matches.length}</strong><span>Partidos</span></article>
-          <article><CircleDollarSign /><strong>{money(totalPot)}</strong><span>Pozo inscripciones demo</span></article>
+  function renderMatches() {
+    return (
+      <>
+        <ScreenHeader eyebrow="Calendario" title="Partidos">
+          Fechas compactas, resultado pendiente y carga de marcador por veedor, cancha u organizador.
+        </ScreenHeader>
+        <div className="match-stack">{data.matches.map((match) => <MatchTile key={match.id} match={match} />)}</div>
+        <section className="console-panel flow-compact">
+          <article><Flag /><strong>Veedor</strong><span>Carga marcador</span></article>
+          <article><MapPinned /><strong>Cancha</strong><span>Valida acta</span></article>
+          <article><Trophy /><strong>Tabla</strong><span>Se recalcula</span></article>
         </section>
+        <ArenaActions data={data} mode="result" />
+      </>
+    );
+  }
 
-        {!data.user ? <LoginPanel configured={data.configured} /> : (
-          <section className="my-role-panel">
-            <p className="eyebrow">Sesion activa</p>
-            <h2>{currentRoleInfo.headline}</h2>
-            <p>Estas entrando como <strong>{currentRoleInfo.label}</strong>. Tu panel prioriza lo que consumis y las acciones que podes ejecutar.</p>
-          </section>
-        )}
-
-        <section className={active === "roles" ? "arena-section is-focused" : "arena-section"} id="roles">
-          <div className="section-heading">
-            <p className="eyebrow">Roles del producto</p>
-            <h2>Quien entra y que consume</h2>
-            <p>El permiso vive en Supabase `user_roles`; no se decide con metadata editable del usuario.</p>
-          </div>
-          <div className="roles-grid">
-            {(["player", "captain", "venue_owner", "organizer", "referee", "admin"] as AppRole[]).map((role) => <RolePanel key={role} role={role} />)}
-          </div>
+  function renderLeague() {
+    return (
+      <>
+        <ScreenHeader eyebrow="Clasificacion" title="Liga">
+          Tabla automatica con puntos, PJ, G, E, P, GF, GC y DG.
+        </ScreenHeader>
+        <StandingCompact teams={data.standings} />
+        <section className="console-panel bracket-console">
+          {["Grupos", "Clasificados", "Octavos", "Cuartos", "Semi", "Final"].map((step, index) => (
+            <article key={step}>
+              <span>0{index + 1}</span>
+              <strong>{step}</strong>
+            </article>
+          ))}
         </section>
+      </>
+    );
+  }
 
-        <section className={active === "fixture" ? "arena-section is-focused" : "arena-section"} id="fixture">
-          <div className="section-heading">
-            <p className="eyebrow">Calendario</p>
-            <h2>Partidos y estados</h2>
-            <p>El resultado oficial pasa por submission, confirmacion o disputa antes de cerrar tabla.</p>
-          </div>
-          <div className="match-grid">{data.matches.map((match) => <MatchCard key={match.id} match={match} />)}</div>
-        </section>
-
-        <section className={active === "tabla" ? "arena-section is-focused" : "arena-section"} id="tabla">
-          <div className="section-heading">
-            <p className="eyebrow">Clasificacion</p>
-            <h2>Tabla automatica</h2>
-            <p>Solo cuenta partidos con estado final. Los pendientes no alteran puntos.</p>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>#</th><th>Equipo</th><th>Pts</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF</th><th>GC</th><th>DG</th></tr></thead>
-              <tbody>{data.standings.map((team, index) => <StandingRow key={team.id} team={team} index={index} />)}</tbody>
-            </table>
-          </div>
-        </section>
-
-        <section className={active === "equipos" ? "arena-section is-focused" : "arena-section"} id="equipos">
-          <div className="section-heading">
-            <p className="eyebrow">Clubes</p>
-            <h2>Equipos participantes</h2>
-            <p>El capitan puede crear equipo, subir escudo y gestionar plantel.</p>
-          </div>
-          <div className="team-grid">
-            {data.teams.map((team) => (
-              <article className="team-card" key={team.id}>
-                <TeamCrest team={team} size="large" />
-                <div>
-                  <h3>{team.name}</h3>
-                  <p>{team.neighborhood ?? "Barrio sin cargar"}</p>
-                </div>
-                <ChevronRight />
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={active === "plantel" ? "arena-section is-focused" : "arena-section"} id="plantel">
-          <div className="section-heading">
-            <p className="eyebrow">Plantel gamer</p>
-            <h2>Formacion visual</h2>
-            <p>Dorsal, apodo, posicion y foto quedan listos para que cada equipo se sienta dentro del campeonato.</p>
-          </div>
-          <div className="squad-board">
-            <article className="formation-card">
-              <div className="formation-head">
-                <div>
-                  <TeamCrest team={featuredTeam} size="large" />
-                  <strong>{featuredTeam?.name ?? "Equipo"}</strong>
-                </div>
-                <div className="formation-controls" aria-label="Modo de cancha">
-                  {(["5v5", "7v7", "11v11"] as FieldMode[]).map((mode) => (
-                    <button className={formationMode === mode ? "is-active" : ""} key={mode} onClick={() => setFormationMode(mode)} type="button">
-                      {mode}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="formation-pitch">
-                {selectedSlots.map((slot, index) => {
-                  const player = featuredPlayers[index] ?? null;
-                  return (
-                    <div className="formation-slot" key={`${formationMode}-${slot.label}-${index}`} style={{ "--x": `${slot.x}%`, "--y": `${slot.y}%` } as CSSProperties}>
-                      <PlayerAvatar player={player} />
-                      <strong>{player?.jersey_number ?? index + 1}</strong>
-                      <span>{player?.alias || player?.display_name || slot.label}</span>
-                    </div>
-                  );
-                })}
+  function renderSquad() {
+    return (
+      <>
+        <ScreenHeader eyebrow="Club" title="Equipo">
+          Plantel con dorsal, apodo, posicion, foto y formacion visual 5v5, 7v7 o 11v11.
+        </ScreenHeader>
+        <FormationPanel mode={formationMode} onModeChange={setFormationMode} players={featuredPlayers} team={featuredTeam} />
+        <section className="player-strip">
+          {featuredPlayers.map((player) => (
+            <article key={player.id}>
+              <PlayerAvatar player={player} />
+              <div>
+                <strong>{player.display_name}</strong>
+                <span>#{player.jersey_number ?? "-"} / {player.position ?? "Posicion"} / {player.goals} goles</span>
               </div>
             </article>
-            <aside className="squad-list">
-              {featuredPlayers.map((player) => (
-                <article key={player.id}>
-                  <PlayerAvatar player={player} />
-                  <div>
-                    <strong>{player.display_name}</strong>
-                    <span>{player.jersey_number ? `#${player.jersey_number}` : "SD"} / {player.position ?? "Posicion"} / {player.alias ?? "Sin apodo"}</span>
-                  </div>
-                  <b>{player.goals}</b>
-                </article>
-              ))}
-            </aside>
-          </div>
+          ))}
         </section>
+        <section className="team-stack">{data.teams.map((team) => <TeamRow key={team.id} team={team} />)}</section>
+        <ArenaActions data={data} mode="squad" />
+      </>
+    );
+  }
 
-        <section className={active === "canchas" ? "arena-section is-focused" : "arena-section"} id="canchas">
-          <div className="section-heading">
-            <p className="eyebrow">Sedes</p>
-            <h2>Canchas partner</h2>
-            <p>El operador registra precio por hora, inscripcion sugerida, horarios y torneos en su sede.</p>
-          </div>
-          <div className="venue-grid">
-            {data.venues.map((venue) => (
-              <article className="venue-card" key={venue.id}>
-                <span>{venue.status}</span>
-                <h3>{venue.name}</h3>
-                <p>{venue.neighborhood} / {venue.surface}</p>
-                <strong>{money(venue.price_per_hour)} hora</strong>
-                <small>Inscripcion sugerida {money(venue.inscription_fee)} / comision {venue.commission_rate}%</small>
-              </article>
-            ))}
-          </div>
+  function renderVenues() {
+    return (
+      <>
+        <ScreenHeader eyebrow="Sedes" title="Canchas">
+          Canchas de alquiler por hora con precio, barrio, inscripcion sugerida y comision.
+        </ScreenHeader>
+        <section className="venue-stack">{data.venues.map((venue) => <VenueRow key={venue.id} venue={venue} />)}</section>
+        <section className="console-panel money-console">
+          <MiniStat icon={<CircleDollarSign />} label="Ticket promedio" value={money(data.venues[0]?.price_per_hour ?? 0)} />
+          <MiniStat icon={<Crown />} label="Comision demo" value="8-9%" />
         </section>
+        <ArenaActions data={data} mode="venue" />
+      </>
+    );
+  }
 
-        <section className="arena-section">
-          <div className="section-heading">
-            <p className="eyebrow">Formato Mundial</p>
-            <h2>Grupos + eliminatorias</h2>
-            <p>El sistema puede arrancar con grupos y pasar a 16avos, octavos, cuartos, semi y final segun cantidad de equipos.</p>
-          </div>
-          <div className="flow-grid">
-            {["Inscripcion", "Grupos", "Mejores clasificados", "Eliminatoria", "Final", "Campeon"].map((step, index) => (
-              <article key={step}>
-                <Workflow />
-                <span>0{index + 1}</span>
-                <strong>{step}</strong>
-              </article>
-            ))}
-          </div>
-        </section>
+  const screens: Record<TabId, () => ReactNode> = {
+    home: renderHome,
+    matches: renderMatches,
+    league: renderLeague,
+    squad: renderSquad,
+    venues: renderVenues
+  };
 
-        <section className="arena-section">
-          <div className="section-heading">
-            <p className="eyebrow">Resultado oficial</p>
-            <h2>Quien actualiza la tabla</h2>
-            <p>La tabla se actualiza solo cuando el marcador queda final.</p>
-          </div>
-          <div className="result-flow">
-            <article><Crown /><strong>Arbitro / veedor</strong><span>Carga acta y marcador.</span></article>
-            <article><MapPinned /><strong>Cancha u organizador</strong><span>Valida si no hay veedor.</span></article>
-            <article><Shield /><strong>Capitanes</strong><span>Confirman o disputan.</span></article>
-            <article><Trophy /><strong>Tabla</strong><span>Se recalcula al cerrar final.</span></article>
-          </div>
-        </section>
+  return (
+    <div className="game-app-shell">
+      <header className="game-topbar">
+        <button className="game-brand" onClick={() => setActive("home")} type="button">
+          <img alt="" src="/assets/icon.svg" />
+          <span>
+            <strong>Fulbito Arena</strong>
+            <small>{data.source === "supabase" ? "Online" : "Demo"}</small>
+          </span>
+        </button>
+        <InstallAppButton />
+      </header>
 
-        <ArenaActions data={data} />
+      <main className="game-screen" key={active}>
+        {screens[active]()}
       </main>
+
+      <nav className="game-tabbar" aria-label="Navegacion principal">
+        {tabs.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button className={active === item.id ? "is-active" : ""} key={item.id} onClick={() => setActive(item.id)} type="button">
+              <Icon size={19} />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

@@ -5,6 +5,8 @@ import { BadgeCheck, Flag, MapPinned, UserPlus } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ArenaData } from "@/lib/types";
 
+type ActionMode = "all" | "squad" | "venue" | "result";
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -14,8 +16,12 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-export function ArenaActions({ data }: { data: ArenaData }) {
+export function ArenaActions({ data, mode = "all" }: { data: ArenaData; mode?: ActionMode }) {
   const [message, setMessage] = useState("");
+  const showTeam = mode === "all" || mode === "squad";
+  const showPlayer = mode === "all" || mode === "squad";
+  const showVenue = mode === "all" || mode === "venue";
+  const showResult = mode === "all" || mode === "result";
 
   async function getUserId() {
     const supabase = createSupabaseBrowserClient();
@@ -135,16 +141,10 @@ export function ArenaActions({ data }: { data: ArenaData }) {
 
   const nextMatch = data.matches.find((match) => match.status !== "final") ?? data.matches[0];
 
-  return (
-    <section className="action-console" id="acciones">
-      <div className="section-heading">
-        <p className="eyebrow">Acciones reales</p>
-        <h2>Consola segun rol</h2>
-        <p>Estas acciones ya escriben contra Supabase cuando hay sesion activa y permisos RLS.</p>
-      </div>
-
+  const actionContent = (
+    <>
       <div className="action-grid">
-        <form action={createTeam} className="action-card">
+        {showTeam ? <form action={createTeam} className="action-card">
           <BadgeCheck />
           <h3>Crear equipo</h3>
           <input name="teamName" placeholder="Nombre del club" />
@@ -153,9 +153,9 @@ export function ArenaActions({ data }: { data: ArenaData }) {
           <input name="badgeFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
           <input name="primaryColor" type="color" defaultValue="#eec15c" />
           <button type="submit">Guardar equipo</button>
-        </form>
+        </form> : null}
 
-        <form action={createVenue} className="action-card">
+        {showVenue ? <form action={createVenue} className="action-card">
           <MapPinned />
           <h3>Registrar cancha</h3>
           <input name="venueName" placeholder="Nombre de la cancha" />
@@ -164,9 +164,9 @@ export function ArenaActions({ data }: { data: ArenaData }) {
           <input name="inscriptionFee" inputMode="numeric" placeholder="Inscripcion sugerida" />
           <input name="venuePhoto" type="file" accept="image/png,image/jpeg,image/webp" />
           <button type="submit">Guardar cancha</button>
-        </form>
+        </form> : null}
 
-        <form action={createPlayer} className="action-card">
+        {showPlayer ? <form action={createPlayer} className="action-card">
           <UserPlus />
           <h3>Agregar jugador</h3>
           <select name="playerTeamId" defaultValue={data.teams[0]?.id}>
@@ -180,9 +180,9 @@ export function ArenaActions({ data }: { data: ArenaData }) {
           <input name="position" placeholder="Posicion" />
           <input name="playerPhoto" type="file" accept="image/png,image/jpeg,image/webp" />
           <button type="submit">Guardar jugador</button>
-        </form>
+        </form> : null}
 
-        <form action={submitResult} className="action-card">
+        {showResult ? <form action={submitResult} className="action-card">
           <Flag />
           <h3>Enviar resultado</h3>
           <select name="matchId" defaultValue={nextMatch?.id}>
@@ -198,9 +198,29 @@ export function ArenaActions({ data }: { data: ArenaData }) {
           </div>
           <input name="note" placeholder="Nota del veedor" />
           <button type="submit">Enviar a validacion</button>
-        </form>
+        </form> : null}
       </div>
       {message ? <p className="console-message">{message}</p> : null}
+    </>
+  );
+
+  return (
+    <section className={`action-console action-console--${mode}`} id="acciones">
+      {mode === "all" ? (
+        <>
+          <div className="section-heading">
+            <p className="eyebrow">Acciones reales</p>
+            <h2>Consola segun rol</h2>
+            <p>Estas acciones ya escriben contra Supabase cuando hay sesion activa y permisos RLS.</p>
+          </div>
+          {actionContent}
+        </>
+      ) : (
+        <details className="action-drawer">
+          <summary>Acciones de esta pantalla</summary>
+          {actionContent}
+        </details>
+      )}
     </section>
   );
 }

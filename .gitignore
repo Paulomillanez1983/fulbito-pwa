@@ -5,6 +5,7 @@ qa/
 !.env.example
 .next/
 .next-build/
+.next-dev-upgrade/
 tsconfig.tsbuildinfo
 out/
 .DS_Store

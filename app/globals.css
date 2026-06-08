@@ -1139,3 +1139,629 @@ th {
     width: 100%;
   }
 }
+
+.game-app-shell {
+  position: relative;
+  width: min(1180px, calc(100% - 24px));
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: 14px 0 108px;
+}
+
+.game-app-shell h1,
+.game-app-shell h2,
+.game-app-shell h3 {
+  letter-spacing: 0;
+}
+
+.game-topbar {
+  position: sticky;
+  top: 12px;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 70px;
+  border: 1px solid rgba(241,199,91,.38);
+  border-radius: 12px;
+  padding: 10px;
+  background: linear-gradient(180deg, rgba(23, 29, 42, .96), rgba(6, 9, 17, .94));
+  box-shadow: 0 22px 70px rgba(0,0,0,.5);
+}
+
+.game-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.game-brand img {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+}
+
+.game-brand strong,
+.game-brand small {
+  display: block;
+}
+
+.game-brand strong {
+  text-transform: uppercase;
+}
+
+.game-brand small {
+  color: var(--green);
+  font-size: .76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.game-screen {
+  display: grid;
+  gap: 14px;
+  padding-top: 14px;
+  animation: screen-in .22s ease-out;
+}
+
+@keyframes screen-in {
+  from {
+    opacity: .2;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.screen-header,
+.console-hero-panel,
+.console-panel,
+.match-tile,
+.mini-stat,
+.team-row,
+.venue-row,
+.standings-compact article,
+.player-strip article {
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.095), rgba(255,255,255,.035)),
+    rgba(8, 12, 22, .88);
+  box-shadow: 0 22px 60px rgba(0,0,0,.34);
+}
+
+.screen-header {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+}
+
+.screen-header > span,
+.console-hero-panel > span {
+  width: max-content;
+  max-width: 100%;
+  border: 1px solid rgba(241,199,91,.46);
+  border-radius: 8px;
+  padding: 6px 9px;
+  background: rgba(241,199,91,.13);
+  color: #ffe8a3;
+  font-size: .75rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.screen-header h1,
+.console-hero-panel h1 {
+  margin: 0;
+  max-width: 780px;
+  font-size: clamp(2rem, 8vw, 5rem);
+  line-height: .92;
+  text-transform: uppercase;
+}
+
+.screen-header p,
+.console-hero-panel p {
+  margin: 0;
+  max-width: 760px;
+  color: #c8d4e6;
+  line-height: 1.55;
+}
+
+.console-hero-panel {
+  min-height: min(64dvh, 620px);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 14px;
+  overflow: hidden;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, rgba(5, 9, 18, .2), rgba(5, 9, 18, .9)),
+    linear-gradient(120deg, rgba(10, 120, 71, .55), transparent 44%),
+    url("/brand-reference.png") center / cover no-repeat;
+}
+
+.console-hero-panel h1 {
+  color: #fffaf0;
+  text-shadow: 0 18px 40px rgba(0,0,0,.48);
+}
+
+.console-hero-panel .hero-actions {
+  margin-top: 2px;
+}
+
+.console-panel {
+  padding: 14px;
+}
+
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mini-stat {
+  display: grid;
+  gap: 8px;
+  min-height: 118px;
+  padding: 14px;
+}
+
+.mini-stat svg {
+  color: var(--gold);
+}
+
+.mini-stat strong {
+  font-size: 1.15rem;
+  line-height: 1.1;
+}
+
+.mini-stat span {
+  color: var(--muted);
+}
+
+.match-stack,
+.team-stack,
+.venue-stack,
+.player-strip {
+  display: grid;
+  gap: 10px;
+}
+
+.match-tile {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.match-tile--featured {
+  background:
+    linear-gradient(135deg, rgba(241,199,91,.2), rgba(52,201,255,.06)),
+    rgba(8, 12, 22, .9);
+}
+
+.match-tile__meta,
+.match-tile footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: .84rem;
+}
+
+.match-tile__meta b {
+  border: 1px solid rgba(66,230,140,.36);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: #baffd9;
+  text-transform: uppercase;
+}
+
+.match-tile__teams {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.match-tile__teams div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.match-tile__teams div:last-child {
+  justify-content: flex-end;
+}
+
+.match-tile__teams em {
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  border: 1px solid rgba(241,199,91,.42);
+  border-radius: 10px;
+  background: rgba(0,0,0,.28);
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 1000;
+}
+
+.role-strip,
+.session-console,
+.team-row,
+.venue-row,
+.player-strip article {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-strip {
+  margin-top: 10px;
+  color: var(--muted);
+}
+
+.role-strip strong,
+.role-strip span,
+.session-console strong,
+.session-console small,
+.team-row strong,
+.team-row span,
+.venue-row strong,
+.venue-row span,
+.player-strip strong,
+.player-strip span {
+  display: block;
+}
+
+.session-console {
+  justify-content: space-between;
+}
+
+.session-console img,
+.session-console > span {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+.session-console > span {
+  display: grid;
+  place-items: center;
+  background: var(--gold);
+  color: #08090e;
+  font-weight: 1000;
+}
+
+.standings-compact {
+  display: grid;
+  gap: 8px;
+}
+
+.standings-compact article {
+  display: grid;
+  grid-template-columns: 34px auto 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px;
+}
+
+.standings-compact article > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(241,199,91,.16);
+  color: var(--gold);
+  font-weight: 1000;
+}
+
+.standings-compact b {
+  color: var(--gold);
+  font-size: 1.1rem;
+}
+
+.standings-compact small,
+.team-row span,
+.venue-row span,
+.player-strip span,
+.session-console small {
+  color: var(--muted);
+}
+
+.bracket-console,
+.flow-compact,
+.money-console {
+  display: grid;
+  gap: 10px;
+}
+
+.bracket-console {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.flow-compact,
+.money-console {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bracket-console article,
+.flow-compact article {
+  display: grid;
+  gap: 7px;
+  min-height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: rgba(0,0,0,.24);
+}
+
+.bracket-console span {
+  color: var(--gold);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.flow-compact svg {
+  color: var(--cyan);
+}
+
+.formation-console {
+  padding: 12px;
+}
+
+.formation-console__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.formation-console__head > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.formation-pitch--console {
+  min-height: 420px;
+  margin: 0;
+}
+
+.player-strip {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.player-strip article,
+.team-row,
+.venue-row {
+  min-height: 68px;
+  padding: 10px;
+}
+
+.team-row,
+.venue-row {
+  justify-content: space-between;
+}
+
+.venue-row b {
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+.game-app-shell .login-panel {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.game-app-shell .login-panel h2 {
+  font-size: 1.4rem;
+}
+
+.game-app-shell .login-panel > div:first-child p:not(.eyebrow) {
+  color: var(--muted);
+}
+
+.game-app-shell .action-console {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.game-app-shell .action-grid {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.game-app-shell .action-console--squad .action-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.game-app-shell .action-card {
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 12px;
+  background: rgba(8, 12, 22, .88);
+}
+
+.action-drawer {
+  border: 1px solid rgba(241,199,91,.28);
+  border-radius: 12px;
+  background: rgba(8, 12, 22, .86);
+}
+
+.action-drawer summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 0 14px;
+  color: var(--gold);
+  cursor: pointer;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.action-drawer[open] {
+  padding-bottom: 12px;
+}
+
+.action-drawer[open] .action-grid {
+  padding: 0 12px;
+}
+
+.game-tabbar {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  width: min(520px, calc(100% - 20px));
+  transform: translateX(-50%);
+  border: 1px solid rgba(241,199,91,.38);
+  border-radius: 14px;
+  padding: 8px;
+  background: rgba(5, 8, 16, .95);
+  box-shadow: 0 18px 60px rgba(0,0,0,.55);
+  backdrop-filter: blur(18px);
+}
+
+.game-tabbar button {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  min-height: 58px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 11px;
+  background: rgba(255,255,255,.045);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: .72rem;
+}
+
+.game-tabbar button.is-active {
+  border-color: rgba(241,199,91,.62);
+  background: linear-gradient(135deg, rgba(241,199,91,.22), rgba(52,201,255,.08));
+  color: var(--ink);
+}
+
+@media (min-width: 900px) {
+  .game-screen {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .match-stack {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .team-stack,
+  .venue-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .game-app-shell {
+    width: calc(100% - 20px);
+    padding-top: 10px;
+  }
+
+  .game-topbar {
+    top: 10px;
+    backdrop-filter: none;
+  }
+
+  .game-brand small {
+    display: none;
+  }
+
+  .game-topbar .install-button {
+    min-width: 116px;
+  }
+
+  .console-hero-panel {
+    min-height: 62dvh;
+    padding: 18px;
+  }
+
+  .screen-header,
+  .console-panel {
+    padding: 14px;
+  }
+
+  .mini-grid,
+  .bracket-console,
+  .flow-compact,
+  .money-console,
+  .game-app-shell .action-console--squad .action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mini-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .player-strip,
+  .team-stack,
+  .venue-stack {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+  }
+
+  .player-strip article,
+  .team-row,
+  .venue-row {
+    flex: 0 0 78%;
+    scroll-snap-align: start;
+  }
+
+  .match-tile__teams {
+    grid-template-columns: minmax(0, 1fr) 58px minmax(0, 1fr);
+  }
+
+  .match-tile footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .standings-compact article {
+    grid-template-columns: 28px auto 1fr auto;
+  }
+
+  .standings-compact small {
+    grid-column: 3 / -1;
+  }
+
+  .formation-console__head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .formation-pitch--console {
+    min-height: 470px;
+    aspect-ratio: 3 / 4;
+  }
+
+  .game-tabbar {
+    bottom: 10px;
+  }
+}
