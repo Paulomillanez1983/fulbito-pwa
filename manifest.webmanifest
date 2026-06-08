@@ -1,13 +1,13 @@
 {
   "name": "Fulbito - Torneos barriales",
   "short_name": "Fulbito",
-  "description": "PWA mobile-first para canchas, equipos, torneos, fixture, tablas, formaciones y backup JSON.",
+  "description": "PWA mobile-first para vivir torneos barriales con fixture, tabla, planteles, formaciones y canchas partner.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
-  "background_color": "#030712",
-  "theme_color": "#07101f",
+  "background_color": "#05070d",
+  "theme_color": "#05070d",
   "orientation": "portrait-primary",
   "categories": ["sports", "productivity"],
   "id": "/",
@@ -17,7 +17,7 @@
       "sizes": "1200x630",
       "type": "image/jpeg",
       "form_factor": "wide",
-      "label": "Logo de Fulbito para compartir"
+      "label": "Fulbito para compartir en redes"
     },
     {
       "src": "./social-preview.png",

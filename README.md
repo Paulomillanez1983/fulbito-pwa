@@ -1,10 +1,13 @@
 # Fulbito PWA
 
-Fulbito es una PWA mobile-first para torneos barriales de futbol: canchas, campeonatos, equipos, jugadores, fixture, resultados, tabla, formaciones y backup JSON.
+Fulbito es una PWA mobile-first para torneos barriales de futbol con experiencia visual tipo juego: canchas, campeonatos, equipos, jugadores, fixture, resultados, tabla, formaciones y backup JSON.
+
+Produccion: https://fulbito-pwa.vercel.app
 
 ## Incluye
 
 - App web responsive e instalable como PWA.
+- UI mobile con HUD de campeonato, escudos, pitch visual y navegacion inferior.
 - Demo inicial con campeonato, equipos, jugadores, canchas y partidos.
 - Creacion de campeonatos/liga.
 - Inscripcion de equipos al campeonato activo.
@@ -17,6 +20,7 @@ Fulbito es una PWA mobile-first para torneos barriales de futbol: canchas, campe
 - Vista `Negocio` con estimacion demo de ingresos.
 - Backup/exportacion e importacion de datos JSON.
 - Uso offline basico con service worker.
+- Imagen Open Graph/Twitter Card en `og-image.jpg` para que al compartir el link aparezca una preview visual.
 
 ## Probar localmente
 
@@ -37,6 +41,20 @@ En Windows tambien puede funcionar:
 ```powershell
 python -m http.server 8080
 ```
+
+## Assets de marca
+
+El escudo base vive en `assets/icon.svg`. Para regenerar los PNG de instalacion y la imagen social:
+
+```powershell
+.\scripts\generate-brand-assets.ps1
+```
+
+El script genera:
+
+- `assets/icon-192.png`
+- `assets/icon-512.png`
+- `og-image.jpg` en 1200x630 para previews sociales
 
 ## Modelo comercial sugerido
 

@@ -1,18 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">Fulbito</title>
-  <desc id="desc">Escudo navy y dorado con una pelota y la letra F</desc>
+  <desc id="desc">Escudo premium navy y dorado con monograma F</desc>
   <defs>
-    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
-      <stop offset="0" stop-color="#f3d27a"/>
-      <stop offset="1" stop-color="#9f6e26"/>
+    <linearGradient id="gold" x1="104" y1="52" x2="408" y2="454" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff2b8"/>
+      <stop offset=".44" stop-color="#e8b84f"/>
+      <stop offset="1" stop-color="#8e5d1e"/>
     </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#030712" flood-opacity=".58"/>
+    <linearGradient id="edge" x1="110" y1="60" x2="406" y2="442" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff8d8"/>
+      <stop offset=".52" stop-color="#c58c2e"/>
+      <stop offset="1" stop-color="#f7df91"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="20" stdDeviation="20" flood-color="#000000" flood-opacity=".62"/>
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#e8b84f" flood-opacity=".28"/>
     </filter>
   </defs>
-  <rect width="512" height="512" rx="112" fill="#030712"/>
-  <path d="M256 52 428 124v116c0 108-72 177-172 220C156 417 84 348 84 240V124L256 52Z" fill="url(#g)" filter="url(#shadow)"/>
-  <circle cx="256" cy="210" r="72" fill="#f7f3e8" opacity=".96"/>
-  <path d="m256 145 42 31-16 50h-52l-16-50 42-31Zm-65 68 37 27-14 43-43 1-21-36 41-35Zm130 0 41 35-21 36-43-1-14-43 37-27Zm-85 83h40l23 34-20 42h-46l-20-42 23-34Z" fill="#030712" opacity=".92"/>
-  <path d="M172 388V274h95c43 0 71 21 71 58 0 35-26 56-67 56h-42v58h-57Zm57-46h36c11 0 18-4 18-13s-7-14-18-14h-36v27Z" fill="#f7f3e8"/>
+  <rect width="512" height="512" rx="112" fill="#05070d"/>
+  <path d="M72 100h368M48 160h416M38 222h436M48 284h416M72 346h368" stroke="#ffffff" stroke-opacity=".05" stroke-width="2"/>
+  <path d="M256 42 400 100v118c0 98-58 165-144 222-86-57-144-124-144-222V100L256 42Z" fill="#07101c" stroke="url(#edge)" stroke-width="14" filter="url(#glow)"/>
+  <path d="M256 72 372 119v95c0 76-41 130-116 183-75-53-116-107-116-183v-95L256 72Z" fill="url(#gold)" opacity=".96"/>
+  <path d="M173 151h179v54H228v43h103v52H228v101h-55V151Z" fill="#05070d"/>
+  <path d="M229 205h102l-28 43h-75l1-43Z" fill="#f7e5ad" opacity=".9"/>
+  <path d="M181 151h171v20H181v-20Zm47 97h93v18h-93v-18Z" fill="#fff6d0" opacity=".95"/>
+  <path d="M256 18 269 45 299 49 277 70 282 100 256 86 230 100 235 70 213 49 243 45 256 18Z" fill="url(#gold)"/>
 </svg>

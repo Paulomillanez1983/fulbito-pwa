@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Fulbito | PWA de torneos barriales</title>
-  <meta name="description" content="Fulbito es una PWA mobile-first para canchas, equipos y torneos barriales con fixture, tablas, planteles, formaciones y backup JSON." />
-  <meta name="theme-color" content="#07101f" />
+  <title>Fulbito | Torneos barriales con experiencia de juego</title>
+  <meta name="description" content="Fulbito es una PWA mobile-first para vivir torneos barriales con fixture, tabla, equipos, planteles, formaciones y canchas partner." />
+  <meta name="theme-color" content="#05070d" />
   <link rel="canonical" href="https://fulbito-pwa.vercel.app/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Fulbito" />
-  <meta property="og:title" content="Fulbito | Torneos barriales en una PWA instalable" />
-  <meta property="og:description" content="Canchas, equipos, fixture, tabla, resultados y formaciones para futbol barrial." />
+  <meta property="og:title" content="Fulbito | Torneos barriales con experiencia de juego" />
+  <meta property="og:description" content="Fixture, tabla, planteles, formaciones y canchas para competir como una liga profesional de barrio." />
   <meta property="og:url" content="https://fulbito-pwa.vercel.app/" />
   <meta property="og:image" content="https://fulbito-pwa.vercel.app/og-image.jpg" />
   <meta property="og:image:url" content="https://fulbito-pwa.vercel.app/og-image.jpg" />
@@ -18,12 +18,12 @@
   <meta property="og:image:type" content="image/jpeg" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Fulbito, app para torneos barriales con canchas, fixture, tabla y formaciones." />
+  <meta property="og:image:alt" content="Fulbito, app de torneos barriales con pantallas mobile, escudos, tabla, fixture y formaciones." />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Fulbito | Torneos barriales en una PWA instalable" />
-  <meta name="twitter:description" content="Canchas, equipos, fixture, tabla, resultados y formaciones para futbol barrial." />
+  <meta name="twitter:title" content="Fulbito | Torneos barriales con experiencia de juego" />
+  <meta name="twitter:description" content="Fixture, tabla, planteles, formaciones y canchas para competir como una liga profesional de barrio." />
   <meta name="twitter:image" content="https://fulbito-pwa.vercel.app/og-image.jpg" />
-  <meta name="twitter:image:alt" content="Fulbito, app para torneos barriales con canchas, fixture, tabla y formaciones." />
+  <meta name="twitter:image:alt" content="Fulbito, app de torneos barriales con pantallas mobile, escudos, tabla, fixture y formaciones." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Fulbito" />
   <link rel="manifest" href="./manifest.webmanifest" />
@@ -33,6 +33,7 @@
 </head>
 <body>
   <div class="noise" aria-hidden="true"></div>
+  <div class="stadium-lights" aria-hidden="true"></div>
 
   <header class="hero">
     <img class="hero__reference" src="./brand-reference.png" alt="" aria-hidden="true" />
@@ -46,19 +47,19 @@
       </button>
       <div class="topbar__actions">
         <button id="installBtn" class="btn btn--ghost btn--download" data-action="installApp">Descargar app</button>
-        <button class="btn btn--primary" data-route="torneos">Nuevo torneo</button>
+        <button class="btn btn--primary" data-route="torneos">Crear liga</button>
       </div>
     </nav>
 
     <section class="hero__content">
       <div>
-        <p class="eyebrow">Futbol barrial 2026</p>
-        <h1>Fulbito</h1>
-        <p class="hero__text">Liga, canchas, equipos y partidos con pulso de app profesional para jugar, competir y mover reservas de barrio.</p>
+        <p class="eyebrow">Modo campeonato</p>
+        <h1>Hoy se juega</h1>
+        <p class="hero__text">Una PWA para que cada torneo de barrio se sienta como una liga seria: escudos, planteles, fixture, tabla, formaciones y canchas partner.</p>
         <div class="hero__actions">
           <button class="btn btn--primary btn--large" data-route="fixture" data-focus-generator="true">Generar fixture</button>
           <button class="btn btn--light btn--large" data-action="installApp">Descargar app</button>
-          <button class="btn btn--light btn--large" data-route="modelo">Modelo negocio</button>
+          <button class="btn btn--light btn--large" data-route="formaciones">Ver formación</button>
         </div>
       </div>
       <aside class="hero-card" aria-label="Resumen rápido">
@@ -86,16 +87,16 @@
         <select id="tournamentSelect"></select>
       </label>
       <nav class="nav-list">
-        <button class="nav-btn is-active" data-route="dashboard">Inicio</button>
-        <button class="nav-btn" data-route="torneos">Campeonatos</button>
-        <button class="nav-btn" data-route="equipos">Equipos</button>
-        <button class="nav-btn" data-route="jugadores">Jugadores</button>
-        <button class="nav-btn" data-route="fixture">Fixture</button>
-        <button class="nav-btn" data-route="tabla">Tabla</button>
-        <button class="nav-btn" data-route="formaciones">Formaciones</button>
-        <button class="nav-btn" data-route="canchas">Canchas</button>
-        <button class="nav-btn" data-route="modelo">Negocio</button>
-        <button class="nav-btn" data-route="ajustes">Datos</button>
+        <button class="nav-btn is-active" data-icon="IN" data-route="dashboard">Inicio</button>
+        <button class="nav-btn" data-icon="LG" data-route="torneos">Ligas</button>
+        <button class="nav-btn" data-icon="FC" data-route="equipos">Equipos</button>
+        <button class="nav-btn" data-icon="10" data-route="jugadores">Jugadores</button>
+        <button class="nav-btn" data-icon="VS" data-route="fixture">Fixture</button>
+        <button class="nav-btn" data-icon="#" data-route="tabla">Tabla</button>
+        <button class="nav-btn" data-icon="XI" data-route="formaciones">Formación</button>
+        <button class="nav-btn" data-icon="SE" data-route="canchas">Canchas</button>
+        <button class="nav-btn" data-icon="$" data-route="modelo">Negocio</button>
+        <button class="nav-btn" data-icon="DB" data-route="ajustes">Datos</button>
       </nav>
     </aside>
 

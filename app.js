@@ -552,26 +552,26 @@ function renderDashboard() {
 
   return `
     ${viewHeader(
-      tournament.name,
-      `${tournament.modality} · ${tournament.fieldMode} · ${tournament.status}. Esta pantalla resume el campeonato activo con tabla, fixture y equipos.` ,
-      `<button class="btn btn--primary" data-route="fixture">Cargar resultados</button><button class="btn btn--ghost" data-route="formaciones">Ver formaciones</button>`
+      "Hoy es día de Fulbito",
+      `${tournament.name} · ${tournament.fieldMode} · ${tournament.status}. Seguí la previa, cargá resultados y mirá quién manda en la tabla.` ,
+      `<button class="btn btn--primary" data-route="fixture">Cargar resultado</button><button class="btn btn--ghost" data-route="formaciones">Ver XI titular</button>`
     )}
 
     ${renderCommandCenter(tournament, featuredMatch, metrics)}
 
     <section class="grid grid--4">
-      ${statCard(teams.length, "Equipos inscriptos")}
-      ${statCard(matches.length, "Partidos generados")}
-      ${statCard(completed.length, "Resultados cargados")}
-      ${statCard(currencyARS(metrics.total), "Ingresos demo")}
+      ${statCard(teams.length, "Clubes en carrera")}
+      ${statCard(matches.length, "Partidos en calendario")}
+      ${statCard(completed.length, "Marcadores cargados")}
+      ${statCard(currencyARS(metrics.total), "Caja demo")}
     </section>
 
     <section class="grid grid--2" style="margin-top: 16px;">
       <article class="panel">
         <div class="team-head">
           <div>
-            <h3>Tabla rápida</h3>
-            <p class="muted">Los primeros puestos del campeonato activo.</p>
+            <h3>Ranking en vivo</h3>
+            <p class="muted">Top 5 del campeonato activo.</p>
           </div>
           <button class="btn btn--small btn--ghost" data-route="tabla">Tabla completa</button>
         </div>
@@ -588,8 +588,8 @@ function renderDashboard() {
       <article class="panel">
         <div class="team-head">
           <div>
-            <h3>Próximas fechas</h3>
-            <p class="muted">Agenda de partidos pendientes.</p>
+            <h3>Agenda de cancha</h3>
+            <p class="muted">Partidos pendientes para la próxima jornada.</p>
           </div>
           <button class="btn btn--small btn--ghost" data-route="fixture">Ver fixture</button>
         </div>
@@ -600,8 +600,8 @@ function renderDashboard() {
     <section style="margin-top: 16px;">
       <div class="team-head" style="margin-bottom: 12px;">
         <div>
-          <h3>Equipos protagonistas</h3>
-          <p class="muted">Cada equipo puede tener plantel, foto del jugador y formación propia.</p>
+          <h3>Clubes protagonistas</h3>
+          <p class="muted">Planteles, fotos, escudos y formación para que cada barrio tenga identidad.</p>
         </div>
         <button class="btn btn--small btn--ghost" data-route="equipos">Ver equipos</button>
       </div>
@@ -620,7 +620,7 @@ function renderCommandCenter(tournament, match, metrics) {
   return `
     <section class="command-center">
       <article class="match-spotlight">
-        <span class="screen-label">Proximo partido</span>
+        <span class="screen-label">Próximo partido</span>
         <div class="spotlight-teams">
           <div>${teamBadge(home, "badge--large")}<strong>${escapeHtml(home?.name || "Local")}</strong></div>
           <b>VS</b>
@@ -629,9 +629,9 @@ function renderCommandCenter(tournament, match, metrics) {
         <p>${escapeHtml(match ? `Fecha ${match.round} · ${formatDateShort(match.date)} · ${match.time} · ${venueName(match.venueId)}` : "Fixture pendiente")}</p>
       </article>
       <article class="market-pulse">
-        <span class="screen-label">Pulso comercial</span>
+        <span class="screen-label">Movimiento demo</span>
         <strong>${currencyARS(metrics.total)}</strong>
-        <p>Demo: inscripciones, canchas partner, sponsors y comision por reservas.</p>
+        <p>Inscripciones, canchas partner, sponsors y comisión por reservas.</p>
         <button class="btn btn--small btn--ghost" data-route="modelo">Ver modelo</button>
       </article>
     </section>
@@ -647,7 +647,7 @@ function renderMiniMatch(match) {
         <strong>${escapeHtml(home?.name || "Equipo") } vs ${escapeHtml(away?.name || "Equipo")}</strong>
         <span class="meta">Fecha ${match.round} · ${formatDateShort(match.date)} · ${match.time} · ${escapeHtml(venueName(match.venueId))}</span>
       </div>
-      <span class="status-pill">Programado</span>
+      <span class="status-pill">Por jugar</span>
     </div>
   `;
 }
@@ -662,8 +662,8 @@ function renderTournaments() {
 
   return `
     ${viewHeader(
-      "Campeonatos y ligas",
-      "Creá torneos para una cancha específica o para varias sedes barriales. Podés usar formato liga todos contra todos y mantener puntos automáticamente.",
+      "Ligas y copas",
+      "Creá torneos para una cancha específica o para varias sedes barriales. El fixture todos contra todos y la tabla se mantienen automáticamente.",
       `<button class="btn btn--ghost" data-route="equipos">Crear equipo</button>`
     )}
 
@@ -725,8 +725,8 @@ function renderTeams() {
   const teams = tournament ? getTournamentTeams(tournament.id) : state.teams;
   return `
     ${viewHeader(
-      "Equipos con identidad propia",
-      "Cargá escudo por iniciales, color, barrio, DT/delegado y cancha local. Cada equipo puede tener su plantel y su formación.",
+      "Clubes con identidad",
+      "Cargá escudo por iniciales, color, barrio, DT/delegado y cancha local. Cada equipo puede tener plantel, fotos y formación.",
       `<button class="btn btn--ghost" data-route="jugadores">Cargar jugadores</button>`
     )}
 
@@ -789,7 +789,7 @@ function renderTeamCard(team) {
         <span class="pill">${escapeHtml(venue?.name || "Sin cancha")}</span>
       </div>
       <div class="card-actions">
-        <button class="btn btn--small btn--primary" data-focus-team="${escapeHtml(team.id)}" data-route-target="formaciones">Formación</button>
+        <button class="btn btn--small btn--primary" data-focus-team="${escapeHtml(team.id)}" data-route-target="formaciones">XI titular</button>
         <button class="btn btn--small btn--ghost" data-focus-team="${escapeHtml(team.id)}" data-route-target="jugadores">Plantel</button>
         <button class="btn btn--small btn--danger" data-action="deleteTeam" data-team-id="${escapeHtml(team.id)}">Eliminar</button>
       </div>
@@ -802,8 +802,8 @@ function renderPlayers() {
   const playerRows = selectedTeam?.players?.map((player) => renderPlayerRow(player, selectedTeam)).join("") || "";
   return `
     ${viewHeader(
-      "Planteles y fichas de jugador",
-      "Cargá nombre, apodo, dorsal, posición y foto. Las fotos se guardan localmente si subís un archivo desde este dispositivo.",
+      "Fichas de jugador",
+      "Cargá nombre, apodo, dorsal, posición y foto para que cada jugador aparezca como parte real del campeonato.",
       `<button class="btn btn--ghost" data-route="formaciones">Armar formación</button>`
     )}
 
@@ -856,8 +856,8 @@ function renderFixture() {
 
   return `
     ${viewHeader(
-      "Fixture y resultados",
-      "Generá fechas todos contra todos, asigná canchas y cargá resultados. La tabla se recalcula automáticamente.",
+      "Calendario y resultados",
+      "Generá fechas todos contra todos, asigná canchas y cargá marcadores. La tabla se recalcula automáticamente.",
       `<button class="btn btn--ghost" data-route="tabla">Ver tabla</button>`
     )}
 
@@ -955,8 +955,8 @@ function renderLineups() {
   const controls = selectedTeam ? slots.map((slot) => renderSlotControl(selectedTeam, slot)).join("") : "";
   return `
     ${viewHeader(
-      "Formaciones estilo transmisión",
-      "Elegí el equipo, el formato de cancha y asigná jugadores a cada posición. Ideal para mostrar la previa como una liga profesional.",
+      "Formación de gala",
+      "Elegí el equipo, el formato de cancha y asigná jugadores a cada posición para publicar la previa del partido.",
       `<button class="btn btn--ghost" data-route="jugadores">Cargar fotos</button>`
     )}
 

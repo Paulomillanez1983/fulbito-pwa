@@ -1,5 +1,6 @@
 _zip_source/
 qa/*.png
+qa/*.jpg
 .DS_Store
 Thumbs.db
 node_modules/
