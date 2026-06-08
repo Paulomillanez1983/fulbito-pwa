@@ -11,6 +11,8 @@ Produccion: https://fulbito-pwa.vercel.app
 - Backend real con Postgres, RLS y Storage.
 - Canchas partner con precio por hora, inscripcion sugerida y comision.
 - Equipos con escudo, sigla, barrio y plantel.
+- Subida de escudos, fotos de cancha y fotos de jugadores a Supabase Storage.
+- Formacion visual 5v5, 7v7 y 11v11 con dorsal, apodo y posicion.
 - Torneos tipo liga, mundial barrial o copa eliminatoria.
 - Calendario de partidos y estados.
 - Submissions y confirmaciones de resultado antes de actualizar tabla.
