@@ -1,0 +1,2 @@
+-- Demo data lives in the initial migration so remote `db push` and local reset
+-- start from the same Fulbito Arena baseline.

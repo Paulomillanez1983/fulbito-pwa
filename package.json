@@ -1,18 +1,36 @@
 {
   "name": "fulbito-pwa",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": false,
-  "description": "PWA mobile-first para torneos barriales, canchas, equipos, fixture, tablas y formaciones.",
+  "description": "Fulbito Arena: PWA premium para torneos barriales con roles, Google Login y backend Supabase.",
   "scripts": {
-    "start": "python -m http.server 8080",
-    "serve": "python -m http.server 8080"
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
+    "nextjs",
+    "supabase",
     "pwa",
     "futbol",
     "torneos",
     "canchas",
     "fixture"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@supabase/ssr": "latest",
+    "@supabase/supabase-js": "latest",
+    "lucide-react": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest"
+  }
 }

@@ -1,76 +1,81 @@
-# Fulbito PWA
+# Fulbito Arena
 
-Fulbito es una PWA mobile-first para torneos barriales de futbol con experiencia visual tipo juego: canchas, campeonatos, equipos, jugadores, fixture, resultados, tabla, formaciones y backup JSON.
+PWA mobile-first para torneos barriales con estetica de juego deportivo premium, Google Login, roles y backend Supabase.
 
 Produccion: https://fulbito-pwa.vercel.app
 
-## Incluye
+## Producto
 
-- App web responsive e instalable como PWA.
-- UI mobile con HUD de campeonato, escudos, pitch visual y navegacion inferior.
-- Demo inicial con campeonato, equipos, jugadores, canchas y partidos.
-- Creacion de campeonatos/liga.
-- Inscripcion de equipos al campeonato activo.
-- Carga de canchas de barrio con tarifa, comision, responsable, horario y estado.
-- Planteles con nombre, dorsal, posicion, apodo y foto del jugador.
-- Formaciones visuales 5v5, 7v7 y 11v11.
-- Fixture todos contra todos.
-- Carga de resultados.
-- Tabla automatica con puntos, PJ, G, E, P, GF, GC y DG.
-- Vista `Negocio` con estimacion demo de ingresos.
-- Backup/exportacion e importacion de datos JSON.
-- Uso offline basico con service worker.
-- Imagen Open Graph/Twitter Card en `og-image.jpg` para que al compartir el link aparezca una preview visual.
+- Roles: jugador, capitan/DT, duenio de cancha, organizador, arbitro/veedor y admin.
+- Login con Google via Supabase Auth.
+- Backend real con Postgres, RLS y Storage.
+- Canchas partner con precio por hora, inscripcion sugerida y comision.
+- Equipos con escudo, sigla, barrio y plantel.
+- Torneos tipo liga, mundial barrial o copa eliminatoria.
+- Calendario de partidos y estados.
+- Submissions y confirmaciones de resultado antes de actualizar tabla.
+- Tabla automatica solo con partidos finalizados.
+- PWA instalable con service worker basico.
+- Open Graph/Twitter Card con imagen 1200x630.
 
-## Probar localmente
+## Stack
 
-Desde esta carpeta:
+- Next.js App Router
+- Supabase Auth, Postgres, RLS y Storage
+- Vercel
+- TypeScript
 
-```bash
-python3 -m http.server 8080
+## Local
+
+```powershell
+npm install
+npm run dev
 ```
 
 Abrir:
 
 ```text
-http://localhost:8080
+http://localhost:3000
 ```
 
-En Windows tambien puede funcionar:
+Variables:
+
+```text
+NEXT_PUBLIC_SITE_URL=https://fulbito-pwa.vercel.app
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
+```
+
+## Supabase
+
+Proyecto separado:
+
+```text
+fulbito-arena
+```
+
+Aplicar migraciones:
 
 ```powershell
-python -m http.server 8080
+supabase db push --linked --yes
 ```
 
-## Assets de marca
+La migracion inicial crea tablas, policies RLS, buckets de Storage y demo online.
 
-El escudo base vive en `assets/icon.svg`. Para regenerar los PNG de instalacion y la imagen social:
+## Google OAuth
+
+El codigo ya llama a Supabase Auth con provider `google`. Para que el login funcione en produccion, el proveedor Google debe estar habilitado en Supabase Dashboard con Client ID/Secret de Google Cloud y redirects permitidos.
+
+## Assets
+
+El escudo base vive en `public/assets/icon.svg`.
 
 ```powershell
 .\scripts\generate-brand-assets.ps1
 ```
 
-El script genera:
+Genera:
 
-- `assets/icon-192.png`
-- `assets/icon-512.png`
-- `og-image.jpg` en 1200x630 para previews sociales
-
-## Modelo comercial sugerido
-
-- Fee de inscripcion por equipo.
-- Abono mensual para canchas partner.
-- Comision por reservas de cancha generadas desde torneos.
-- Sponsors por fecha, tabla, MVP o final.
-- Estadisticas premium para equipos y jugadores.
-
-## Proximo paso para version real
-
-Esta version guarda datos en el navegador con `localStorage`. Para que canchas, equipos, organizadores y jugadores vean todo sincronizado desde distintos celulares, el siguiente paso es agregar:
-
-- Login por rol.
-- Base de datos online.
-- Pagos de inscripcion y reservas.
-- Paneles para cancha, organizador, equipo y jugador.
-- Notificaciones push.
-- Backend con permisos y auditoria.
+- `public/assets/icon-192.png`
+- `public/assets/icon-512.png`
+- `public/og-image.jpg`

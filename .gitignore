@@ -1,6 +1,12 @@
 _zip_source/
-qa/*.png
-qa/*.jpg
+qa/
+.env
+.env.*
+!.env.example
+.next/
+.next-build/
+tsconfig.tsbuildinfo
+out/
 .DS_Store
 Thumbs.db
 node_modules/
@@ -8,3 +14,4 @@ dist/
 coverage/
 
 .vercel
+.env*.local

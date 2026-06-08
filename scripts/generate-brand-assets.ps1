@@ -1,7 +1,7 @@
 Add-Type -AssemblyName System.Drawing
 
 $root = Split-Path -Parent $PSScriptRoot
-$assets = Join-Path $root "assets"
+$assets = Join-Path $root "public\assets"
 
 function Save-Jpeg([System.Drawing.Bitmap]$bitmap, [string]$path, [long]$quality) {
   $codec = [System.Drawing.Imaging.ImageCodecInfo]::GetImageEncoders() | Where-Object { $_.MimeType -eq "image/jpeg" }
@@ -11,8 +11,8 @@ function Save-Jpeg([System.Drawing.Bitmap]$bitmap, [string]$path, [long]$quality
 }
 
 function Generate-OgImage {
-  $sourcePath = Join-Path $root "brand-reference.png"
-  $outPath = Join-Path $root "og-image.jpg"
+  $sourcePath = Join-Path $root "public\brand-reference.png"
+  $outPath = Join-Path $root "public\og-image.jpg"
   $source = [System.Drawing.Bitmap]::FromFile($sourcePath)
   $target = [System.Drawing.Bitmap]::new(1200, 630)
   $graphics = [System.Drawing.Graphics]::FromImage($target)
