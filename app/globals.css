@@ -3778,3 +3778,238 @@ body::after {
     padding: 8px;
   }
 }
+
+/* Stadium field and venue onboarding refinement */
+.game-app-shell::before {
+  content: "";
+  position: fixed;
+  left: 50%;
+  bottom: 34vh;
+  z-index: -1;
+  width: min(980px, 144vw);
+  height: 132px;
+  transform: translateX(-50%) perspective(720px) rotateX(58deg);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 20px 20px 4px 4px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.13), transparent 12%),
+    repeating-linear-gradient(90deg, rgba(255,246,205,.28) 0 4px, rgba(74,101,130,.2) 4px 10px, rgba(2,6,12,.18) 10px 18px),
+    linear-gradient(180deg, rgba(8, 15, 28, .92), rgba(1, 4, 9, .12));
+  box-shadow: 0 -24px 80px rgba(52,201,255,.12), inset 0 18px 48px rgba(0,0,0,.38);
+  opacity: .46;
+  pointer-events: none;
+  animation: stadium-crowd-wave 8s ease-in-out infinite alternate;
+}
+
+body::after {
+  height: 58vh;
+  align-items: center;
+  padding-top: 7vh;
+  background:
+    linear-gradient(180deg, rgba(5,7,13,0) 0 4%, rgba(7,31,18,.3) 28%, rgba(9,100,49,.72)),
+    radial-gradient(ellipse at 50% 52%, transparent 0 58px, rgba(255,255,255,.26) 59px 61px, transparent 62px),
+    linear-gradient(90deg, transparent 0 49.6%, rgba(255,255,255,.22) 49.6% 50.4%, transparent 50.4%),
+    linear-gradient(90deg, transparent 0 32%, rgba(255,255,255,.18) 32% 68%, transparent 68%) 50% 16% / 100% 2px no-repeat,
+    linear-gradient(90deg, transparent 0 32%, rgba(255,255,255,.18) 32% 68%, transparent 68%) 50% 88% / 100% 2px no-repeat,
+    linear-gradient(90deg, transparent 0 40%, rgba(255,255,255,.22) 40% 60%, transparent 60%) 50% 4% / 100% 3px no-repeat,
+    linear-gradient(90deg, transparent 0 40%, rgba(255,255,255,.22) 40% 60%, transparent 60%) 50% 99% / 100% 3px no-repeat,
+    linear-gradient(90deg, rgba(255,255,255,.19) 0 2px, transparent 2px calc(100% - 2px), rgba(255,255,255,.19) calc(100% - 2px)),
+    linear-gradient(180deg, rgba(255,255,255,.19) 0 2px, transparent 2px calc(100% - 2px), rgba(255,255,255,.19) calc(100% - 2px)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.055) 0 1px, transparent 1px 88px),
+    linear-gradient(90deg, #031e10, #18a85f 46%, #031e10);
+  background-position:
+    center,
+    center,
+    center,
+    50% 16%,
+    50% 88%,
+    50% 4%,
+    50% 99%,
+    center,
+    center,
+    center,
+    center;
+  background-size:
+    auto,
+    auto,
+    auto,
+    100% 2px,
+    100% 2px,
+    100% 3px,
+    100% 3px,
+    auto,
+    auto,
+    auto,
+    100% 100%;
+  color: rgba(255, 235, 164, .28);
+  animation: stadium-field-drift 10s ease-in-out infinite alternate;
+}
+
+.action-console--venue {
+  display: grid;
+  gap: 10px;
+}
+
+.action-console--venue .action-grid {
+  grid-template-columns: 1fr;
+}
+
+.action-card--venue {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(85,246,255,.28);
+  background:
+    radial-gradient(circle at 12% 0, rgba(85,246,255,.16), transparent 28%),
+    linear-gradient(145deg, rgba(15, 26, 43, .98), rgba(4, 8, 16, .96));
+}
+
+.action-card--venue::before {
+  content: "01";
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  color: rgba(255, 232, 154, .16);
+  font-size: 3.2rem;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.action-card--venue > svg,
+.action-card--venue h3,
+.action-card--venue p,
+.action-card--venue .venue-picker,
+.action-card--venue .venue-form-grid,
+.action-card--venue .media-field,
+.action-card--venue button {
+  position: relative;
+  z-index: 1;
+}
+
+.action-card--venue > svg {
+  color: var(--cyan);
+}
+
+.venue-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.venue-form-grid input:nth-child(3),
+.venue-form-grid input:nth-child(4) {
+  grid-column: span 2;
+}
+
+.action-card--venue .venue-picker {
+  border: 1px solid rgba(85,246,255,.18);
+  border-radius: 14px;
+  padding: 9px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025)),
+    rgba(2, 6, 12, .56);
+}
+
+.action-card--venue .venue-picker__map {
+  min-height: 250px;
+  height: clamp(250px, 40vh, 370px);
+}
+
+.venues-marketplace {
+  display: grid;
+  gap: 10px;
+}
+
+.venues-marketplace > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(8, 12, 22, .72);
+}
+
+.venues-marketplace > header span,
+.venues-marketplace > header strong {
+  display: block;
+}
+
+.venues-marketplace > header span {
+  color: var(--gold);
+  font-size: .74rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.venues-marketplace > header strong {
+  color: #eef6ff;
+  text-align: right;
+}
+
+@keyframes stadium-crowd-wave {
+  from {
+    background-position: 0 0, 0 0, center;
+    opacity: .38;
+  }
+  to {
+    background-position: 0 0, 36px 0, center;
+    opacity: .52;
+  }
+}
+
+@keyframes stadium-field-drift {
+  from {
+    transform: perspective(760px) rotateX(58deg) translateY(0);
+    filter: saturate(1);
+  }
+  to {
+    transform: perspective(760px) rotateX(58deg) translateY(8px);
+    filter: saturate(1.12);
+  }
+}
+
+@media (max-width: 760px) {
+  .game-app-shell::before {
+    bottom: 32vh;
+    width: 138vw;
+    height: 94px;
+  }
+
+  body::after {
+    height: 52vh;
+    padding-top: 5vh;
+    font-size: clamp(1.4rem, 7vw, 2.6rem);
+  }
+
+  .action-card--venue {
+    gap: 9px;
+  }
+
+  .action-card--venue .venue-picker {
+    padding: 7px;
+  }
+
+  .action-card--venue .venue-picker__map {
+    min-height: 230px;
+    height: 34vh;
+  }
+
+  .venue-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .venue-form-grid input:nth-child(3),
+  .venue-form-grid input:nth-child(4) {
+    grid-column: auto;
+  }
+
+  .venues-marketplace > header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .venues-marketplace > header strong {
+    text-align: left;
+  }
+}

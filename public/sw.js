@@ -1,4 +1,4 @@
-const CACHE_NAME = "fulbito-arena-v4";
+const CACHE_NAME = "fulbito-arena-v5";
 const CORE_ASSETS = [
   "/",
   "/offline",

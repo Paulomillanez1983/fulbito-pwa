@@ -416,17 +416,19 @@ export function ArenaActions({
           <SubmitButton idle="Guardar equipo" pending="Creando equipo" />
         </form> : null}
 
-        {showVenue ? <form action={createVenue} className="action-card">
+        {showVenue ? <form action={createVenue} className="action-card action-card--venue">
           <MapPinned />
-          <h3>Registrar cancha</h3>
-          <p>Direccion, precio, superficie y foto para mostrarla en el mapa de sedes.</p>
+          <h3>Selecciona la ubicacion</h3>
+          <p>Primero marca el punto real de la cancha. Despues completa precio, superficie y foto para publicarla.</p>
+          <VenueLocationPicker />
+          <div className="venue-form-grid">
           <input name="venueName" placeholder="Nombre de la cancha" />
           <input name="venueNeighborhood" placeholder="Barrio" />
           <input name="venueAddress" placeholder="Direccion" />
           <input name="venueSurface" placeholder="Superficie" />
-          <VenueLocationPicker />
           <input name="pricePerHour" inputMode="numeric" placeholder="Precio por hora" />
           <input name="inscriptionFee" inputMode="numeric" placeholder="Inscripcion sugerida" />
+          </div>
           <MediaField accept="image/png,image/jpeg,image/webp" helper="Foto horizontal optimizada para portada." label="Foto de la cancha" name="venuePhoto" variant="wide" />
           <SubmitButton idle="Guardar cancha" pending="Registrando cancha" />
         </form> : null}
@@ -482,11 +484,11 @@ export function ArenaActions({
           </div>
           {actionContent}
         </>
-      ) : mode === "slot" ? (
+      ) : mode === "slot" || mode === "venue" ? (
         actionContent
       ) : (
-        <details className="action-drawer" open={mode === "venue"}>
-          <summary>{mode === "venue" ? "Registrar tu cancha" : "Acciones de esta pantalla"}</summary>
+        <details className="action-drawer">
+          <summary>Acciones de esta pantalla</summary>
           {actionContent}
         </details>
       )}

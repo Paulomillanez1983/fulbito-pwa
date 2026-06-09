@@ -918,18 +918,24 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
   function renderVenues() {
     return (
       <>
-        <ScreenHeader eyebrow="Sedes" title="Canchas">
-          Canchas de alquiler con mapa, precio por hora, inscripcion sugerida, comision y detalle de ubicacion.
+        <ScreenHeader eyebrow="Alta de sede" title="Canchas">
+          Marca la ubicacion exacta, ajusta el puntero si hace falta y carga precio, superficie y fotos para publicar tu cancha.
         </ScreenHeader>
-        <VenueMap onSelectVenue={openVenue} selectedVenueId={selectedVenue?.id} venues={data.venues} />
-        <VenueSpotlight venue={selectedVenue} />
-        <section className="venue-stack">{data.venues.map((venue) => <VenueRow key={venue.id} onOpen={() => setSelectedVenueId(venue.id)} venue={venue} />)}</section>
+        <ArenaActions data={data} mode="venue" />
+        <section className="venues-marketplace">
+          <header>
+            <span>Sedes activas</span>
+            <strong>Mapa y precios cargados</strong>
+          </header>
+          <VenueMap onSelectVenue={openVenue} selectedVenueId={selectedVenue?.id} venues={data.venues} />
+          <VenueSpotlight venue={selectedVenue} />
+          <section className="venue-stack">{data.venues.map((venue) => <VenueRow key={venue.id} onOpen={() => setSelectedVenueId(venue.id)} venue={venue} />)}</section>
+        </section>
         <section className="console-panel money-console">
           <MiniStat icon={<CircleDollarSign />} label="Ticket promedio" onClick={() => setActive("venues")} value={money(selectedVenue?.price_per_hour ?? 0)} />
           <MiniStat icon={<Crown />} label="Comision demo" onClick={() => setActive("league")} value="8-9%" />
           <MiniStat icon={<Route />} label="Sedes activas" onClick={() => setActive("matches")} value={data.venues.length} />
         </section>
-        <ArenaActions data={data} mode="venue" />
       </>
     );
   }
