@@ -235,5 +235,8 @@ export const demoArenaData: ArenaData = {
   teams,
   players,
   matches: relatedMatches,
-  standings: computeStandings(teams, relatedMatches)
+  standings: computeStandings(teams, relatedMatches),
+  paymentRequests: [],
+  paymentMessages: [],
+  entitlements: []
 };

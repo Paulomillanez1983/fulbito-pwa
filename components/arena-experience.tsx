@@ -28,6 +28,7 @@ import {
 import { ArenaActions } from "@/components/arena-actions";
 import { InstallAppButton } from "@/components/install-app-button";
 import { LoginPanel } from "@/components/login-panel";
+import { PaymentConsole } from "@/components/payment-console";
 import { VenueMap } from "@/components/venue-map";
 import { roleCatalog } from "@/lib/demo";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -437,6 +438,12 @@ function UserMenu({
             <LogOut size={16} />
             Salir
           </button>
+          {user.roles.includes("admin") ? (
+            <button onClick={() => { window.location.href = "/admin"; }} type="button">
+              <ShieldCheck size={16} />
+              Panel admin
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -880,6 +887,7 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
             <LoginPanel configured={data.configured} />
           )}
         </section>
+        <PaymentConsole data={data} />
       </>
     );
   }

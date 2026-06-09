@@ -4,6 +4,10 @@ export type FieldMode = "5v5" | "7v7" | "11v11";
 
 export type TournamentFormat = "league" | "world_cup" | "knockout";
 
+export type BillingPlanCode = "team_pro" | "tournament_pro" | "sponsor" | "featured_venue";
+
+export type PaymentRequestStatus = "pending_review" | "approved" | "rejected" | "cancelled";
+
 export type MatchStatus =
   | "scheduled"
   | "live"
@@ -106,6 +110,45 @@ export type SessionUser = {
   roles: AppRole[];
 };
 
+export type PaymentRequest = {
+  id: string;
+  requester_id: string;
+  plan_code: BillingPlanCode;
+  target_type: "team" | "tournament" | "sponsor" | "venue";
+  target_id: string | null;
+  title: string;
+  amount: number;
+  status: PaymentRequestStatus;
+  proof_path: string | null;
+  proof_filename: string | null;
+  payer_note: string | null;
+  admin_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PaymentMessage = {
+  id: string;
+  payment_request_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+};
+
+export type AccountEntitlement = {
+  id: string;
+  owner_id: string;
+  plan_code: BillingPlanCode;
+  target_type: "team" | "tournament" | "sponsor" | "venue";
+  target_id: string | null;
+  source_payment_request_id: string | null;
+  starts_at: string;
+  expires_at: string | null;
+  created_at: string;
+};
+
 export type ArenaData = {
   source: "supabase" | "demo";
   configured: boolean;
@@ -116,4 +159,7 @@ export type ArenaData = {
   players: ArenaPlayer[];
   matches: ArenaMatch[];
   standings: ArenaTeam[];
+  paymentRequests: PaymentRequest[];
+  paymentMessages: PaymentMessage[];
+  entitlements: AccountEntitlement[];
 };
