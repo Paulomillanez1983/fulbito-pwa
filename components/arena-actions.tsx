@@ -1,11 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, Flag, MapPinned, UserPlus } from "lucide-react";
+import { useFormStatus } from "react-dom";
+import { Flag, LoaderCircle, MapPinned, ShieldPlus, UserPlus } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ArenaData } from "@/lib/types";
 
-type ActionMode = "all" | "squad" | "venue" | "result";
+type ActionMode = "all" | "squad" | "venue" | "result" | "slot";
+
+type SlotDraft = {
+  label: string;
+  jersey: number;
+  position: string;
+};
 
 function slugify(value: string) {
   return value
@@ -16,12 +23,33 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-export function ArenaActions({ data, mode = "all" }: { data: ArenaData; mode?: ActionMode }) {
+function SubmitButton({ idle, pending }: { idle: string; pending: string }) {
+  const form = useFormStatus();
+  return (
+    <button disabled={form.pending} type="submit">
+      {form.pending ? <LoaderCircle className="button-spinner" size={17} /> : null}
+      {form.pending ? pending : idle}
+    </button>
+  );
+}
+
+export function ArenaActions({
+  data,
+  mode = "all",
+  selectedTeamId,
+  slotDraft
+}: {
+  data: ArenaData;
+  mode?: ActionMode;
+  selectedTeamId?: string;
+  slotDraft?: SlotDraft;
+}) {
   const [message, setMessage] = useState("");
   const showTeam = mode === "all" || mode === "squad";
-  const showPlayer = mode === "all" || mode === "squad";
+  const showPlayer = mode === "all" || mode === "squad" || mode === "slot";
   const showVenue = mode === "all" || mode === "venue";
   const showResult = mode === "all" || mode === "result";
+  const playerTeamId = selectedTeamId ?? data.teams[0]?.id;
 
   async function getUserId() {
     const supabase = createSupabaseBrowserClient();
@@ -68,7 +96,7 @@ export function ArenaActions({ data, mode = "all" }: { data: ArenaData; mode?: A
       badge_url: badgeUrl
     };
     const { error } = await supabase.from("teams").insert(payload);
-    setMessage(error ? error.message : "Equipo creado. Recarga para verlo en la arena.");
+    setMessage(error ? error.message : "Equipo creado. Actualiza la pantalla para verlo en la arena.");
   }
 
   async function createVenue(formData: FormData) {
@@ -88,6 +116,8 @@ export function ArenaActions({ data, mode = "all" }: { data: ArenaData; mode?: A
       name,
       slug: `${slugify(name)}-${Date.now().toString(36)}`,
       neighborhood: String(formData.get("venueNeighborhood") || "").trim() || "Barrio sin cargar",
+      address: String(formData.get("venueAddress") || "").trim() || null,
+      surface: String(formData.get("venueSurface") || "").trim() || "Sintetico",
       price_per_hour: Number(formData.get("pricePerHour") || 0),
       inscription_fee: Number(formData.get("inscriptionFee") || 0),
       cover_url: coverUrl,
@@ -145,46 +175,52 @@ export function ArenaActions({ data, mode = "all" }: { data: ArenaData; mode?: A
     <>
       <div className="action-grid">
         {showTeam ? <form action={createTeam} className="action-card">
-          <BadgeCheck />
+          <ShieldPlus />
           <h3>Crear equipo</h3>
+          <p>Subi escudo, sigla y color base. La imagen se adapta al marco del club.</p>
           <input name="teamName" placeholder="Nombre del club" />
           <input name="shortName" maxLength={4} placeholder="Sigla" />
           <input name="neighborhood" placeholder="Barrio" />
           <input name="badgeFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
           <input name="primaryColor" type="color" defaultValue="#eec15c" />
-          <button type="submit">Guardar equipo</button>
+          <SubmitButton idle="Guardar equipo" pending="Creando equipo" />
         </form> : null}
 
         {showVenue ? <form action={createVenue} className="action-card">
           <MapPinned />
           <h3>Registrar cancha</h3>
+          <p>Direccion, precio, superficie y foto para mostrarla en el mapa de sedes.</p>
           <input name="venueName" placeholder="Nombre de la cancha" />
           <input name="venueNeighborhood" placeholder="Barrio" />
+          <input name="venueAddress" placeholder="Direccion" />
+          <input name="venueSurface" placeholder="Superficie" />
           <input name="pricePerHour" inputMode="numeric" placeholder="Precio por hora" />
           <input name="inscriptionFee" inputMode="numeric" placeholder="Inscripcion sugerida" />
           <input name="venuePhoto" type="file" accept="image/png,image/jpeg,image/webp" />
-          <button type="submit">Guardar cancha</button>
+          <SubmitButton idle="Guardar cancha" pending="Registrando cancha" />
         </form> : null}
 
-        {showPlayer ? <form action={createPlayer} className="action-card">
+        {showPlayer ? <form action={createPlayer} className={mode === "slot" ? "action-card action-card--slot" : "action-card"}>
           <UserPlus />
-          <h3>Agregar jugador</h3>
-          <select name="playerTeamId" defaultValue={data.teams[0]?.id}>
+          <h3>{mode === "slot" ? `Cargar ${slotDraft?.label ?? "posicion"}` : "Agregar jugador"}</h3>
+          <p>{mode === "slot" ? "Completa el puesto desde el mapa de formacion." : "Nombre, apodo, dorsal, posicion y foto para el plantel."}</p>
+          <select name="playerTeamId" defaultValue={playerTeamId}>
             {data.teams.map((team) => (
               <option key={team.id} value={team.id}>{team.name}</option>
             ))}
           </select>
           <input name="playerName" placeholder="Nombre y apellido" />
           <input name="alias" placeholder="Apodo" />
-          <input name="jerseyNumber" inputMode="numeric" placeholder="Dorsal" />
-          <input name="position" placeholder="Posicion" />
+          <input name="jerseyNumber" inputMode="numeric" placeholder="Dorsal" defaultValue={slotDraft?.jersey} />
+          <input name="position" placeholder="Posicion" defaultValue={slotDraft?.position} />
           <input name="playerPhoto" type="file" accept="image/png,image/jpeg,image/webp" />
-          <button type="submit">Guardar jugador</button>
+          <SubmitButton idle={mode === "slot" ? "Guardar en posicion" : "Guardar jugador"} pending="Guardando jugador" />
         </form> : null}
 
         {showResult ? <form action={submitResult} className="action-card">
           <Flag />
           <h3>Enviar resultado</h3>
+          <p>El marcador queda pendiente hasta validacion de cancha, veedor u organizador.</p>
           <select name="matchId" defaultValue={nextMatch?.id}>
             {data.matches.map((match) => (
               <option key={match.id} value={match.id}>
@@ -197,7 +233,7 @@ export function ArenaActions({ data, mode = "all" }: { data: ArenaData; mode?: A
             <input name="awayScore" inputMode="numeric" placeholder="Visitante" />
           </div>
           <input name="note" placeholder="Nota del veedor" />
-          <button type="submit">Enviar a validacion</button>
+          <SubmitButton idle="Enviar a validacion" pending="Enviando resultado" />
         </form> : null}
       </div>
       {message ? <p className="console-message">{message}</p> : null}
@@ -215,6 +251,8 @@ export function ArenaActions({ data, mode = "all" }: { data: ArenaData; mode?: A
           </div>
           {actionContent}
         </>
+      ) : mode === "slot" ? (
+        actionContent
       ) : (
         <details className="action-drawer">
           <summary>Acciones de esta pantalla</summary>

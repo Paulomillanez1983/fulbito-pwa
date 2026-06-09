@@ -1,28 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title id="title">Fulbito</title>
-  <desc id="desc">Escudo premium navy y dorado con monograma F</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Fulbito Arena">
   <defs>
-    <linearGradient id="gold" x1="104" y1="52" x2="408" y2="454" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#fff2b8"/>
-      <stop offset=".44" stop-color="#e8b84f"/>
-      <stop offset="1" stop-color="#8e5d1e"/>
+    <linearGradient id="bg" x1="72" y1="34" x2="438" y2="486" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#141a27"/>
+      <stop offset=".46" stop-color="#070b13"/>
+      <stop offset="1" stop-color="#020409"/>
     </linearGradient>
-    <linearGradient id="edge" x1="110" y1="60" x2="406" y2="442" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#fff8d8"/>
-      <stop offset=".52" stop-color="#c58c2e"/>
-      <stop offset="1" stop-color="#f7df91"/>
+    <linearGradient id="gold" x1="110" y1="58" x2="392" y2="468" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff0ad"/>
+      <stop offset=".2" stop-color="#f5cc68"/>
+      <stop offset=".58" stop-color="#b87824"/>
+      <stop offset="1" stop-color="#fff0ad"/>
     </linearGradient>
-    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="20" stdDeviation="20" flood-color="#000000" flood-opacity=".62"/>
-      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#e8b84f" flood-opacity=".28"/>
+    <linearGradient id="cyan" x1="132" y1="172" x2="366" y2="342" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#88f7ff"/>
+      <stop offset="1" stop-color="#2f8dff"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="11" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.95 0 1 0 0 0.72 0 0 1 0 0.22 0 0 0 .75 0"/>
+      <feBlend in="SourceGraphic" mode="screen"/>
     </filter>
   </defs>
-  <rect width="512" height="512" rx="112" fill="#05070d"/>
-  <path d="M72 100h368M48 160h416M38 222h436M48 284h416M72 346h368" stroke="#ffffff" stroke-opacity=".05" stroke-width="2"/>
-  <path d="M256 42 400 100v118c0 98-58 165-144 222-86-57-144-124-144-222V100L256 42Z" fill="#07101c" stroke="url(#edge)" stroke-width="14" filter="url(#glow)"/>
-  <path d="M256 72 372 119v95c0 76-41 130-116 183-75-53-116-107-116-183v-95L256 72Z" fill="url(#gold)" opacity=".96"/>
-  <path d="M173 151h179v54H228v43h103v52H228v101h-55V151Z" fill="#05070d"/>
-  <path d="M229 205h102l-28 43h-75l1-43Z" fill="#f7e5ad" opacity=".9"/>
-  <path d="M181 151h171v20H181v-20Zm47 97h93v18h-93v-18Z" fill="#fff6d0" opacity=".95"/>
-  <path d="M256 18 269 45 299 49 277 70 282 100 256 86 230 100 235 70 213 49 243 45 256 18Z" fill="url(#gold)"/>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <path d="M256 40 369 76l47 96-23 176-137 124-137-124-23-176 47-96Z" fill="#060912" stroke="url(#gold)" stroke-width="15"/>
+  <path d="M256 72 345 101l35 75-18 151-106 96-106-96-18-151 35-75Z" fill="none" stroke="#fff0ad" stroke-opacity=".34" stroke-width="5"/>
+  <path d="M256 94 270 126l35 4-27 22 8 34-30-18-30 18 8-34-27-22 35-4Z" fill="url(#gold)" filter="url(#glow)"/>
+  <path d="M154 165h214l-24 58H221l-13 34h122l-22 55H187l-40 97h-70Z" fill="url(#gold)"/>
+  <path d="M225 229h106l-21 54H203Z" fill="#f8fbff" opacity=".96"/>
+  <path d="M190 314h119l-22 55H168Z" fill="url(#cyan)" opacity=".94"/>
+  <circle cx="337" cy="352" r="48" fill="#05070d" stroke="url(#gold)" stroke-width="9"/>
+  <path d="M337 311 350 331l24 7-15 20 1 25-23-9-23 9 1-25-15-20 24-7Z" fill="#f8fbff"/>
+  <path d="M300 338h74M314 383l44-65M358 383l-44-65" stroke="#090b11" stroke-width="7" stroke-linecap="round" opacity=".72"/>
+  <path d="M116 414c43 28 91 42 140 42s97-14 140-42" fill="none" stroke="#fff0ad" stroke-opacity=".48" stroke-width="8" stroke-linecap="round"/>
 </svg>

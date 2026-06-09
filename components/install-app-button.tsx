@@ -52,10 +52,12 @@ export function InstallAppButton({ variant = "top" }: { variant?: "top" | "hero"
     setPromptEvent(null);
   }
 
+  if (installed) return null;
+
   return (
-    <button className={`install-button install-button--${variant}`} disabled={installed} onClick={installApp} type="button">
+    <button className={`install-button install-button--${variant}`} onClick={installApp} type="button">
       <Download size={16} />
-      <span>{installed ? "Instalada" : variant === "hero" ? "Instalar app" : "Instalar"}</span>
+      <span>{variant === "hero" ? "Instalar app" : "Instalar"}</span>
     </button>
   );
 }

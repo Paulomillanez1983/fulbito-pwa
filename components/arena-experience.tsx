@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
+  ArrowRight,
   CalendarDays,
   ChevronRight,
   CircleDollarSign,
@@ -10,17 +11,22 @@ import {
   Flag,
   Gamepad2,
   MapPinned,
+  Plus,
+  Route,
   Shield,
   ShieldCheck,
   Trophy,
+  UserCheck,
   Users
 } from "lucide-react";
 import { ArenaActions } from "@/components/arena-actions";
 import { InstallAppButton } from "@/components/install-app-button";
 import { LoginPanel } from "@/components/login-panel";
 import { LogoutButton } from "@/components/logout-button";
+import { VenueMap } from "@/components/venue-map";
 import { roleCatalog } from "@/lib/demo";
-import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, FieldMode } from "@/lib/types";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaVenue, FieldMode } from "@/lib/types";
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 
@@ -32,10 +38,19 @@ const tabs: Array<{ id: TabId; label: string; icon: typeof Gamepad2 }> = [
   { id: "venues", label: "Canchas", icon: MapPinned }
 ];
 
+const playableRoles: AppRole[] = ["player", "captain", "venue_owner", "organizer", "referee"];
+
 const formatLabels = {
   league: "Liga todos contra todos",
   world_cup: "Mundial barrial",
   knockout: "Copa eliminatoria"
+};
+
+const positionLabels: Record<string, string> = {
+  ARQ: "Arquero",
+  DEF: "Defensa",
+  VOL: "Volante",
+  DEL: "Delantero"
 };
 
 const formationSlots: Record<FieldMode, Array<{ x: number; y: number; label: string }>> = {
@@ -88,10 +103,35 @@ function formatDate(value: string | null) {
   return `${day}, ${date} ${month}, ${hour}:${minute}`;
 }
 
+function groupTeams(teams: ArenaTeam[], size = 4) {
+  return teams.reduce<ArenaTeam[][]>((groups, team, index) => {
+    const groupIndex = Math.floor(index / size);
+    groups[groupIndex] = groups[groupIndex] ?? [];
+    groups[groupIndex].push(team);
+    return groups;
+  }, []);
+}
+
+function buildKnockoutRounds(teams: ArenaTeam[]) {
+  const bracketSize = Math.pow(2, Math.ceil(Math.log2(Math.max(2, teams.length))));
+  const labels: Record<number, string> = {
+    32: "16avos",
+    16: "Octavos",
+    8: "Cuartos",
+    4: "Semis",
+    2: "Final"
+  };
+  const rounds: Array<{ label: string; slots: number }> = [];
+  for (let size = bracketSize; size >= 2; size = size / 2) {
+    rounds.push({ label: labels[size] ?? `${size} equipos`, slots: size });
+  }
+  return rounds;
+}
+
 function TeamCrest({ team, size = "normal" }: { team?: ArenaTeam | null; size?: "normal" | "large" }) {
   return (
     <span className={`team-crest ${size === "large" ? "team-crest--large" : ""}`} style={{ "--crest": team?.primary_color ?? "#eec15c" } as CSSProperties}>
-      {team?.badge_url ? <img alt="" src={team.badge_url} /> : team?.short_name ?? "FC"}
+      {team?.badge_url ? <img alt="" src={team.badge_url} /> : <b>{team?.short_name ?? "FC"}</b>}
     </span>
   );
 }
@@ -121,20 +161,39 @@ function ScreenHeader({ eyebrow, title, children }: { eyebrow: string; title: st
   );
 }
 
-function MiniStat({ icon, label, value }: { icon: ReactNode; label: string; value: string | number }) {
+function MiniStat({
+  icon,
+  label,
+  value,
+  onClick
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string | number;
+  onClick: () => void;
+}) {
   return (
-    <article className="mini-stat">
+    <button className="mini-stat mini-stat--button" onClick={onClick} type="button">
       {icon}
       <strong>{value}</strong>
       <span>{label}</span>
-    </article>
+      <ArrowRight size={16} />
+    </button>
   );
 }
 
-function MatchTile({ match, featured = false }: { match: ArenaMatch; featured?: boolean }) {
+function MatchTile({
+  match,
+  featured = false,
+  onOpen
+}: {
+  match: ArenaMatch;
+  featured?: boolean;
+  onOpen: () => void;
+}) {
   const isFinal = match.status === "final";
   return (
-    <article className={featured ? "match-tile match-tile--featured" : "match-tile"}>
+    <button className={featured ? "match-tile match-tile--featured match-tile--button" : "match-tile match-tile--button"} onClick={onOpen} type="button">
       <div className="match-tile__meta">
         <span>{match.round_name}</span>
         <b>{isFinal ? "Final" : "Por jugar"}</b>
@@ -148,61 +207,124 @@ function MatchTile({ match, featured = false }: { match: ArenaMatch; featured?: 
         <span>{match.venue?.name ?? "Cancha a confirmar"}</span>
         <span>{formatDate(match.scheduled_at)}</span>
       </footer>
-    </article>
+    </button>
   );
 }
 
-function RoleStrip({ role }: { role: AppRole }) {
-  const info = roleCatalog[role];
+function TeamRow({ team, onOpen }: { team: ArenaTeam; onOpen: () => void }) {
   return (
-    <article className="role-strip">
-      <ShieldCheck size={18} />
-      <div>
-        <strong>{info.label}</strong>
-        <span>{info.consumes.slice(0, 3).join(" / ")}</span>
-      </div>
-    </article>
-  );
-}
-
-function TeamRow({ team }: { team: ArenaTeam }) {
-  return (
-    <article className="team-row">
+    <button className="team-row team-row--button" onClick={onOpen} type="button">
       <TeamCrest team={team} />
       <div>
         <strong>{team.name}</strong>
-        <span>{team.neighborhood ?? "Barrio"} / {team.points ?? 0} pts</span>
+        <span>{team.neighborhood ?? "Barrio"} / {team.points ?? 0} pts / DG {team.goalDiff ?? 0}</span>
       </div>
       <ChevronRight size={18} />
-    </article>
+    </button>
   );
 }
 
-function VenueRow({ venue }: { venue: ArenaData["venues"][number] }) {
+function VenueRow({ venue, onOpen }: { venue: ArenaVenue; onOpen: () => void }) {
   return (
-    <article className="venue-row">
+    <button className="venue-row venue-row--button" onClick={onOpen} type="button">
       <div>
         <strong>{venue.name}</strong>
-        <span>{venue.neighborhood} / {venue.surface ?? "Sintetico"}</span>
+        <span>{venue.neighborhood} / {venue.surface ?? "Sintetico"} / {venue.address ?? "Direccion pendiente"}</span>
       </div>
       <b>{money(venue.price_per_hour)}</b>
-    </article>
+    </button>
   );
 }
 
-function StandingCompact({ teams }: { teams: ArenaTeam[] }) {
+function StandingCompact({ teams, onTeamOpen }: { teams: ArenaTeam[]; onTeamOpen: (teamId: string) => void }) {
   return (
     <div className="standings-compact">
       {teams.map((team, index) => (
-        <article key={team.id}>
+        <button className="standings-row" key={team.id} onClick={() => onTeamOpen(team.id)} type="button">
           <span>{index + 1}</span>
           <TeamCrest team={team} />
           <strong>{team.short_name}</strong>
           <b>{team.points ?? 0}</b>
-          <small>{team.played ?? 0} PJ / DG {team.goalDiff ?? 0}</small>
-        </article>
+          <small>{team.played ?? 0} PJ / GF {team.goalsFor ?? 0} / GC {team.goalsAgainst ?? 0} / DG {team.goalDiff ?? 0}</small>
+        </button>
       ))}
     </div>
+  );
+}
+
+function RoleConsole({
+  user,
+  roles,
+  activeRole,
+  message,
+  onChangeRole,
+  onAddRole
+}: {
+  user: ArenaData["user"];
+  roles: AppRole[];
+  activeRole: AppRole;
+  message: string;
+  onChangeRole: (role: AppRole) => void;
+  onAddRole: (role: AppRole) => void;
+}) {
+  const info = roleCatalog[activeRole];
+  return (
+    <section className="role-console">
+      <div className="session-console session-console--arena">
+        {user?.avatarUrl ? <img alt="" src={user.avatarUrl} /> : <span>{user?.name?.[0] ?? "F"}</span>}
+        <div>
+          <strong>{user?.name}</strong>
+          <small>Una cuenta puede activar varios roles</small>
+        </div>
+        <LogoutButton />
+      </div>
+      <div className="role-console__roles" aria-label="Roles activos">
+        {playableRoles.map((role) => {
+          const owned = roles.includes(role);
+          return (
+            <button
+              className={activeRole === role ? "is-active" : owned ? "is-owned" : ""}
+              key={role}
+              onClick={() => (owned ? onChangeRole(role) : onAddRole(role))}
+              type="button"
+            >
+              {owned ? <ShieldCheck size={15} /> : <Plus size={15} />}
+              <span>{roleCatalog[role].label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <article className="selected-role-card selected-role-card--game">
+        <ShieldCheck size={20} />
+        <div>
+          <strong>{info.headline}</strong>
+          <span>{info.actions.slice(0, 3).join(" / ")}</span>
+        </div>
+      </article>
+      {message ? <p className="console-message">{message}</p> : null}
+    </section>
+  );
+}
+
+function TeamProfile({ team, players, isManager }: { team?: ArenaTeam; players: ArenaPlayer[]; isManager: boolean }) {
+  if (!team) return null;
+  const goals = players.reduce((total, player) => total + player.goals, 0);
+  return (
+    <section className="team-profile-console">
+      <div className="team-profile-console__identity">
+        <TeamCrest team={team} size="large" />
+        <div>
+          <span>{isManager ? "Panel del club" : "Vista publica"}</span>
+          <h2>{team.name}</h2>
+          <p>{team.neighborhood ?? "Barrio"} / {players.length} jugadores / {goals} goles</p>
+        </div>
+      </div>
+      <div className="team-profile-console__stats">
+        <strong>{team.points ?? 0}<span>PTS</span></strong>
+        <strong>{team.played ?? 0}<span>PJ</span></strong>
+        <strong>{team.goalDiff ?? 0}<span>DG</span></strong>
+      </div>
+    </section>
   );
 }
 
@@ -210,12 +332,18 @@ function FormationPanel({
   team,
   players,
   mode,
-  onModeChange
+  selectedSlotIndex,
+  isManager,
+  onModeChange,
+  onSelectSlot
 }: {
   team?: ArenaTeam;
   players: ArenaPlayer[];
   mode: FieldMode;
+  selectedSlotIndex: number;
+  isManager: boolean;
   onModeChange: (mode: FieldMode) => void;
+  onSelectSlot: (index: number) => void;
 }) {
   return (
     <article className="console-panel formation-console">
@@ -223,6 +351,7 @@ function FormationPanel({
         <div>
           <TeamCrest team={team} size="large" />
           <strong>{team?.name ?? "Equipo"}</strong>
+          <span>{isManager ? "Toca un puesto y carga jugador" : "Plantel y formacion publica"}</span>
         </div>
         <div className="formation-controls" aria-label="Modo de cancha">
           {(["5v5", "7v7", "11v11"] as FieldMode[]).map((item) => (
@@ -235,12 +364,19 @@ function FormationPanel({
       <div className="formation-pitch formation-pitch--console">
         {formationSlots[mode].map((slot, index) => {
           const player = players[index] ?? null;
+          const selected = selectedSlotIndex === index;
           return (
-            <div className="formation-slot" key={`${mode}-${slot.label}-${index}`} style={{ "--x": `${slot.x}%`, "--y": `${slot.y}%` } as CSSProperties}>
+            <button
+              className={`formation-slot formation-slot--button ${selected ? "is-selected" : ""} ${player ? "is-filled" : "is-empty"}`}
+              key={`${mode}-${slot.label}-${index}`}
+              onClick={() => onSelectSlot(index)}
+              style={{ "--x": `${slot.x}%`, "--y": `${slot.y}%` } as CSSProperties}
+              type="button"
+            >
               <PlayerAvatar player={player} />
               <strong>{player?.jersey_number ?? index + 1}</strong>
               <span>{player?.alias || player?.display_name || slot.label}</span>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -248,48 +384,154 @@ function FormationPanel({
   );
 }
 
+function GroupTables({ groups }: { groups: ArenaTeam[][] }) {
+  return (
+    <section className="groups-console">
+      {groups.map((group, groupIndex) => (
+        <article key={`group-${groupIndex}`}>
+          <header>
+            <strong>Grupo {String.fromCharCode(65 + groupIndex)}</strong>
+            <span>{group.length}/4 equipos</span>
+          </header>
+          {group.map((team, index) => (
+            <div key={team.id}>
+              <span>{index + 1}</span>
+              <TeamCrest team={team} />
+              <b>{team.short_name}</b>
+              <small>{team.points ?? 0} pts</small>
+            </div>
+          ))}
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function KnockoutPath({ rounds, teams }: { rounds: Array<{ label: string; slots: number }>; teams: ArenaTeam[] }) {
+  return (
+    <section className="console-panel bracket-console bracket-console--path">
+      {rounds.map((round, index) => (
+        <article key={round.label}>
+          <span>0{index + 1}</span>
+          <strong>{round.label}</strong>
+          <small>{round.slots} clasificados</small>
+          <div>
+            {Array.from({ length: Math.min(4, Math.max(1, round.slots / 2)) }).map((_, slot) => {
+              const team = teams[(index + slot) % Math.max(teams.length, 1)];
+              return <i key={`${round.label}-${slot}`}>{team?.short_name ?? "TBD"}</i>;
+            })}
+          </div>
+        </article>
+      ))}
+    </section>
+  );
+}
+
+function VenueSpotlight({ venue }: { venue?: ArenaVenue }) {
+  if (!venue) return null;
+  return (
+    <section className="venue-spotlight">
+      <div>
+        <span>{venue.status === "verified" ? "Cancha verificada" : "Cancha partner"}</span>
+        <h2>{venue.name}</h2>
+        <p>{venue.address ?? venue.neighborhood} / {venue.open_hours ?? "Horario a cargar"}</p>
+      </div>
+      <strong>{money(venue.price_per_hour)}<small>por hora</small></strong>
+    </section>
+  );
+}
+
 export function ArenaExperience({ data }: { data: ArenaData }) {
   const [active, setActive] = useState<TabId>("home");
   const [formationMode, setFormationMode] = useState<FieldMode>(data.activeTournament?.field_mode ?? "7v7");
-  const currentRole = data.user?.roles[0] ?? "player";
-  const currentRoleInfo = roleCatalog[currentRole];
+  const [selectedTeamId, setSelectedTeamId] = useState(data.teams[0]?.id ?? "");
+  const [selectedVenueId, setSelectedVenueId] = useState(data.venues[0]?.id ?? "");
+  const [selectedMatchId, setSelectedMatchId] = useState(data.matches.find((match) => match.status !== "final")?.id ?? data.matches[0]?.id ?? "");
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState(formationSlots[data.activeTournament?.field_mode ?? "7v7"].length - 1);
+  const [userRoles, setUserRoles] = useState<AppRole[]>(() => data.user?.roles.length ? data.user.roles : ["player"]);
+  const [activeRole, setActiveRole] = useState<AppRole>(() => data.user?.roles[0] ?? "player");
+  const [roleMessage, setRoleMessage] = useState("");
+
   const nextMatch = useMemo(() => data.matches.find((match) => match.status !== "final") ?? data.matches[0], [data.matches]);
+  const selectedMatch = data.matches.find((match) => match.id === selectedMatchId) ?? nextMatch;
+  const selectedTeam = data.teams.find((team) => team.id === selectedTeamId) ?? data.teams[0];
+  const selectedVenue = data.venues.find((venue) => venue.id === selectedVenueId) ?? data.venues[0];
+  const selectedPlayers = data.players.filter((player) => player.team_id === selectedTeam?.id);
   const totalPot = data.teams.length * (data.activeTournament?.registration_fee ?? 0);
-  const featuredTeam = data.teams[0];
-  const featuredPlayers = data.players.filter((player) => player.team_id === featuredTeam?.id);
+  const groups = useMemo(() => groupTeams(data.standings.length ? data.standings : data.teams), [data.standings, data.teams]);
+  const knockoutRounds = useMemo(() => buildKnockoutRounds(data.teams), [data.teams]);
+  const selectedSlot = formationSlots[formationMode][selectedSlotIndex] ?? formationSlots[formationMode][0];
+  const isTeamManager = Boolean(
+    data.user &&
+    (selectedTeam?.owner_id === data.user.id || userRoles.includes("captain") || userRoles.includes("organizer") || userRoles.includes("admin"))
+  );
+
+  const openTeam = useCallback((teamId: string) => {
+    setSelectedTeamId(teamId);
+    setActive("squad");
+  }, []);
+
+  const openVenue = useCallback((venueId: string) => {
+    setSelectedVenueId(venueId);
+    setActive("venues");
+  }, []);
+
+  const openMatch = useCallback((match: ArenaMatch) => {
+    setSelectedMatchId(match.id);
+    setActive("matches");
+  }, []);
+
+  async function addRole(role: AppRole) {
+    if (!data.user) return;
+    setRoleMessage("");
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase.from("user_roles").upsert({ user_id: data.user.id, role }, { onConflict: "user_id,role" });
+      if (error) throw error;
+      setUserRoles((current) => current.includes(role) ? current : [...current, role]);
+      setActiveRole(role);
+      setRoleMessage(`Rol activado: ${roleCatalog[role].label}.`);
+    } catch (error) {
+      setRoleMessage(error instanceof Error ? error.message : "No se pudo activar el rol.");
+    }
+  }
 
   function renderHome() {
     return (
       <>
-        <section className="console-hero-panel">
+        <section className="console-hero-panel console-hero-panel--2026">
+          <img alt="" className="hero-mark" src="/assets/icon.svg" />
           <span>Fulbito Arena 2026</span>
           <h1>Tu liga entra en modo juego.</h1>
-          <p>Partidos, tabla, plantel y canchas en una experiencia compacta para futbol amateur.</p>
+          <p>Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur.</p>
           <div className="hero-actions">
             <InstallAppButton variant="hero" />
             <button onClick={() => setActive("matches")} type="button">Ver fecha</button>
           </div>
         </section>
 
-        {nextMatch ? <MatchTile match={nextMatch} featured /> : null}
+        {nextMatch ? <MatchTile match={nextMatch} featured onOpen={() => openMatch(nextMatch)} /> : null}
 
         <section className="mini-grid">
-          <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} value={data.activeTournament?.name ?? "Torneo"} />
-          <MiniStat icon={<Users />} label="Equipos" value={data.teams.length} />
-          <MiniStat icon={<CalendarDays />} label="Partidos" value={data.matches.length} />
-          <MiniStat icon={<CircleDollarSign />} label="Pozo demo" value={money(totalPot)} />
+          <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActive("league")} value={data.activeTournament?.name ?? "Torneo"} />
+          <MiniStat icon={<Users />} label="Equipos" onClick={() => setActive("squad")} value={data.teams.length} />
+          <MiniStat icon={<CalendarDays />} label="Partidos" onClick={() => setActive("matches")} value={data.matches.length} />
+          <MiniStat icon={<CircleDollarSign />} label="Pozo demo" onClick={() => setActive("venues")} value={money(totalPot)} />
         </section>
 
         <section className="console-panel">
-          <ScreenHeader eyebrow="Rol activo" title={data.user ? currentRoleInfo.label : "Entrar rapido"}>
-            {data.user ? currentRoleInfo.headline : "Google Login con rol inicial para jugador, capitan, cancha, organizador o veedor."}
+          <ScreenHeader eyebrow="Identidad" title={data.user ? roleCatalog[activeRole].label : "Entrar rapido"}>
+            {data.user ? "Tu Gmail puede tener varios roles: jugador, capitan, cancha, organizador o veedor." : "Google Login con rol inicial para jugador, capitan, cancha, organizador o veedor."}
           </ScreenHeader>
           {data.user ? (
-            <div className="session-console">
-              {data.user.avatarUrl ? <img alt="" src={data.user.avatarUrl} /> : <span>{data.user.name?.[0] ?? "F"}</span>}
-              <div><strong>{data.user.name}</strong><small>{currentRoleInfo.consumes.slice(0, 3).join(" / ")}</small></div>
-              <LogoutButton />
-            </div>
+            <RoleConsole
+              activeRole={activeRole}
+              message={roleMessage}
+              onAddRole={addRole}
+              onChangeRole={setActiveRole}
+              roles={userRoles}
+              user={data.user}
+            />
           ) : (
             <LoginPanel configured={data.configured} />
           )}
@@ -302,9 +544,31 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
     return (
       <>
         <ScreenHeader eyebrow="Calendario" title="Partidos">
-          Fechas compactas, resultado pendiente y carga de marcador por veedor, cancha u organizador.
+          Cada card abre el partido, la sede y los dos clubes. El resultado queda validado por cancha, veedor u organizador.
         </ScreenHeader>
-        <div className="match-stack">{data.matches.map((match) => <MatchTile key={match.id} match={match} />)}</div>
+        {selectedMatch ? (
+          <section className="match-detail-console">
+            <div className="match-detail-console__stage">
+              <button onClick={() => selectedMatch.homeTeam && openTeam(selectedMatch.homeTeam.id)} type="button">
+                <TeamCrest team={selectedMatch.homeTeam} size="large" />
+                <strong>{selectedMatch.homeTeam?.name ?? "Local"}</strong>
+              </button>
+              <em>{selectedMatch.status === "final" ? `${selectedMatch.home_score} - ${selectedMatch.away_score}` : "VS"}</em>
+              <button onClick={() => selectedMatch.awayTeam && openTeam(selectedMatch.awayTeam.id)} type="button">
+                <TeamCrest team={selectedMatch.awayTeam} size="large" />
+                <strong>{selectedMatch.awayTeam?.name ?? "Visitante"}</strong>
+              </button>
+            </div>
+            <footer>
+              <button onClick={() => selectedMatch.venue && openVenue(selectedMatch.venue.id)} type="button">
+                <MapPinned size={16} />
+                {selectedMatch.venue?.name ?? "Cancha a confirmar"}
+              </button>
+              <span>{formatDate(selectedMatch.scheduled_at)}</span>
+            </footer>
+          </section>
+        ) : null}
+        <div className="match-stack">{data.matches.map((match) => <MatchTile key={match.id} match={match} onOpen={() => openMatch(match)} />)}</div>
         <section className="console-panel flow-compact">
           <article><Flag /><strong>Veedor</strong><span>Carga marcador</span></article>
           <article><MapPinned /><strong>Cancha</strong><span>Valida acta</span></article>
@@ -318,31 +582,54 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
   function renderLeague() {
     return (
       <>
-        <ScreenHeader eyebrow="Clasificacion" title="Liga">
-          Tabla automatica con puntos, PJ, G, E, P, GF, GC y DG.
+        <ScreenHeader eyebrow="Camino a la copa" title="Liga">
+          Grupos de cuatro, tabla automatica y llave eliminatoria generada segun cantidad de equipos.
         </ScreenHeader>
-        <StandingCompact teams={data.standings} />
-        <section className="console-panel bracket-console">
-          {["Grupos", "Clasificados", "Octavos", "Cuartos", "Semi", "Final"].map((step, index) => (
-            <article key={step}>
-              <span>0{index + 1}</span>
-              <strong>{step}</strong>
-            </article>
-          ))}
-        </section>
+        <StandingCompact onTeamOpen={openTeam} teams={data.standings} />
+        <GroupTables groups={groups} />
+        <KnockoutPath rounds={knockoutRounds} teams={data.standings.length ? data.standings : data.teams} />
       </>
     );
   }
 
   function renderSquad() {
+    const slotDraft = {
+      label: `${selectedSlot.label} ${selectedSlotIndex + 1}`,
+      jersey: selectedSlotIndex + 1,
+      position: positionLabels[selectedSlot.label] ?? selectedSlot.label
+    };
+
     return (
       <>
-        <ScreenHeader eyebrow="Club" title="Equipo">
-          Plantel con dorsal, apodo, posicion, foto y formacion visual 5v5, 7v7 o 11v11.
+        <ScreenHeader eyebrow={isTeamManager ? "Panel del club" : "Club"} title={selectedTeam?.name ?? "Equipo"}>
+          Toca un equipo para entrar. Toca una posicion del campo para cargar jugador desde el mapa.
         </ScreenHeader>
-        <FormationPanel mode={formationMode} onModeChange={setFormationMode} players={featuredPlayers} team={featuredTeam} />
+        <section className="team-stack team-stack--selector">
+          {data.teams.map((team) => <TeamRow key={team.id} onOpen={() => setSelectedTeamId(team.id)} team={team} />)}
+        </section>
+        <TeamProfile isManager={isTeamManager} players={selectedPlayers} team={selectedTeam} />
+        <FormationPanel
+          isManager={isTeamManager}
+          mode={formationMode}
+          onModeChange={(mode) => {
+            setFormationMode(mode);
+            setSelectedSlotIndex(Math.min(selectedSlotIndex, formationSlots[mode].length - 1));
+          }}
+          onSelectSlot={setSelectedSlotIndex}
+          players={selectedPlayers}
+          selectedSlotIndex={selectedSlotIndex}
+          team={selectedTeam}
+        />
+        <section className="slot-editor-console">
+          <div>
+            <UserCheck size={18} />
+            <strong>{slotDraft.label}</strong>
+            <span>{isTeamManager ? "Alta rapida desde formacion" : "Ficha publica del puesto"}</span>
+          </div>
+          <ArenaActions data={data} mode="slot" selectedTeamId={selectedTeam?.id} slotDraft={slotDraft} />
+        </section>
         <section className="player-strip">
-          {featuredPlayers.map((player) => (
+          {selectedPlayers.map((player) => (
             <article key={player.id}>
               <PlayerAvatar player={player} />
               <div>
@@ -352,8 +639,7 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
             </article>
           ))}
         </section>
-        <section className="team-stack">{data.teams.map((team) => <TeamRow key={team.id} team={team} />)}</section>
-        <ArenaActions data={data} mode="squad" />
+        <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} />
       </>
     );
   }
@@ -362,12 +648,15 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
     return (
       <>
         <ScreenHeader eyebrow="Sedes" title="Canchas">
-          Canchas de alquiler por hora con precio, barrio, inscripcion sugerida y comision.
+          Canchas de alquiler con mapa, precio por hora, inscripcion sugerida, comision y detalle de ubicacion.
         </ScreenHeader>
-        <section className="venue-stack">{data.venues.map((venue) => <VenueRow key={venue.id} venue={venue} />)}</section>
+        <VenueMap onSelectVenue={openVenue} selectedVenueId={selectedVenue?.id} venues={data.venues} />
+        <VenueSpotlight venue={selectedVenue} />
+        <section className="venue-stack">{data.venues.map((venue) => <VenueRow key={venue.id} onOpen={() => setSelectedVenueId(venue.id)} venue={venue} />)}</section>
         <section className="console-panel money-console">
-          <MiniStat icon={<CircleDollarSign />} label="Ticket promedio" value={money(data.venues[0]?.price_per_hour ?? 0)} />
-          <MiniStat icon={<Crown />} label="Comision demo" value="8-9%" />
+          <MiniStat icon={<CircleDollarSign />} label="Ticket promedio" onClick={() => setActive("venues")} value={money(selectedVenue?.price_per_hour ?? 0)} />
+          <MiniStat icon={<Crown />} label="Comision demo" onClick={() => setActive("league")} value="8-9%" />
+          <MiniStat icon={<Route />} label="Sedes activas" onClick={() => setActive("matches")} value={data.venues.length} />
         </section>
         <ArenaActions data={data} mode="venue" />
       </>

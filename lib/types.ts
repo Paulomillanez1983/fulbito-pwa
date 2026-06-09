@@ -16,20 +16,24 @@ export type MatchStatus =
 
 export type ArenaVenue = {
   id: string;
+  owner_id?: string | null;
   name: string;
   slug: string;
   neighborhood: string;
   address: string | null;
+  cover_url?: string | null;
   price_per_hour: number;
   inscription_fee: number;
   commission_rate: number;
   status: string;
   surface: string | null;
+  field_modes?: FieldMode[];
   open_hours: string | null;
 };
 
 export type ArenaTeam = {
   id: string;
+  owner_id?: string | null;
   name: string;
   slug: string;
   short_name: string;

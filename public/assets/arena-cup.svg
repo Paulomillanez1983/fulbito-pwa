@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900" role="img" aria-label="Arena trophy background">
+  <defs>
+    <linearGradient id="gold" x1="204" y1="90" x2="718" y2="802" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff4ba"/>
+      <stop offset=".28" stop-color="#e9bb55"/>
+      <stop offset=".66" stop-color="#8e5a1b"/>
+      <stop offset="1" stop-color="#fff0a8"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="110" y1="140" x2="820" y2="760" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#70f1ff"/>
+      <stop offset="1" stop-color="#375cff"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="900" fill="none"/>
+  <path d="M310 204h280l-24 268c-9 101-77 176-156 176s-147-75-156-176Z" fill="none" stroke="url(#gold)" stroke-width="24"/>
+  <path d="M302 254H172c2 141 81 235 176 250" fill="none" stroke="url(#gold)" stroke-width="24" stroke-linecap="round"/>
+  <path d="M598 254h130c-2 141-81 235-176 250" fill="none" stroke="url(#gold)" stroke-width="24" stroke-linecap="round"/>
+  <path d="M450 648v116M336 786h228" fill="none" stroke="url(#gold)" stroke-width="28" stroke-linecap="round"/>
+  <path d="M450 154 471 195l46 7-33 32 8 45-42-21-42 21 8-45-33-32 46-7Z" fill="url(#gold)"/>
+  <path d="M346 352h246l-28 62H432l-14 36h128l-27 60H391l-38 90h-84Z" fill="url(#blue)" opacity=".82"/>
+  <circle cx="586" cy="592" r="52" fill="none" stroke="url(#gold)" stroke-width="18"/>
+</svg>

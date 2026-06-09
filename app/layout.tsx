@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
 const siteUrl = "https://fulbito-pwa.vercel.app";

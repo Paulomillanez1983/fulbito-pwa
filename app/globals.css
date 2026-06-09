@@ -1765,3 +1765,686 @@ th {
     bottom: 10px;
   }
 }
+
+/* 2026 arena upgrade */
+body {
+  background:
+    linear-gradient(180deg, rgba(14, 22, 35, .64), rgba(3, 6, 12, .95) 42%, #020309),
+    linear-gradient(130deg, rgba(15, 83, 64, .34), transparent 46%),
+    #05070d;
+}
+
+body::before {
+  background-image: url("/assets/arena-cup.svg");
+  background-position: center 8vh;
+  background-size: min(980px, 118vw) auto;
+  opacity: .17;
+  filter: drop-shadow(0 40px 100px rgba(241,199,91,.2));
+}
+
+body::after {
+  opacity: .86;
+}
+
+.game-topbar {
+  border-color: rgba(255, 230, 154, .34);
+  background:
+    linear-gradient(120deg, rgba(54, 72, 103, .24), transparent 38%),
+    linear-gradient(180deg, rgba(16, 23, 36, .97), rgba(3, 7, 14, .95));
+}
+
+.game-brand img {
+  border: 1px solid rgba(255, 230, 154, .34);
+  background: #05070d;
+  box-shadow: 0 12px 30px rgba(0,0,0,.44), 0 0 28px rgba(241,199,91,.14);
+}
+
+.console-hero-panel--2026 {
+  position: relative;
+  min-height: min(62dvh, 610px);
+  background:
+    linear-gradient(180deg, rgba(4, 8, 16, .18), rgba(4, 8, 16, .94)),
+    linear-gradient(124deg, rgba(22, 126, 91, .42), transparent 46%),
+    url("/assets/arena-cup.svg") center 18% / min(760px, 118vw) auto no-repeat,
+    linear-gradient(145deg, #111927, #04070d 56%, #082115);
+}
+
+.console-hero-panel--2026::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 38%;
+  background:
+    linear-gradient(180deg, transparent, rgba(4, 90, 45, .54)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 82px);
+  transform: perspective(620px) rotateX(58deg);
+  transform-origin: bottom;
+  pointer-events: none;
+}
+
+.console-hero-panel--2026 > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-mark {
+  width: 86px;
+  height: 86px;
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.44), 0 0 32px rgba(241,199,91,.18);
+}
+
+.team-crest {
+  position: relative;
+  overflow: hidden;
+  clip-path: polygon(50% 2%, 86% 12%, 96% 40%, 80% 78%, 50% 98%, 20% 78%, 4% 40%, 14% 12%);
+  background:
+    linear-gradient(140deg, rgba(255,255,255,.94), transparent 22%),
+    linear-gradient(135deg, var(--crest), #fff1bd 58%, #4c3516);
+  box-shadow: 0 14px 30px rgba(0,0,0,.4), inset 0 0 0 2px rgba(255,255,255,.16);
+}
+
+.team-crest::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  clip-path: inherit;
+  border: 1px solid rgba(5, 8, 14, .28);
+  pointer-events: none;
+}
+
+.team-crest b {
+  position: relative;
+  z-index: 1;
+  font-size: .86rem;
+  letter-spacing: 0;
+}
+
+.team-crest img {
+  position: relative;
+  z-index: 1;
+  width: calc(100% - 14px);
+  height: calc(100% - 14px);
+  object-fit: contain;
+  padding: 4px;
+}
+
+.mini-stat--button,
+.match-tile--button,
+.team-row--button,
+.venue-row--button,
+.standings-row {
+  width: 100%;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  display: grid;
+  grid-template-columns: 34px auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 12px;
+  padding: 10px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.095), rgba(255,255,255,.035)),
+    rgba(8, 12, 22, .88);
+  box-shadow: 0 22px 60px rgba(0,0,0,.28);
+}
+
+.standings-row > span {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(241,199,91,.16);
+  color: var(--gold);
+  font-weight: 1000;
+}
+
+.standings-row b {
+  color: var(--gold);
+  font-size: 1.1rem;
+}
+
+.standings-row small {
+  color: var(--muted);
+}
+
+.mini-stat--button {
+  position: relative;
+  border-radius: 12px;
+}
+
+.mini-stat--button > svg:last-child {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  color: rgba(255,255,255,.58);
+}
+
+.mini-stat--button:focus-visible,
+.match-tile--button:focus-visible,
+.team-row--button:focus-visible,
+.venue-row--button:focus-visible,
+.standings-row:focus-visible,
+.formation-slot--button:focus-visible {
+  outline: 2px solid rgba(241,199,91,.72);
+  outline-offset: 3px;
+}
+
+.match-tile--button:hover,
+.team-row--button:hover,
+.venue-row--button:hover,
+.standings-row:hover,
+.mini-stat--button:hover {
+  border-color: rgba(241,199,91,.45);
+  transform: translateY(-1px);
+}
+
+.screen-header {
+  background:
+    linear-gradient(120deg, rgba(241,199,91,.12), transparent 36%),
+    linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.03)),
+    rgba(8, 12, 22, .88);
+}
+
+.role-console {
+  display: grid;
+  gap: 12px;
+}
+
+.role-console__roles {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.role-console__roles button {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  min-height: 68px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 11px;
+  padding: 8px 6px;
+  background: rgba(255,255,255,.045);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: .72rem;
+}
+
+.role-console__roles button.is-owned {
+  color: #dce8f7;
+}
+
+.role-console__roles button.is-active {
+  border-color: rgba(241,199,91,.62);
+  background: linear-gradient(135deg, rgba(241,199,91,.24), rgba(52,201,255,.08));
+  color: var(--ink);
+}
+
+.selected-role-card--game {
+  margin-top: 0;
+}
+
+.session-console--arena {
+  justify-content: flex-start;
+}
+
+.session-console--arena .logout-button,
+.session-console--arena button:last-child {
+  margin-left: auto;
+}
+
+.team-profile-console,
+.match-detail-console,
+.venue-spotlight,
+.venue-map-console,
+.slot-editor-console,
+.groups-console article {
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.095), rgba(255,255,255,.035)),
+    rgba(8, 12, 22, .88);
+  box-shadow: 0 22px 60px rgba(0,0,0,.34);
+}
+
+.team-profile-console {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+}
+
+.team-profile-console__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.team-profile-console__identity span,
+.venue-spotlight span,
+.venue-map-head span,
+.formation-console__head span {
+  color: var(--gold);
+  font-size: .75rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.team-profile-console h2,
+.venue-spotlight h2 {
+  margin: 3px 0 5px;
+  font-size: 1.45rem;
+}
+
+.team-profile-console p,
+.venue-spotlight p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.team-profile-console__stats {
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  gap: 8px;
+}
+
+.team-profile-console__stats strong {
+  display: grid;
+  place-items: center;
+  min-height: 58px;
+  border: 1px solid rgba(241,199,91,.3);
+  border-radius: 10px;
+  color: var(--gold);
+}
+
+.team-profile-console__stats span {
+  color: var(--muted);
+  font-size: .64rem;
+}
+
+.formation-console__head > div:first-child {
+  min-width: 0;
+}
+
+.formation-console__head > div:first-child strong,
+.formation-console__head > div:first-child span {
+  display: block;
+}
+
+.formation-slot--button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.formation-slot--button.is-empty .player-disc {
+  border-style: dashed;
+  background: rgba(7, 11, 19, .82);
+  color: #e8eef8;
+}
+
+.formation-slot--button.is-selected .player-disc {
+  box-shadow: 0 0 0 4px rgba(52,201,255,.26), 0 0 32px rgba(52,201,255,.3);
+}
+
+.slot-editor-console {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.slot-editor-console > div:first-child {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slot-editor-console > div:first-child strong,
+.slot-editor-console > div:first-child span {
+  display: block;
+}
+
+.slot-editor-console > div:first-child svg {
+  color: var(--cyan);
+}
+
+.slot-editor-console .action-grid {
+  grid-template-columns: 1fr;
+}
+
+.slot-editor-console .action-card {
+  background: rgba(2, 6, 12, .48);
+}
+
+.match-detail-console {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.match-detail-console__stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 74px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.match-detail-console__stage button {
+  display: grid;
+  justify-items: center;
+  gap: 9px;
+  min-height: 132px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255,255,255,.045);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.match-detail-console__stage em {
+  display: grid;
+  place-items: center;
+  min-height: 58px;
+  border: 1px solid rgba(241,199,91,.38);
+  border-radius: 12px;
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 1000;
+}
+
+.match-detail-console footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.match-detail-console footer button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(52,201,255,.28);
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: rgba(52,201,255,.08);
+  color: #d8f8ff;
+  cursor: pointer;
+}
+
+.groups-console {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.groups-console article {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.groups-console header,
+.groups-console article div {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.groups-console header {
+  grid-template-columns: 1fr auto;
+}
+
+.groups-console header span,
+.groups-console small {
+  color: var(--muted);
+}
+
+.groups-console article div > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(241,199,91,.16);
+  color: var(--gold);
+  font-weight: 1000;
+}
+
+.bracket-console--path article {
+  min-height: 128px;
+}
+
+.bracket-console--path small {
+  color: var(--muted);
+}
+
+.bracket-console--path article div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.bracket-console--path i {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 7px;
+  padding: 4px 6px;
+  background: rgba(255,255,255,.045);
+  color: #dce8f7;
+  font-style: normal;
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+.venue-map-console {
+  overflow: hidden;
+}
+
+.venue-map-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+}
+
+.venue-map-head svg {
+  color: var(--cyan);
+}
+
+.venue-map-head strong,
+.venue-map-head span {
+  display: block;
+}
+
+.venue-map-canvas {
+  position: relative;
+  min-height: 330px;
+  background:
+    linear-gradient(135deg, rgba(52,201,255,.16), transparent 34%),
+    linear-gradient(180deg, #102137, #07101d);
+}
+
+.venue-map-marker {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 2px solid rgba(255,255,255,.85);
+  border-radius: 50% 50% 50% 8px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-deep));
+  color: #05070d;
+  cursor: pointer;
+  font-size: .72rem;
+  font-weight: 1000;
+  transform: rotate(-45deg);
+  box-shadow: 0 12px 28px rgba(0,0,0,.42);
+}
+
+.venue-map-marker::first-letter {
+  transform: rotate(45deg);
+}
+
+.venue-map-marker.is-active {
+  background: linear-gradient(135deg, #89f6ff, #327dff);
+}
+
+.venue-map-fallback {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255,255,255,.08) 1px, transparent 1px),
+    linear-gradient(145deg, rgba(9, 84, 62, .84), rgba(6, 15, 28, .94));
+  background-size: 72px 72px, 72px 72px, 100% 100%;
+}
+
+.venue-map-fallback button {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(255,255,255,.82);
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--gold-deep));
+  color: #05070d;
+  cursor: pointer;
+  font-weight: 1000;
+}
+
+.venue-map-fallback button.is-active {
+  background: linear-gradient(135deg, #89f6ff, #327dff);
+}
+
+.venue-spotlight {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+}
+
+.venue-spotlight > strong {
+  color: var(--gold);
+  font-size: 1.35rem;
+  text-align: right;
+}
+
+.venue-spotlight small {
+  display: block;
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.action-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .86rem;
+  line-height: 1.35;
+}
+
+.action-card button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.action-card button:disabled {
+  cursor: wait;
+  opacity: .72;
+}
+
+.button-spinner {
+  animation: button-spin .8s linear infinite;
+}
+
+@keyframes button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.team-stack--selector .team-row {
+  border-color: rgba(241,199,91,.2);
+}
+
+@media (max-width: 760px) {
+  body::before {
+    background-position: center 9vh;
+    background-size: 132vw auto;
+    opacity: .14;
+  }
+
+  .hero-mark {
+    width: 72px;
+    height: 72px;
+  }
+
+  .role-console__roles {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 3px;
+  }
+
+  .role-console__roles button {
+    flex: 0 0 118px;
+    scroll-snap-align: start;
+  }
+
+  .team-profile-console,
+  .venue-spotlight,
+  .match-detail-console footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .team-profile-console {
+    grid-template-columns: 1fr;
+  }
+
+  .team-profile-console__stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .match-detail-console__stage {
+    grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr);
+  }
+
+  .match-detail-console__stage button {
+    min-height: 112px;
+    padding: 10px 6px;
+  }
+
+  .groups-console {
+    grid-template-columns: 1fr;
+  }
+
+  .venue-map-canvas {
+    min-height: 300px;
+  }
+
+  .standings-row {
+    grid-template-columns: 28px auto minmax(0, 1fr) auto;
+  }
+
+  .standings-row small {
+    grid-column: 3 / -1;
+  }
+
+  .venue-spotlight > strong {
+    text-align: left;
+  }
+}
