@@ -12,6 +12,8 @@ import {
   Crown,
   Flag,
   Gamepad2,
+  LogIn,
+  LogOut,
   MapPinned,
   Plus,
   Route,
@@ -26,7 +28,6 @@ import {
 import { ArenaActions } from "@/components/arena-actions";
 import { InstallAppButton } from "@/components/install-app-button";
 import { LoginPanel } from "@/components/login-panel";
-import { LogoutButton } from "@/components/logout-button";
 import { VenueMap } from "@/components/venue-map";
 import { roleCatalog } from "@/lib/demo";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -390,6 +391,58 @@ function MiniStat({
   );
 }
 
+function UserMenu({
+  user,
+  configured,
+  team,
+  onLogin
+}: {
+  user: ArenaData["user"];
+  configured: boolean;
+  team?: ArenaTeam | null;
+  onLogin: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  async function logout() {
+    const supabase = createSupabaseBrowserClient();
+    await supabase.auth.signOut({ scope: "local" });
+    window.location.href = "/";
+  }
+
+  if (!user) {
+    return (
+      <button aria-label="Entrar con Google" className="top-auth top-auth--login" disabled={!configured} onClick={onLogin} type="button">
+        <LogIn size={16} />
+        <span>Entrar</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="top-user-menu">
+      <button aria-expanded={open} aria-label="Abrir menu de cuenta" className="top-user-avatar" onClick={() => setOpen((current) => !current)} type="button">
+        {user.avatarUrl ? <img alt={`Cuenta de ${user.name ?? "Google"}`} src={user.avatarUrl} /> : <span>{user.name?.[0] ?? "F"}</span>}
+      </button>
+      {open ? (
+        <div className="top-user-popover">
+          <div>
+            {user.avatarUrl ? <img alt="" src={user.avatarUrl} /> : <span>{user.name?.[0] ?? "F"}</span>}
+            <div>
+              <strong>{user.name ?? "Usuario"}</strong>
+              <small>{team ? `Mi equipo: ${team.name}` : user.email ?? "Google conectado"}</small>
+            </div>
+          </div>
+          <button onClick={logout} type="button">
+            <LogOut size={16} />
+            Salir
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function MatchTile({
   match,
   featured = false,
@@ -465,6 +518,7 @@ function RoleConsole({
   roles,
   activeRole,
   message,
+  team,
   onChangeRole,
   onAddRole
 }: {
@@ -472,19 +526,29 @@ function RoleConsole({
   roles: AppRole[];
   activeRole: AppRole;
   message: string;
+  team?: ArenaTeam | null;
   onChangeRole: (role: AppRole) => void;
   onAddRole: (role: AppRole) => void;
 }) {
   const info = roleCatalog[activeRole];
   return (
     <section className="role-console">
-      <div className="session-console session-console--arena">
-        {user?.avatarUrl ? <img alt="" src={user.avatarUrl} /> : <span>{user?.name?.[0] ?? "F"}</span>}
-        <div>
-          <strong>{user?.name}</strong>
-          <small>Una cuenta puede activar varios roles</small>
-        </div>
-        <LogoutButton />
+      <div className="role-guide">
+        <article>
+          <span>1</span>
+          <strong>Tu cuenta</strong>
+          <small>{user?.name ?? "Google"} activa roles sin crear otra cuenta.</small>
+        </article>
+        <article>
+          <span>2</span>
+          <strong>Tu equipo</strong>
+          <small>{team ? `${team.name} queda como acceso rapido.` : "Crea o elige un equipo como preferido."}</small>
+        </article>
+        <article>
+          <span>3</span>
+          <strong>Tu panel</strong>
+          <small>Cada rol muestra acciones distintas.</small>
+        </article>
       </div>
       <div className="role-console__roles" aria-label="Roles activos">
         {playableRoles.map((role) => {
@@ -505,7 +569,7 @@ function RoleConsole({
       <article className="selected-role-card selected-role-card--game">
         <ShieldCheck size={20} />
         <div>
-          <strong>{info.headline}</strong>
+          <strong>{info.label}: {info.headline}</strong>
           <span>{info.actions.slice(0, 3).join(" / ")}</span>
         </div>
       </article>
@@ -687,11 +751,16 @@ function SplashScreen() {
 }
 
 export function ArenaExperience({ data }: { data: ArenaData }) {
+  const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
+  const memberTeamId = data.user ? data.players.find((player) => player.profile_id === data.user?.id)?.team_id : null;
+  const memberTeam = memberTeamId ? data.teams.find((team) => team.id === memberTeamId) : null;
+  const inferredTeam = ownedTeam ?? memberTeam ?? data.teams[0] ?? null;
+
   const [showSplash, setShowSplash] = useState(true);
   const [active, setActive] = useState<TabId>("home");
   const [formationMode, setFormationMode] = useState<FieldMode>(data.activeTournament?.field_mode ?? "7v7");
   const [formationPresetId, setFormationPresetId] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].id);
-  const [selectedTeamId, setSelectedTeamId] = useState(data.teams[0]?.id ?? "");
+  const [selectedTeamId, setSelectedTeamId] = useState(inferredTeam?.id ?? "");
   const [selectedVenueId, setSelectedVenueId] = useState(data.venues[0]?.id ?? "");
   const [selectedMatchId, setSelectedMatchId] = useState(data.matches.find((match) => match.status !== "final")?.id ?? data.matches[0]?.id ?? "");
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].slots.length - 1);
@@ -720,6 +789,19 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
     data.user &&
     (selectedTeam?.owner_id === data.user.id || userRoles.includes("organizer") || userRoles.includes("admin"))
   );
+  const myTeam = ownedTeam ?? memberTeam ?? selectedTeam;
+
+  useEffect(() => {
+    if (!data.user || !inferredTeam?.id) return;
+    setSelectedTeamId((current) => current || inferredTeam.id);
+  }, [data.user, inferredTeam?.id]);
+
+  function openLoginPanel() {
+    setActive("home");
+    window.setTimeout(() => {
+      document.getElementById("login")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 60);
+  }
 
   const openTeam = useCallback((teamId: string) => {
     setSelectedTeamId(teamId);
@@ -782,6 +864,7 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
             <RoleConsole
               activeRole={activeRole}
               message={roleMessage}
+              team={myTeam}
               onAddRole={addRole}
               onChangeRole={setActiveRole}
               roles={userRoles}
@@ -959,7 +1042,16 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
             <small>{data.source === "supabase" ? "Online" : "Demo"}</small>
           </span>
         </button>
-        <InstallAppButton />
+        {data.user && myTeam ? (
+          <button className="top-team-pill" onClick={() => openTeam(myTeam.id)} type="button">
+            <TeamCrest team={myTeam} />
+            <span>
+              <small>Mi equipo</small>
+              <strong>{myTeam.short_name}</strong>
+            </span>
+          </button>
+        ) : null}
+        <UserMenu configured={data.configured} onLogin={openLoginPanel} team={myTeam} user={data.user} />
       </header>
 
       <main className="game-screen" key={active}>

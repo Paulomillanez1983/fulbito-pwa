@@ -56,6 +56,7 @@ export type ArenaTeam = {
 export type ArenaPlayer = {
   id: string;
   team_id: string;
+  profile_id?: string | null;
   display_name: string;
   alias: string | null;
   jersey_number: number | null;

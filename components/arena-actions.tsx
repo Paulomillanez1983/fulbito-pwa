@@ -17,6 +17,11 @@ type SlotDraft = {
   position: string;
 };
 
+type ReverseGeocodeResult = {
+  neighborhood?: string;
+  address?: string;
+};
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -132,16 +137,56 @@ function VenueLocationPicker() {
   const [coordinates, setCoordinates] = useState({ latitude: -34.6037, longitude: -58.3816 });
   const [locationReady, setLocationReady] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [status, setStatus] = useState("Usa tu ubicacion actual o toca el mapa para confirmar la sede.");
   const mapNode = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const markerRef = useRef<Marker | null>(null);
+  const geocodeRequestRef = useRef(0);
 
   function setMapPoint(next: { latitude: number; longitude: number }, ready = true) {
     setCoordinates(next);
     setLocationReady(ready);
     markerRef.current?.setLngLat([next.longitude, next.latitude]);
     mapRef.current?.flyTo({ center: [next.longitude, next.latitude], zoom: ready ? 15 : 12.4 });
+    if (ready) {
+      void reverseGeocode(next);
+    }
+  }
+
+  function setInputValue(name: string, value: string) {
+    if (!mapNode.current || !value) return;
+    const form = mapNode.current.closest("form");
+    const input = form?.querySelector<HTMLInputElement>(`input[name="${name}"]`);
+    if (!input || input.value) return;
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  async function reverseGeocode(point: { latitude: number; longitude: number }) {
+    const requestId = geocodeRequestRef.current + 1;
+    geocodeRequestRef.current = requestId;
+    setGeocoding(true);
+    try {
+      const params = new URLSearchParams({
+        lat: String(point.latitude),
+        lon: String(point.longitude)
+      });
+      const response = await fetch(`/api/reverse-geocode?${params.toString()}`);
+      if (!response.ok) throw new Error("No se pudo leer la direccion.");
+      const result = (await response.json()) as ReverseGeocodeResult;
+      if (geocodeRequestRef.current !== requestId) return;
+      setInputValue("venueNeighborhood", result.neighborhood ?? "");
+      setInputValue("venueAddress", result.address ?? "");
+      setStatus(result.neighborhood || result.address ? "Ubicacion tomada y datos sugeridos. Ajustalos si hace falta." : "Ubicacion tomada. Completa barrio y direccion manualmente.");
+    } catch {
+      if (geocodeRequestRef.current === requestId) {
+        setStatus("Ubicacion tomada. No se pudo sugerir direccion; completala manualmente.");
+      }
+    } finally {
+      if (geocodeRequestRef.current === requestId) setGeocoding(false);
+    }
   }
 
   useEffect(() => {
@@ -227,10 +272,11 @@ function VenueLocationPicker() {
           {locating ? <LoaderCircle className="button-spinner" size={16} /> : <LocateFixed size={16} />}
           {locating ? "Buscando ubicacion" : "Usar mi ubicacion actual"}
         </button>
-        <span className={locationReady ? "is-ready" : ""}>{locationReady ? "Ubicacion lista" : "Pendiente"}</span>
+        <span className={locationReady ? "is-ready" : ""}>{geocoding ? "Leyendo zona" : locationReady ? "Ubicacion lista" : "Pendiente"}</span>
       </div>
       <div className="venue-picker__map" ref={mapNode} />
       <p>{status}</p>
+      <small>Direccion sugerida con OpenStreetMap/Nominatim. Verifica antes de guardar.</small>
     </div>
   );
 }
