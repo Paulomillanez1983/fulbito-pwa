@@ -1,35 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Fulbito Arena">
   <defs>
-    <linearGradient id="bg" x1="72" y1="34" x2="438" y2="486" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#141a27"/>
-      <stop offset=".46" stop-color="#070b13"/>
-      <stop offset="1" stop-color="#020409"/>
+    <radialGradient id="base" cx="50%" cy="34%" r="70%">
+      <stop stop-color="#1b314d"/>
+      <stop offset=".48" stop-color="#061322"/>
+      <stop offset="1" stop-color="#02050b"/>
+    </radialGradient>
+    <linearGradient id="arena" x1="70" y1="76" x2="430" y2="452" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#55f6ff"/>
+      <stop offset=".33" stop-color="#31dc82"/>
+      <stop offset=".66" stop-color="#f4cf55"/>
+      <stop offset="1" stop-color="#ff4f9a"/>
     </linearGradient>
-    <linearGradient id="gold" x1="110" y1="58" x2="392" y2="468" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#fff0ad"/>
-      <stop offset=".2" stop-color="#f5cc68"/>
-      <stop offset=".58" stop-color="#b87824"/>
-      <stop offset="1" stop-color="#fff0ad"/>
+    <linearGradient id="gold" x1="150" y1="86" x2="374" y2="426" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff4b8"/>
+      <stop offset=".34" stop-color="#f3c657"/>
+      <stop offset=".7" stop-color="#b97622"/>
+      <stop offset="1" stop-color="#ffe99c"/>
     </linearGradient>
-    <linearGradient id="cyan" x1="132" y1="172" x2="366" y2="342" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#88f7ff"/>
-      <stop offset="1" stop-color="#2f8dff"/>
-    </linearGradient>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="11" result="blur"/>
-      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0.95 0 1 0 0 0.72 0 0 1 0 0.22 0 0 0 .75 0"/>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.2 0 1 0 0 0.95 0 0 1 0 1 0 0 0 .65 0"/>
       <feBlend in="SourceGraphic" mode="screen"/>
     </filter>
   </defs>
-  <rect width="512" height="512" fill="url(#bg)"/>
-  <path d="M256 40 369 76l47 96-23 176-137 124-137-124-23-176 47-96Z" fill="#060912" stroke="url(#gold)" stroke-width="15"/>
-  <path d="M256 72 345 101l35 75-18 151-106 96-106-96-18-151 35-75Z" fill="none" stroke="#fff0ad" stroke-opacity=".34" stroke-width="5"/>
-  <path d="M256 94 270 126l35 4-27 22 8 34-30-18-30 18 8-34-27-22 35-4Z" fill="url(#gold)" filter="url(#glow)"/>
-  <path d="M154 165h214l-24 58H221l-13 34h122l-22 55H187l-40 97h-70Z" fill="url(#gold)"/>
-  <path d="M225 229h106l-21 54H203Z" fill="#f8fbff" opacity=".96"/>
-  <path d="M190 314h119l-22 55H168Z" fill="url(#cyan)" opacity=".94"/>
-  <circle cx="337" cy="352" r="48" fill="#05070d" stroke="url(#gold)" stroke-width="9"/>
-  <path d="M337 311 350 331l24 7-15 20 1 25-23-9-23 9 1-25-15-20 24-7Z" fill="#f8fbff"/>
-  <path d="M300 338h74M314 383l44-65M358 383l-44-65" stroke="#090b11" stroke-width="7" stroke-linecap="round" opacity=".72"/>
-  <path d="M116 414c43 28 91 42 140 42s97-14 140-42" fill="none" stroke="#fff0ad" stroke-opacity=".48" stroke-width="8" stroke-linecap="round"/>
+  <rect width="512" height="512" fill="url(#base)"/>
+  <circle cx="256" cy="256" r="205" fill="none" stroke="url(#arena)" stroke-width="22" filter="url(#softGlow)"/>
+  <circle cx="256" cy="256" r="170" fill="none" stroke="#ffffff" stroke-opacity=".14" stroke-width="5"/>
+  <path d="M104 322c68 70 191 82 305 8" fill="none" stroke="#31dc82" stroke-width="16" stroke-linecap="round" opacity=".78"/>
+  <path d="M126 132c72-52 185-52 256 0" fill="none" stroke="#55f6ff" stroke-width="14" stroke-linecap="round" opacity=".75"/>
+  <path d="M170 152h212l-28 66H247l-13 36h101l-26 63H211l-38 91H88Z" fill="url(#gold)"/>
+  <path d="M245 222h107l-23 58H224Z" fill="#f7fbff"/>
+  <path d="M210 318h98l-24 58H186Z" fill="#48d2ff"/>
+  <circle cx="334" cy="334" r="70" fill="#f7fbff" stroke="#050914" stroke-width="12"/>
+  <path d="M334 268 353 308l44 6-32 31 8 44-39-21-39 21 8-44-32-31 44-6Z" fill="#101828"/>
+  <path d="M277 318h114M294 386l66-103M369 386l-66-103" stroke="#101828" stroke-width="10" stroke-linecap="round" opacity=".9"/>
+  <path d="M256 58 272 94l39 5-28 27 7 39-34-19-34 19 7-39-28-27 39-5Z" fill="#ff4f9a"/>
+  <path d="M148 424c71 39 157 39 228 0" fill="none" stroke="#f4cf55" stroke-width="12" stroke-linecap="round"/>
 </svg>

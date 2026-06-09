@@ -23,6 +23,13 @@ function venueCoordinate(index: number): [number, number] {
   return buenosAiresCoordinates[index % buenosAiresCoordinates.length];
 }
 
+function coordinatesForVenue(venue: ArenaVenue, index: number): [number, number] {
+  if (typeof venue.longitude === "number" && typeof venue.latitude === "number") {
+    return [venue.longitude, venue.latitude];
+  }
+  return venueCoordinate(index);
+}
+
 export function VenueMap({
   venues,
   selectedVenueId,
@@ -37,7 +44,7 @@ export function VenueMap({
   const [mapUnavailable, setMapUnavailable] = useState(false);
 
   const points = useMemo<VenuePoint[]>(
-    () => venues.map((venue, index) => ({ venue, coordinates: venueCoordinate(index) })),
+    () => venues.map((venue, index) => ({ venue, coordinates: coordinatesForVenue(venue, index) })),
     [venues]
   );
 
@@ -64,7 +71,8 @@ export function VenueMap({
           const markerNode = document.createElement("button");
           markerNode.type = "button";
           markerNode.className = point.venue.id === selectedVenueId ? "venue-map-marker is-active" : "venue-map-marker";
-          markerNode.innerText = point.venue.name.slice(0, 2).toUpperCase();
+          markerNode.innerHTML = "<i></i>";
+          markerNode.setAttribute("aria-label", point.venue.name);
           markerNode.addEventListener("click", () => onSelectVenue(point.venue.id));
 
           new maplibregl.Marker({ element: markerNode, anchor: "bottom" })
@@ -108,7 +116,7 @@ export function VenueMap({
                 style={{ "--x": `${18 + (index % 3) * 30}%`, "--y": `${28 + Math.floor(index / 3) * 34}%` } as CSSProperties}
                 type="button"
               >
-                {point.venue.name.slice(0, 2).toUpperCase()}
+                <i />
               </button>
             ))}
           </div>

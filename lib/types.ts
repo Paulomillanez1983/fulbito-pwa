@@ -22,6 +22,8 @@ export type ArenaVenue = {
   neighborhood: string;
   address: string | null;
   cover_url?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   price_per_hour: number;
   inscription_fee: number;
   commission_rate: number;

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Flag, LoaderCircle, MapPinned, ShieldPlus, UserPlus } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ArenaData } from "@/lib/types";
+import type { Map, Marker } from "maplibre-gl";
 
 type ActionMode = "all" | "squad" | "venue" | "result" | "slot";
+type MediaBucket = "team-badges" | "player-photos" | "venue-photos";
 
 type SlotDraft = {
   label: string;
@@ -30,6 +32,110 @@ function SubmitButton({ idle, pending }: { idle: string; pending: string }) {
       {form.pending ? <LoaderCircle className="button-spinner" size={17} /> : null}
       {form.pending ? pending : idle}
     </button>
+  );
+}
+
+const imageTargets: Record<MediaBucket, { width: number; height: number; quality: number }> = {
+  "team-badges": { width: 512, height: 512, quality: 0.82 },
+  "player-photos": { width: 512, height: 512, quality: 0.82 },
+  "venue-photos": { width: 1280, height: 720, quality: 0.78 }
+};
+
+async function optimizeImageFile(file: File, bucket: MediaBucket) {
+  if (file.type === "image/svg+xml") return file;
+  if (!file.type.startsWith("image/")) return file;
+
+  const target = imageTargets[bucket];
+  const bitmap = await createImageBitmap(file);
+  const sourceRatio = bitmap.width / bitmap.height;
+  const targetRatio = target.width / target.height;
+  let sx = 0;
+  let sy = 0;
+  let sw = bitmap.width;
+  let sh = bitmap.height;
+
+  if (sourceRatio > targetRatio) {
+    sw = bitmap.height * targetRatio;
+    sx = (bitmap.width - sw) / 2;
+  } else {
+    sh = bitmap.width / targetRatio;
+    sy = (bitmap.height - sh) / 2;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = target.width;
+  canvas.height = target.height;
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) return file;
+  context.drawImage(bitmap, sx, sy, sw, sh, 0, 0, target.width, target.height);
+  bitmap.close();
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", target.quality));
+  if (!blob) return file;
+  const filename = file.name.replace(/\.[^.]+$/, "") || "arena-media";
+  return new File([blob], `${filename}.webp`, { type: "image/webp" });
+}
+
+function VenueLocationPicker() {
+  const [coordinates, setCoordinates] = useState({ latitude: -34.6037, longitude: -58.3816 });
+  const mapNode = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<Map | null>(null);
+  const markerRef = useRef<Marker | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function mountMap() {
+      if (!mapNode.current) return;
+      const maplibregl = await import("maplibre-gl");
+      if (cancelled || !mapNode.current) return;
+
+      const markerNode = document.createElement("span");
+      markerNode.className = "venue-picker-marker";
+      markerNode.innerHTML = "<i></i>";
+
+      const map = new maplibregl.Map({
+        container: mapNode.current,
+        style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+        center: [coordinates.longitude, coordinates.latitude],
+        zoom: 12.4,
+        attributionControl: false
+      });
+
+      const marker = new maplibregl.Marker({ element: markerNode, draggable: true })
+        .setLngLat([coordinates.longitude, coordinates.latitude])
+        .addTo(map);
+
+      marker.on("dragend", () => {
+        const point = marker.getLngLat();
+        setCoordinates({ latitude: Number(point.lat.toFixed(6)), longitude: Number(point.lng.toFixed(6)) });
+      });
+
+      map.on("click", (event) => {
+        const next = { latitude: Number(event.lngLat.lat.toFixed(6)), longitude: Number(event.lngLat.lng.toFixed(6)) };
+        marker.setLngLat([next.longitude, next.latitude]);
+        setCoordinates(next);
+      });
+
+      mapRef.current = map;
+      markerRef.current = marker;
+    }
+
+    mountMap();
+    return () => {
+      cancelled = true;
+      markerRef.current?.remove();
+      mapRef.current?.remove();
+    };
+  }, []);
+
+  return (
+    <div className="venue-picker">
+      <input name="latitude" type="hidden" value={coordinates.latitude} />
+      <input name="longitude" type="hidden" value={coordinates.longitude} />
+      <div className="venue-picker__map" ref={mapNode} />
+      <p>Mové el marcador o tocá el mapa para ubicar la cancha.</p>
+    </div>
   );
 }
 
@@ -59,15 +165,17 @@ export function ArenaActions({
 
   async function uploadArenaMedia(
     supabase: ReturnType<typeof createSupabaseBrowserClient>,
-    bucket: "team-badges" | "player-photos" | "venue-photos",
+    bucket: MediaBucket,
     userId: string,
     fileValue: FormDataEntryValue | null
   ) {
     if (!(fileValue instanceof File) || fileValue.size === 0) return null;
-    const extension = fileValue.name.split(".").pop()?.toLowerCase() || "png";
+    const optimizedFile = await optimizeImageFile(fileValue, bucket);
+    const extension = optimizedFile.type === "image/webp" ? "webp" : optimizedFile.name.split(".").pop()?.toLowerCase() || "png";
     const path = `${userId}/${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
-    const { error } = await supabase.storage.from(bucket).upload(path, fileValue, {
+    const { error } = await supabase.storage.from(bucket).upload(path, optimizedFile, {
       cacheControl: "31536000",
+      contentType: optimizedFile.type || undefined,
       upsert: false
     });
     if (error) throw error;
@@ -118,6 +226,8 @@ export function ArenaActions({
       neighborhood: String(formData.get("venueNeighborhood") || "").trim() || "Barrio sin cargar",
       address: String(formData.get("venueAddress") || "").trim() || null,
       surface: String(formData.get("venueSurface") || "").trim() || "Sintetico",
+      latitude: Number(formData.get("latitude") || 0) || null,
+      longitude: Number(formData.get("longitude") || 0) || null,
       price_per_hour: Number(formData.get("pricePerHour") || 0),
       inscription_fee: Number(formData.get("inscriptionFee") || 0),
       cover_url: coverUrl,
@@ -194,6 +304,7 @@ export function ArenaActions({
           <input name="venueNeighborhood" placeholder="Barrio" />
           <input name="venueAddress" placeholder="Direccion" />
           <input name="venueSurface" placeholder="Superficie" />
+          <VenueLocationPicker />
           <input name="pricePerHour" inputMode="numeric" placeholder="Precio por hora" />
           <input name="inscriptionFee" inputMode="numeric" placeholder="Inscripcion sugerida" />
           <input name="venuePhoto" type="file" accept="image/png,image/jpeg,image/webp" />
@@ -254,8 +365,8 @@ export function ArenaActions({
       ) : mode === "slot" ? (
         actionContent
       ) : (
-        <details className="action-drawer">
-          <summary>Acciones de esta pantalla</summary>
+        <details className="action-drawer" open={mode === "venue"}>
+          <summary>{mode === "venue" ? "Registrar tu cancha" : "Acciones de esta pantalla"}</summary>
           {actionContent}
         </details>
       )}

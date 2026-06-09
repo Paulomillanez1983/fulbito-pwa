@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   ArrowRight,
@@ -53,37 +53,153 @@ const positionLabels: Record<string, string> = {
   DEL: "Delantero"
 };
 
-const formationSlots: Record<FieldMode, Array<{ x: number; y: number; label: string }>> = {
+type FormationSlot = { x: number; y: number; label: string };
+type FormationPreset = { id: string; name: string; shape: string; slots: FormationSlot[] };
+
+const formationPresets: Record<FieldMode, FormationPreset[]> = {
   "5v5": [
-    { x: 50, y: 84, label: "ARQ" },
-    { x: 28, y: 60, label: "DEF" },
-    { x: 72, y: 60, label: "DEF" },
-    { x: 35, y: 34, label: "VOL" },
-    { x: 65, y: 24, label: "DEL" }
+    {
+      id: "5-2-1-1",
+      name: "Compacta",
+      shape: "2-1-1",
+      slots: [
+        { x: 50, y: 86, label: "ARQ" },
+        { x: 30, y: 62, label: "DEF" },
+        { x: 70, y: 62, label: "DEF" },
+        { x: 50, y: 41, label: "VOL" },
+        { x: 50, y: 20, label: "DEL" }
+      ]
+    },
+    {
+      id: "5-1-2-1",
+      name: "Control",
+      shape: "1-2-1",
+      slots: [
+        { x: 50, y: 86, label: "ARQ" },
+        { x: 50, y: 63, label: "DEF" },
+        { x: 34, y: 42, label: "VOL" },
+        { x: 66, y: 42, label: "VOL" },
+        { x: 50, y: 20, label: "DEL" }
+      ]
+    },
+    {
+      id: "5-1-1-2",
+      name: "Presion",
+      shape: "1-1-2",
+      slots: [
+        { x: 50, y: 86, label: "ARQ" },
+        { x: 50, y: 64, label: "DEF" },
+        { x: 50, y: 44, label: "VOL" },
+        { x: 35, y: 20, label: "DEL" },
+        { x: 65, y: 20, label: "DEL" }
+      ]
+    }
   ],
   "7v7": [
-    { x: 50, y: 86, label: "ARQ" },
-    { x: 23, y: 67, label: "DEF" },
-    { x: 50, y: 63, label: "DEF" },
-    { x: 77, y: 67, label: "DEF" },
-    { x: 32, y: 43, label: "VOL" },
-    { x: 68, y: 43, label: "VOL" },
-    { x: 50, y: 20, label: "DEL" }
+    {
+      id: "7-3-2-1",
+      name: "Equilibrada",
+      shape: "3-2-1",
+      slots: [
+        { x: 50, y: 87, label: "ARQ" },
+        { x: 23, y: 68, label: "DEF" },
+        { x: 50, y: 64, label: "DEF" },
+        { x: 77, y: 68, label: "DEF" },
+        { x: 34, y: 43, label: "VOL" },
+        { x: 66, y: 43, label: "VOL" },
+        { x: 50, y: 20, label: "DEL" }
+      ]
+    },
+    {
+      id: "7-2-3-1",
+      name: "Posesion",
+      shape: "2-3-1",
+      slots: [
+        { x: 50, y: 87, label: "ARQ" },
+        { x: 35, y: 66, label: "DEF" },
+        { x: 65, y: 66, label: "DEF" },
+        { x: 24, y: 43, label: "VOL" },
+        { x: 50, y: 39, label: "VOL" },
+        { x: 76, y: 43, label: "VOL" },
+        { x: 50, y: 18, label: "DEL" }
+      ]
+    },
+    {
+      id: "7-2-2-2",
+      name: "Ataque",
+      shape: "2-2-2",
+      slots: [
+        { x: 50, y: 87, label: "ARQ" },
+        { x: 35, y: 66, label: "DEF" },
+        { x: 65, y: 66, label: "DEF" },
+        { x: 34, y: 43, label: "VOL" },
+        { x: 66, y: 43, label: "VOL" },
+        { x: 35, y: 20, label: "DEL" },
+        { x: 65, y: 20, label: "DEL" }
+      ]
+    }
   ],
   "11v11": [
-    { x: 50, y: 88, label: "ARQ" },
-    { x: 18, y: 70, label: "DEF" },
-    { x: 38, y: 72, label: "DEF" },
-    { x: 62, y: 72, label: "DEF" },
-    { x: 82, y: 70, label: "DEF" },
-    { x: 28, y: 50, label: "VOL" },
-    { x: 50, y: 48, label: "VOL" },
-    { x: 72, y: 50, label: "VOL" },
-    { x: 24, y: 25, label: "DEL" },
-    { x: 50, y: 18, label: "DEL" },
-    { x: 76, y: 25, label: "DEL" }
+    {
+      id: "11-4-3-3",
+      name: "4-3-3",
+      shape: "4-3-3",
+      slots: [
+        { x: 50, y: 88, label: "ARQ" },
+        { x: 18, y: 70, label: "DEF" },
+        { x: 38, y: 72, label: "DEF" },
+        { x: 62, y: 72, label: "DEF" },
+        { x: 82, y: 70, label: "DEF" },
+        { x: 28, y: 50, label: "VOL" },
+        { x: 50, y: 48, label: "VOL" },
+        { x: 72, y: 50, label: "VOL" },
+        { x: 24, y: 25, label: "DEL" },
+        { x: 50, y: 18, label: "DEL" },
+        { x: 76, y: 25, label: "DEL" }
+      ]
+    },
+    {
+      id: "11-4-4-2",
+      name: "4-4-2",
+      shape: "4-4-2",
+      slots: [
+        { x: 50, y: 88, label: "ARQ" },
+        { x: 18, y: 70, label: "DEF" },
+        { x: 38, y: 72, label: "DEF" },
+        { x: 62, y: 72, label: "DEF" },
+        { x: 82, y: 70, label: "DEF" },
+        { x: 20, y: 47, label: "VOL" },
+        { x: 40, y: 49, label: "VOL" },
+        { x: 60, y: 49, label: "VOL" },
+        { x: 80, y: 47, label: "VOL" },
+        { x: 38, y: 20, label: "DEL" },
+        { x: 62, y: 20, label: "DEL" }
+      ]
+    },
+    {
+      id: "11-3-5-2",
+      name: "3-5-2",
+      shape: "3-5-2",
+      slots: [
+        { x: 50, y: 88, label: "ARQ" },
+        { x: 28, y: 70, label: "DEF" },
+        { x: 50, y: 72, label: "DEF" },
+        { x: 72, y: 70, label: "DEF" },
+        { x: 15, y: 48, label: "VOL" },
+        { x: 34, y: 48, label: "VOL" },
+        { x: 50, y: 43, label: "VOL" },
+        { x: 66, y: 48, label: "VOL" },
+        { x: 85, y: 48, label: "VOL" },
+        { x: 38, y: 20, label: "DEL" },
+        { x: 62, y: 20, label: "DEL" }
+      ]
+    }
   ]
 };
+
+function getFormationPreset(mode: FieldMode, presetId: string) {
+  return formationPresets[mode].find((preset) => preset.id === presetId) ?? formationPresets[mode][0];
+}
 
 function money(value: number) {
   return `$ ${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
@@ -151,9 +267,9 @@ function PlayerAvatar({ player }: { player?: ArenaPlayer | null }) {
   );
 }
 
-function ScreenHeader({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
+function ScreenHeader({ eyebrow, title, children, compact = false }: { eyebrow: string; title: string; children?: ReactNode; compact?: boolean }) {
   return (
-    <div className="screen-header">
+    <div className={`screen-header ${compact ? "screen-header--compact" : ""}`}>
       <span>{eyebrow}</span>
       <h1>{title}</h1>
       {children ? <p>{children}</p> : null}
@@ -332,17 +448,23 @@ function FormationPanel({
   team,
   players,
   mode,
+  preset,
+  presetId,
   selectedSlotIndex,
   isManager,
   onModeChange,
+  onPresetChange,
   onSelectSlot
 }: {
   team?: ArenaTeam;
   players: ArenaPlayer[];
   mode: FieldMode;
+  preset: FormationPreset;
+  presetId: string;
   selectedSlotIndex: number;
   isManager: boolean;
   onModeChange: (mode: FieldMode) => void;
+  onPresetChange: (presetId: string) => void;
   onSelectSlot: (index: number) => void;
 }) {
   return (
@@ -361,8 +483,21 @@ function FormationPanel({
           ))}
         </div>
       </div>
+      <div className="formation-presets" aria-label="Esquema tactico">
+        {formationPresets[mode].map((item) => (
+          <button className={item.id === presetId ? "is-active" : ""} key={item.id} onClick={() => onPresetChange(item.id)} type="button">
+            <strong>{item.shape}</strong>
+            <span>{item.name}</span>
+          </button>
+        ))}
+      </div>
       <div className="formation-pitch formation-pitch--console">
-        {formationSlots[mode].map((slot, index) => {
+        <span className="pitch-goal pitch-goal--top" />
+        <span className="pitch-goal pitch-goal--bottom" />
+        <span className="pitch-box pitch-box--top" />
+        <span className="pitch-box pitch-box--bottom" />
+        <span className="pitch-circle" />
+        {preset.slots.map((slot, index) => {
           const player = players[index] ?? null;
           const selected = selectedSlotIndex === index;
           return (
@@ -441,16 +576,35 @@ function VenueSpotlight({ venue }: { venue?: ArenaVenue }) {
   );
 }
 
+function SplashScreen() {
+  return (
+    <div className="arena-splash" aria-label="Cargando Fulbito Arena">
+      <div className="arena-splash__ball">
+        <span />
+      </div>
+      <strong>Fulbito Arena</strong>
+      <small>Modo torneo</small>
+    </div>
+  );
+}
+
 export function ArenaExperience({ data }: { data: ArenaData }) {
+  const [showSplash, setShowSplash] = useState(true);
   const [active, setActive] = useState<TabId>("home");
   const [formationMode, setFormationMode] = useState<FieldMode>(data.activeTournament?.field_mode ?? "7v7");
+  const [formationPresetId, setFormationPresetId] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].id);
   const [selectedTeamId, setSelectedTeamId] = useState(data.teams[0]?.id ?? "");
   const [selectedVenueId, setSelectedVenueId] = useState(data.venues[0]?.id ?? "");
   const [selectedMatchId, setSelectedMatchId] = useState(data.matches.find((match) => match.status !== "final")?.id ?? data.matches[0]?.id ?? "");
-  const [selectedSlotIndex, setSelectedSlotIndex] = useState(formationSlots[data.activeTournament?.field_mode ?? "7v7"].length - 1);
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].slots.length - 1);
   const [userRoles, setUserRoles] = useState<AppRole[]>(() => data.user?.roles.length ? data.user.roles : ["player"]);
   const [activeRole, setActiveRole] = useState<AppRole>(() => data.user?.roles[0] ?? "player");
   const [roleMessage, setRoleMessage] = useState("");
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowSplash(false), 2600);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const nextMatch = useMemo(() => data.matches.find((match) => match.status !== "final") ?? data.matches[0], [data.matches]);
   const selectedMatch = data.matches.find((match) => match.id === selectedMatchId) ?? nextMatch;
@@ -460,7 +614,8 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
   const totalPot = data.teams.length * (data.activeTournament?.registration_fee ?? 0);
   const groups = useMemo(() => groupTeams(data.standings.length ? data.standings : data.teams), [data.standings, data.teams]);
   const knockoutRounds = useMemo(() => buildKnockoutRounds(data.teams), [data.teams]);
-  const selectedSlot = formationSlots[formationMode][selectedSlotIndex] ?? formationSlots[formationMode][0];
+  const currentFormation = getFormationPreset(formationMode, formationPresetId);
+  const selectedSlot = currentFormation.slots[selectedSlotIndex] ?? currentFormation.slots[0];
   const isTeamManager = Boolean(
     data.user &&
     (selectedTeam?.owner_id === data.user.id || userRoles.includes("captain") || userRoles.includes("organizer") || userRoles.includes("admin"))
@@ -601,22 +756,27 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
 
     return (
       <>
-        <ScreenHeader eyebrow={isTeamManager ? "Panel del club" : "Club"} title={selectedTeam?.name ?? "Equipo"}>
-          Toca un equipo para entrar. Toca una posicion del campo para cargar jugador desde el mapa.
+        <ScreenHeader compact eyebrow={isTeamManager ? "Panel del club" : "Club"} title={selectedTeam?.name ?? "Equipo"}>
+          Toca una posicion del campo para cargar jugador. Cambia de equipo desde el selector.
         </ScreenHeader>
-        <section className="team-stack team-stack--selector">
-          {data.teams.map((team) => <TeamRow key={team.id} onOpen={() => setSelectedTeamId(team.id)} team={team} />)}
-        </section>
-        <TeamProfile isManager={isTeamManager} players={selectedPlayers} team={selectedTeam} />
         <FormationPanel
           isManager={isTeamManager}
           mode={formationMode}
           onModeChange={(mode) => {
             setFormationMode(mode);
-            setSelectedSlotIndex(Math.min(selectedSlotIndex, formationSlots[mode].length - 1));
+            const nextPreset = formationPresets[mode][0];
+            setFormationPresetId(nextPreset.id);
+            setSelectedSlotIndex(Math.min(selectedSlotIndex, nextPreset.slots.length - 1));
+          }}
+          onPresetChange={(presetId) => {
+            const nextPreset = getFormationPreset(formationMode, presetId);
+            setFormationPresetId(presetId);
+            setSelectedSlotIndex(Math.min(selectedSlotIndex, nextPreset.slots.length - 1));
           }}
           onSelectSlot={setSelectedSlotIndex}
           players={selectedPlayers}
+          preset={currentFormation}
+          presetId={formationPresetId}
           selectedSlotIndex={selectedSlotIndex}
           team={selectedTeam}
         />
@@ -628,6 +788,10 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
           </div>
           <ArenaActions data={data} mode="slot" selectedTeamId={selectedTeam?.id} slotDraft={slotDraft} />
         </section>
+        <section className="team-stack team-stack--selector" aria-label="Selector de equipos">
+          {data.teams.map((team) => <TeamRow key={team.id} onOpen={() => setSelectedTeamId(team.id)} team={team} />)}
+        </section>
+        <TeamProfile isManager={isTeamManager} players={selectedPlayers} team={selectedTeam} />
         <section className="player-strip">
           {selectedPlayers.map((player) => (
             <article key={player.id}>
@@ -673,6 +837,7 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
 
   return (
     <div className="game-app-shell">
+      {showSplash ? <SplashScreen /> : null}
       <header className="game-topbar">
         <button className="game-brand" onClick={() => setActive("home")} type="button">
           <img alt="" src="/assets/icon.svg" />

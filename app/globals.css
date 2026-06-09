@@ -2448,3 +2448,380 @@ body::after {
     text-align: left;
   }
 }
+
+/* Color and spacing pass */
+body {
+  background:
+    radial-gradient(circle at 14% 5%, rgba(85,246,255,.24), transparent 28%),
+    radial-gradient(circle at 88% 14%, rgba(255,79,154,.18), transparent 24%),
+    linear-gradient(180deg, rgba(10, 33, 47, .82), rgba(3, 9, 17, .94) 48%, #031009),
+    #05101d;
+}
+
+.game-screen {
+  gap: 18px;
+}
+
+.screen-header,
+.console-panel,
+.match-tile,
+.mini-stat,
+.team-row,
+.venue-row,
+.standings-row,
+.team-profile-console,
+.match-detail-console,
+.venue-spotlight,
+.venue-map-console,
+.slot-editor-console,
+.groups-console article {
+  border-radius: 16px;
+}
+
+.console-hero-panel--2026 {
+  border-color: rgba(85,246,255,.26);
+  background:
+    linear-gradient(180deg, rgba(1, 8, 16, .08), rgba(2, 8, 14, .88)),
+    radial-gradient(circle at 22% 22%, rgba(85,246,255,.22), transparent 26%),
+    radial-gradient(circle at 85% 18%, rgba(255,79,154,.18), transparent 26%),
+    url("/assets/arena-cup.svg") center 18% / min(760px, 118vw) auto no-repeat,
+    linear-gradient(145deg, #12304d, #051322 50%, #0c3c25);
+}
+
+.hero-mark {
+  border: 1px solid rgba(85,246,255,.34);
+}
+
+.arena-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  background:
+    radial-gradient(circle at center, rgba(85,246,255,.18), transparent 34%),
+    linear-gradient(180deg, #06192a, #02050b);
+  animation: splash-out .34s ease 2.25s forwards;
+}
+
+.arena-splash strong {
+  text-transform: uppercase;
+  font-size: 1.2rem;
+}
+
+.arena-splash small {
+  color: var(--gold);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.arena-splash__ball {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 28%, #fff, #e6eef8 42%, #b8c7d8 72%),
+    #fff;
+  box-shadow: 0 0 42px rgba(85,246,255,.3), 0 20px 60px rgba(0,0,0,.54);
+  animation: ball-spin .8s linear infinite;
+}
+
+.arena-splash__ball::before,
+.arena-splash__ball::after,
+.arena-splash__ball span {
+  content: "";
+  position: absolute;
+  background: #07111d;
+}
+
+.arena-splash__ball::before {
+  inset: 31px;
+  clip-path: polygon(50% 0, 96% 35%, 80% 92%, 20% 92%, 4% 35%);
+}
+
+.arena-splash__ball::after {
+  left: 16px;
+  right: 16px;
+  top: 44px;
+  height: 8px;
+  transform: rotate(22deg);
+}
+
+.arena-splash__ball span {
+  left: 43px;
+  top: 12px;
+  width: 8px;
+  height: 68px;
+  transform: rotate(-24deg);
+}
+
+@keyframes ball-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(1.04);
+  }
+}
+
+.formation-presets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.formation-presets button {
+  display: grid;
+  gap: 2px;
+  min-height: 58px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  padding: 8px;
+  background: rgba(255,255,255,.045);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.formation-presets button.is-active {
+  border-color: rgba(85,246,255,.46);
+  background: linear-gradient(135deg, rgba(85,246,255,.2), rgba(241,199,91,.17));
+  color: var(--ink);
+}
+
+.formation-presets strong {
+  color: var(--gold);
+}
+
+.formation-presets span {
+  font-size: .7rem;
+}
+
+.formation-pitch--console {
+  isolation: isolate;
+  border-color: rgba(85,246,255,.38);
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.055) 0 1px, transparent 1px 12.5%),
+    repeating-linear-gradient(90deg, rgba(30,174,95,.86) 0 11%, rgba(11,116,60,.92) 11% 22%),
+    #0b6e3d;
+  box-shadow: inset 0 0 55px rgba(0,0,0,.35), 0 18px 60px rgba(0,0,0,.35);
+}
+
+.pitch-goal,
+.pitch-box,
+.pitch-circle {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.pitch-goal {
+  left: 38%;
+  width: 24%;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,.75);
+  background: repeating-linear-gradient(90deg, rgba(255,255,255,.32) 0 1px, transparent 1px 8px);
+}
+
+.pitch-goal--top {
+  top: 8px;
+  border-bottom: 0;
+}
+
+.pitch-goal--bottom {
+  bottom: 8px;
+  border-top: 0;
+}
+
+.pitch-box {
+  left: 26%;
+  width: 48%;
+  height: 18%;
+  border: 2px solid rgba(255,255,255,.52);
+}
+
+.pitch-box--top {
+  top: 24px;
+  border-top: 0;
+}
+
+.pitch-box--bottom {
+  bottom: 24px;
+  border-bottom: 0;
+}
+
+.pitch-circle {
+  left: 50%;
+  top: 50%;
+  width: 84px;
+  height: 84px;
+  border: 2px solid rgba(255,255,255,.5);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.formation-slot {
+  z-index: 2;
+}
+
+.venue-map-marker,
+.venue-picker-marker {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 34px;
+  border: 2px solid rgba(255,255,255,.88);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, transparent 49%, rgba(255,255,255,.8) 49% 51%, transparent 51%),
+    linear-gradient(180deg, rgba(44,224,128,.95), rgba(9,119,62,.98));
+  cursor: pointer;
+  transform: none;
+  box-shadow: 0 14px 28px rgba(0,0,0,.45), 0 0 24px rgba(49,220,130,.2);
+}
+
+.venue-map-marker i,
+.venue-picker-marker i {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,.86);
+  border-radius: 50%;
+}
+
+.venue-map-marker.is-active {
+  background:
+    linear-gradient(90deg, transparent 49%, rgba(255,255,255,.82) 49% 51%, transparent 51%),
+    linear-gradient(180deg, rgba(63,246,143,.96), rgba(7,137,70,.98));
+  outline: 3px solid rgba(85,246,255,.46);
+}
+
+.venue-map-fallback button {
+  width: 48px;
+  height: 34px;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, transparent 49%, rgba(255,255,255,.8) 49% 51%, transparent 51%),
+    linear-gradient(180deg, rgba(44,224,128,.95), rgba(9,119,62,.98));
+}
+
+.venue-map-fallback button i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,.86);
+  border-radius: 50%;
+}
+
+.venue-picker {
+  display: grid;
+  gap: 8px;
+}
+
+.venue-picker__map {
+  min-height: 220px;
+  overflow: hidden;
+  border: 1px solid rgba(85,246,255,.24);
+  border-radius: 12px;
+  background: #07101d;
+}
+
+.venue-picker p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+.match-tile.match-tile--button {
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+
+.match-tile__teams strong,
+.match-tile footer span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.screen-header--compact {
+  gap: 6px;
+  padding: 14px;
+}
+
+.screen-header--compact h1 {
+  font-size: clamp(1.75rem, 7vw, 3.2rem);
+}
+
+.screen-header--compact p {
+  line-height: 1.38;
+}
+
+@media (max-width: 760px) {
+  .game-screen {
+    gap: 16px;
+  }
+
+  .match-tile {
+    gap: 10px;
+  }
+
+  .match-tile__teams {
+    grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr);
+  }
+
+  .match-tile footer {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .console-hero-panel--2026 {
+    min-height: min(52dvh, 460px);
+    padding: 16px;
+  }
+
+  .console-hero-panel--2026 .hero-actions {
+    gap: 9px;
+  }
+
+  .console-hero-panel--2026 .install-button,
+  .console-hero-panel--2026 .hero-actions button {
+    min-height: 50px;
+  }
+
+  .formation-console__head > div:first-child .team-crest--large {
+    width: 58px;
+    height: 64px;
+  }
+
+  .screen-header--compact h1 {
+    font-size: 2rem;
+  }
+
+  .formation-presets {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 3px;
+  }
+
+  .formation-presets button {
+    flex: 0 0 104px;
+    scroll-snap-align: start;
+  }
+
+  .pitch-circle {
+    width: 72px;
+    height: 72px;
+  }
+}
