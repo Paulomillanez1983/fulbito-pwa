@@ -333,7 +333,7 @@ email_optional = false
 enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 # DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
-secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_SECRET)"
 # Google Cloud OAuth redirect URL:
 # https://tlggovsdkeptwsyytbsz.supabase.co/auth/v1/callback
 redirect_uri = ""
