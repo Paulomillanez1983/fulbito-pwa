@@ -741,8 +741,14 @@ function VenueSpotlight({ venue }: { venue?: ArenaVenue }) {
 function SplashScreen() {
   return (
     <div className="arena-splash" aria-label="Cargando Fulbito Arena">
-      <div className="arena-splash__ball">
-        <span />
+      <div className="arena-splash__ball" aria-hidden="true">
+        <span className="arena-splash__texture" />
+        <span className="arena-splash__patch arena-splash__patch--center" />
+        <span className="arena-splash__patch arena-splash__patch--top" />
+        <span className="arena-splash__patch arena-splash__patch--left" />
+        <span className="arena-splash__patch arena-splash__patch--right" />
+        <span className="arena-splash__patch arena-splash__patch--bottom" />
+        <span className="arena-splash__shine" />
       </div>
       <strong>Fulbito Arena</strong>
       <small>Modo torneo</small>

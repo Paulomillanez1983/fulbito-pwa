@@ -4335,3 +4335,584 @@ body::after {
     height: 54vh;
   }
 }
+
+/* Stadium mock pass and globe splash polish */
+.arena-splash {
+  gap: 13px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(57, 235, 255, .22), transparent 24%),
+    radial-gradient(circle at 50% 43%, rgba(255, 213, 105, .1), transparent 10%),
+    linear-gradient(180deg, #061b2c 0%, #020712 58%, #00040a 100%);
+}
+
+.arena-splash__ball {
+  position: relative;
+  isolation: isolate;
+  width: 112px;
+  height: 112px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 34% 22%, #ffffff 0 16%, #eef6ff 30%, #c4d2df 63%, #7c8d9d 100%);
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.46),
+    0 0 52px rgba(57,235,255,.34),
+    0 20px 66px rgba(0,0,0,.68),
+    inset -22px -18px 36px rgba(13,31,47,.42),
+    inset 14px 12px 26px rgba(255,255,255,.72);
+  animation: soccer-globe-tilt 2.7s ease-in-out infinite alternate;
+}
+
+.arena-splash__ball::before,
+.arena-splash__ball::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.arena-splash__ball::before {
+  background:
+    radial-gradient(circle at 31% 24%, rgba(255,255,255,.88), transparent 17%),
+    radial-gradient(circle at 72% 78%, rgba(1,6,13,.58), transparent 36%),
+    linear-gradient(90deg, rgba(255,255,255,.24), transparent 24% 72%, rgba(0,0,0,.34));
+  mix-blend-mode: soft-light;
+}
+
+.arena-splash__ball::after {
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.28),
+    inset -24px -12px 34px rgba(2,8,16,.48);
+}
+
+.arena-splash__texture {
+  position: absolute;
+  inset: -9px -96px -9px -9px;
+  z-index: 1;
+  display: block;
+  background:
+    radial-gradient(circle at 56px 56px, #07111d 0 9px, transparent 10px),
+    conic-gradient(from 18deg at 56px 56px, transparent 0 6%, #07111d 6% 9%, transparent 9% 20%, #07111d 20% 23%, transparent 23% 38%, #07111d 38% 41%, transparent 41% 56%, #07111d 56% 59%, transparent 59% 74%, #07111d 74% 77%, transparent 77% 100%),
+    radial-gradient(circle at 14px 24px, #07111d 0 11px, transparent 12px),
+    radial-gradient(circle at 96px 28px, #07111d 0 12px, transparent 13px),
+    radial-gradient(circle at 20px 88px, #07111d 0 12px, transparent 13px),
+    radial-gradient(circle at 94px 92px, #07111d 0 11px, transparent 12px),
+    linear-gradient(90deg, transparent 0 52px, rgba(6,17,29,.32) 52px 55px, transparent 55px 112px);
+  background-size: 112px 112px;
+  opacity: .96;
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,.12));
+  transform: translateX(0);
+  animation: soccer-texture-orbit 1.4s linear infinite;
+}
+
+.arena-splash__shine {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: block;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255,255,255,.8), transparent 18%),
+    radial-gradient(circle at 62% 40%, transparent 0 52%, rgba(0,0,0,.24) 76%, rgba(0,0,0,.42) 100%);
+  pointer-events: none;
+}
+
+@keyframes soccer-texture-orbit {
+  to {
+    transform: translateX(-112px);
+  }
+}
+
+@keyframes soccer-globe-tilt {
+  from {
+    transform: translateY(1px) scale(1);
+  }
+  to {
+    transform: translateY(-1px) scale(1.015);
+  }
+}
+
+body::before {
+  background-image:
+    radial-gradient(circle at 17% 26%, rgba(255,255,255,.26) 0 1px, transparent 2px),
+    radial-gradient(circle at 77% 18%, rgba(255,214,111,.24) 0 1px, transparent 2px),
+    radial-gradient(circle at 32% 72%, rgba(57,235,255,.2) 0 1px, transparent 2px),
+    url("/assets/arena-cup.svg");
+  background-position: 0 0, 0 0, 0 0, center 7vh;
+  background-size: 120px 120px, 180px 180px, 220px 220px, min(900px, 118vw) auto;
+  opacity: .2;
+  filter: drop-shadow(0 40px 100px rgba(241,199,91,.22));
+}
+
+.game-app-shell {
+  position: relative;
+}
+
+.game-app-shell::before {
+  bottom: 33vh;
+  width: min(1120px, 168vw);
+  height: 182px;
+  border-radius: 34px 34px 12px 12px;
+  border-color: rgba(255, 229, 155, .16);
+  background:
+    radial-gradient(circle at 8% 8%, rgba(255,255,255,.82) 0 2px, transparent 4px),
+    radial-gradient(circle at 12% 15%, rgba(255,255,255,.58) 0 2px, transparent 4px),
+    radial-gradient(circle at 88% 8%, rgba(255,255,255,.82) 0 2px, transparent 4px),
+    radial-gradient(circle at 92% 15%, rgba(255,255,255,.58) 0 2px, transparent 4px),
+    radial-gradient(circle at 50% 0%, rgba(57,235,255,.16), transparent 48%),
+    repeating-linear-gradient(90deg, rgba(255,226,148,.5) 0 3px, rgba(44,77,104,.34) 3px 8px, rgba(3,8,15,.36) 8px 15px),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.1) 0 1px, transparent 1px 12px),
+    linear-gradient(180deg, rgba(16, 25, 42, .96), rgba(2, 6, 13, .08));
+  box-shadow:
+    0 -26px 84px rgba(57,235,255,.15),
+    0 0 88px rgba(241,199,91,.1),
+    inset 0 28px 54px rgba(0,0,0,.46);
+  opacity: .64;
+}
+
+.game-app-shell::after {
+  bottom: -4vh;
+  width: min(1180px, 174vw);
+  height: 64vh;
+  border-radius: 58px 58px 0 0;
+  background:
+    linear-gradient(90deg, rgba(238,119,34,.76) 0 8%, transparent 8% 92%, rgba(238,119,34,.76) 92%),
+    linear-gradient(180deg, rgba(238,119,34,.68) 0 10%, transparent 10% 90%, rgba(238,119,34,.68) 90%),
+    repeating-linear-gradient(90deg, transparent 0 24px, rgba(255,255,255,.28) 24px 26px),
+    repeating-radial-gradient(ellipse at 50% 70%, rgba(255,255,255,.11) 0 2px, transparent 2px 22px),
+    rgba(151, 54, 24, .3);
+  box-shadow:
+    inset 0 0 0 2px rgba(255,255,255,.1),
+    0 -14px 88px rgba(238,119,34,.14);
+  opacity: .5;
+}
+
+body::after {
+  content: "FULBITO ARENA";
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 61vh;
+  padding-top: 13vh;
+  border-top: 1px solid rgba(255,255,255,.16);
+  border-radius: 56px 56px 0 0;
+  background:
+    linear-gradient(180deg, rgba(5,7,13,0) 0 2%, rgba(4,35,20,.48) 20%, rgba(6,84,42,.82) 100%),
+    radial-gradient(ellipse at 50% 50%, transparent 0 61px, rgba(255,255,255,.31) 62px 64px, transparent 65px),
+    linear-gradient(90deg, transparent 0 49.7%, rgba(255,255,255,.28) 49.7% 50.3%, transparent 50.3%),
+    linear-gradient(90deg, transparent 0 34%, rgba(255,255,255,.28) 34% 66%, transparent 66%) 50% 10% / 100% 2px no-repeat,
+    linear-gradient(90deg, transparent 0 34%, rgba(255,255,255,.28) 34% 66%, transparent 66%) 50% 92% / 100% 2px no-repeat,
+    linear-gradient(90deg, transparent 0 41%, rgba(255,255,255,.34) 41% 59%, transparent 59%) 50% 2% / 100% 3px no-repeat,
+    linear-gradient(90deg, transparent 0 41%, rgba(255,255,255,.34) 41% 59%, transparent 59%) 50% 99% / 100% 3px no-repeat,
+    linear-gradient(90deg, rgba(255,255,255,.22) 0 2px, transparent 2px calc(100% - 2px), rgba(255,255,255,.22) calc(100% - 2px)),
+    linear-gradient(180deg, rgba(255,255,255,.22) 0 2px, transparent 2px calc(100% - 2px), rgba(255,255,255,.22) calc(100% - 2px)),
+    linear-gradient(90deg, rgba(4,35,18,.9), rgba(15,177,91,.82) 18% 31%, rgba(8,85,44,.86) 31% 43%, rgba(18,190,96,.78) 43% 57%, rgba(8,85,44,.86) 57% 69%, rgba(15,177,91,.82) 69% 82%, rgba(4,35,18,.9));
+  color: rgba(255, 228, 147, .2);
+  font-size: clamp(1.7rem, 8vw, 5.4rem);
+  font-weight: 1000;
+  letter-spacing: 0;
+  text-shadow: 0 0 22px rgba(241,199,91,.18);
+  box-shadow:
+    inset 0 32px 78px rgba(0,0,0,.42),
+    inset 0 -20px 80px rgba(0,0,0,.38),
+    0 -18px 90px rgba(9,120,64,.24);
+  opacity: .96;
+}
+
+.game-screen::before,
+.game-screen::after {
+  content: "";
+  position: fixed;
+  bottom: 45vh;
+  z-index: -2;
+  width: min(150px, 24vw);
+  height: min(170px, 26vw);
+  pointer-events: none;
+  opacity: .58;
+  filter: blur(.2px);
+}
+
+.game-screen::before {
+  left: max(10px, calc(50% - 650px));
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255,255,255,.98) 0 5px, transparent 7px),
+    radial-gradient(circle at 44% 12%, rgba(255,255,255,.92) 0 5px, transparent 7px),
+    radial-gradient(circle at 68% 18%, rgba(255,255,255,.88) 0 5px, transparent 7px),
+    radial-gradient(ellipse at 42% 28%, rgba(255,255,255,.36), transparent 43%),
+    linear-gradient(160deg, rgba(57,235,255,.2), transparent 50%);
+}
+
+.game-screen::after {
+  right: max(10px, calc(50% - 650px));
+  background:
+    radial-gradient(circle at 32% 18%, rgba(255,255,255,.98) 0 5px, transparent 7px),
+    radial-gradient(circle at 56% 12%, rgba(255,255,255,.92) 0 5px, transparent 7px),
+    radial-gradient(circle at 80% 18%, rgba(255,255,255,.88) 0 5px, transparent 7px),
+    radial-gradient(ellipse at 58% 28%, rgba(255,255,255,.36), transparent 43%),
+    linear-gradient(200deg, rgba(255,214,111,.18), transparent 52%);
+}
+
+.game-topbar,
+.console-hero-panel--2026,
+.match-tile--featured,
+.console-panel,
+.mini-stat {
+  backdrop-filter: blur(18px) saturate(1.18);
+}
+
+.game-topbar {
+  min-height: 78px;
+  border-radius: 20px;
+  border-color: rgba(255, 229, 155, .34);
+  background:
+    linear-gradient(125deg, rgba(57,235,255,.12), transparent 37%),
+    linear-gradient(180deg, rgba(16, 25, 42, .94), rgba(3, 8, 16, .91));
+}
+
+.console-hero-panel--2026 {
+  min-height: clamp(330px, 45dvh, 500px);
+  border-radius: 16px;
+  border-color: rgba(255, 220, 134, .72);
+  padding: clamp(24px, 5vw, 42px);
+  background:
+    radial-gradient(circle at 84% 39%, rgba(255, 210, 102, .38), transparent 23%),
+    radial-gradient(circle at 22% 16%, rgba(57,235,255,.24), transparent 28%),
+    linear-gradient(90deg, rgba(4,8,16,.95) 0 51%, rgba(4,8,16,.68) 58%, rgba(4,8,16,.38) 100%),
+    url("/assets/arena-cup.svg") right 26px center / min(330px, 46vw) auto no-repeat,
+    linear-gradient(145deg, #0c1728, #05070d 57%, #0b2218);
+  box-shadow:
+    0 0 0 1px rgba(57,235,255,.22),
+    0 0 42px rgba(241,199,91,.18),
+    0 24px 70px rgba(0,0,0,.4);
+}
+
+.console-hero-panel--2026::after {
+  display: none;
+}
+
+.console-hero-panel--2026 .hero-mark {
+  display: none;
+}
+
+.console-hero-panel--2026 h1 {
+  max-width: 610px;
+  color: #fffaf0;
+  text-shadow: 0 20px 48px rgba(0,0,0,.6);
+}
+
+.console-hero-panel--2026 h1::first-line {
+  color: #fff;
+}
+
+.console-hero-panel--2026 p {
+  max-width: 560px;
+  font-size: 1.03rem;
+}
+
+.console-hero-panel--2026 .hero-actions {
+  max-width: 450px;
+}
+
+.console-hero-panel--2026 .hero-actions button,
+.console-hero-panel--2026 .install-button {
+  min-height: 62px;
+  border-radius: 13px;
+  box-shadow: 0 0 24px rgba(241,199,91,.24);
+}
+
+.match-tile--featured {
+  border-color: rgba(57,235,255,.42);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 83% 18%, rgba(57,235,255,.2), transparent 30%),
+    radial-gradient(circle at 12% 18%, rgba(241,199,91,.17), transparent 30%),
+    linear-gradient(180deg, rgba(14,24,39,.94), rgba(4,8,16,.9));
+  box-shadow:
+    0 0 0 1px rgba(241,199,91,.2),
+    0 0 36px rgba(57,235,255,.12),
+    0 20px 60px rgba(0,0,0,.38);
+}
+
+.match-tile--featured .match-tile__teams {
+  align-items: center;
+}
+
+.match-tile--featured .score-badge {
+  min-height: 58px;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255,214,111,.13), rgba(0,0,0,.12)),
+    rgba(5,9,18,.86);
+  box-shadow: inset 0 0 0 1px rgba(241,199,91,.36);
+}
+
+.role-console {
+  position: relative;
+  overflow: hidden;
+}
+
+.role-console::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: 0;
+  background:
+    linear-gradient(90deg, rgba(4,8,16,.93), rgba(4,8,16,.75) 48%, rgba(4,8,16,.32)),
+    radial-gradient(circle at 82% 18%, rgba(57,235,255,.22), transparent 27%),
+    linear-gradient(180deg, rgba(255,255,255,.07), transparent);
+  pointer-events: none;
+}
+
+.role-console > * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 760px) {
+  .arena-splash__ball {
+    width: 104px;
+    height: 104px;
+  }
+
+  .arena-splash__texture {
+    inset: -8px -90px -8px -8px;
+    background-size: 104px 104px;
+  }
+
+  @keyframes soccer-texture-orbit {
+    to {
+      transform: translateX(-104px);
+    }
+  }
+
+  .game-topbar {
+    min-height: 68px;
+    border-radius: 18px;
+  }
+
+  .console-hero-panel--2026 {
+    min-height: 362px;
+    padding: 28px;
+    background:
+      radial-gradient(circle at 83% 26%, rgba(255, 210, 102, .33), transparent 27%),
+      radial-gradient(circle at 24% 16%, rgba(57,235,255,.22), transparent 30%),
+      linear-gradient(180deg, rgba(4,8,16,.78), rgba(4,8,16,.96)),
+      url("/assets/arena-cup.svg") right -16px top 28px / 210px auto no-repeat,
+      linear-gradient(145deg, #0c1728, #05070d 57%, #0b2218);
+  }
+
+  .console-hero-panel--2026 h1 {
+    max-width: 320px;
+    font-size: clamp(2.4rem, 11vw, 3.5rem);
+  }
+
+  .console-hero-panel--2026 .hero-actions {
+    max-width: none;
+  }
+
+  .match-tile--featured {
+    padding: 18px;
+  }
+
+  .game-app-shell::before {
+    bottom: 34vh;
+    height: 128px;
+    width: 176vw;
+  }
+
+  .game-app-shell::after {
+    bottom: -3vh;
+    width: 182vw;
+    height: 58vh;
+  }
+
+  body::after {
+    height: 60vh;
+    padding-top: 13vh;
+    font-size: 2.25rem;
+  }
+
+  .game-screen::before,
+  .game-screen::after {
+    bottom: 43vh;
+    width: 92px;
+    height: 120px;
+    opacity: .46;
+  }
+}
+
+/* Soccer-ball texture replacement: clear panels in every rotation frame. */
+.arena-splash__texture {
+  inset: -8px -232px -8px -8px;
+  left: -8px;
+  top: -8px;
+  right: -232px;
+  bottom: -8px;
+  width: auto;
+  height: auto;
+  background: url("/assets/soccer-panels.svg?v=2") 0 50% / 112px 112px repeat-x;
+  opacity: .98;
+  filter:
+    drop-shadow(0 1px 0 rgba(255,255,255,.16))
+    drop-shadow(0 0 1px rgba(6,17,29,.32));
+  animation: soccer-texture-orbit 1.45s linear infinite;
+}
+
+.arena-splash__shine {
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  transform: none;
+}
+
+.arena-splash__patch {
+  position: absolute;
+  z-index: 2;
+  display: block;
+  left: auto;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  width: auto;
+  height: auto;
+  background:
+    linear-gradient(145deg, #101d2a, #01050a 74%);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,.2),
+    0 0 0 1px rgba(255,255,255,.08);
+  clip-path: polygon(50% 0, 95% 34%, 78% 92%, 22% 92%, 5% 34%);
+  transform: none;
+}
+
+.arena-splash__patch--center {
+  left: 41px;
+  top: 38px;
+  width: 30px;
+  height: 31px;
+}
+
+.arena-splash__patch--top {
+  left: 42px;
+  top: 7px;
+  width: 32px;
+  height: 26px;
+  transform: rotate(180deg);
+}
+
+.arena-splash__patch--left {
+  left: 7px;
+  top: 42px;
+  width: 25px;
+  height: 30px;
+  transform: rotate(-72deg);
+}
+
+.arena-splash__patch--right {
+  right: 7px;
+  top: 42px;
+  width: 25px;
+  height: 30px;
+  transform: rotate(72deg);
+}
+
+.arena-splash__patch--bottom {
+  left: 42px;
+  bottom: 7px;
+  width: 32px;
+  height: 26px;
+}
+
+@media (max-width: 760px) {
+  .arena-splash__ball {
+    width: 112px;
+    height: 112px;
+  }
+
+  .arena-splash__texture {
+    inset: -8px -232px -8px -8px;
+    background-size: 112px 112px;
+  }
+}
+
+.arena-splash__ball .arena-splash__texture {
+  left: -8px;
+  top: -8px;
+  right: -232px;
+  bottom: -8px;
+  width: auto;
+  height: auto;
+  background: url("/assets/soccer-panels.svg?v=2") 0 50% / 112px 112px repeat-x;
+  opacity: .84;
+  transform: translateX(0);
+  animation: soccer-texture-orbit 1.45s linear infinite;
+}
+
+.arena-splash__ball .arena-splash__shine {
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  transform: none;
+  background:
+    radial-gradient(circle at 34% 24%, rgba(255,255,255,.82), transparent 18%),
+    radial-gradient(circle at 62% 40%, transparent 0 52%, rgba(0,0,0,.24) 76%, rgba(0,0,0,.42) 100%);
+}
+
+.arena-splash__ball .arena-splash__patch {
+  left: auto;
+  top: auto;
+  right: auto;
+  bottom: auto;
+  width: auto;
+  height: auto;
+  transform: none;
+  background: linear-gradient(145deg, #101d2a, #01050a 74%);
+  clip-path: polygon(50% 0, 95% 34%, 78% 92%, 22% 92%, 5% 34%);
+  box-shadow:
+    inset 0 1px 1px rgba(255,255,255,.2),
+    0 0 0 1px rgba(255,255,255,.08);
+}
+
+.arena-splash__ball .arena-splash__patch--center {
+  left: 41px;
+  top: 38px;
+  width: 30px;
+  height: 31px;
+}
+
+.arena-splash__ball .arena-splash__patch--top {
+  left: 42px;
+  top: 7px;
+  width: 32px;
+  height: 26px;
+  transform: rotate(180deg);
+}
+
+.arena-splash__ball .arena-splash__patch--left {
+  left: 7px;
+  top: 42px;
+  width: 25px;
+  height: 30px;
+  transform: rotate(-72deg);
+}
+
+.arena-splash__ball .arena-splash__patch--right {
+  right: 7px;
+  top: 42px;
+  width: 25px;
+  height: 30px;
+  transform: rotate(72deg);
+}
+
+.arena-splash__ball .arena-splash__patch--bottom {
+  left: 42px;
+  bottom: 7px;
+  width: 32px;
+  height: 26px;
+}
