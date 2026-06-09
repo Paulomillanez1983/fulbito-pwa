@@ -98,7 +98,7 @@ async function optimizeImageFile(file: File, bucket: MediaBucket) {
   if (!context) return file;
 
   if (target.fit === "contain") {
-    const scale = Math.min(target.width / bitmap.width, target.height / bitmap.height) * 0.82;
+    const scale = Math.min(target.width / bitmap.width, target.height / bitmap.height) * 0.94;
     const dw = bitmap.width * scale;
     const dh = bitmap.height * scale;
     context.clearRect(0, 0, target.width, target.height);
@@ -252,6 +252,7 @@ export function ArenaActions({
   const showVenue = mode === "all" || mode === "venue";
   const showResult = mode === "all" || mode === "result";
   const playerTeamId = selectedTeamId ?? data.teams[0]?.id;
+  const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
 
   async function getUserId() {
     const supabase = createSupabaseBrowserClient();
@@ -284,6 +285,14 @@ export function ArenaActions({
     if (!name) return setMessage("El equipo necesita nombre.");
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Primero entra con Google.");
+    const { data: existingTeam, error: existingTeamError } = await supabase
+      .from("teams")
+      .select("id,name")
+      .eq("owner_id", userId)
+      .limit(1)
+      .maybeSingle();
+    if (existingTeamError) return setMessage(existingTeamError.message);
+    if (existingTeam) return setMessage(`Ya tenes un equipo creado: ${existingTeam.name}.`);
     let badgeUrl: string | null = null;
     try {
       badgeUrl = await uploadArenaMedia(supabase, "team-badges", userId, formData.get("badgeFile"));
@@ -387,7 +396,15 @@ export function ArenaActions({
   const actionContent = (
     <>
       <div className="action-grid">
-        {showTeam ? <form action={createTeam} className="action-card">
+        {showTeam && ownedTeam ? (
+          <article className="action-card action-card--locked">
+            <ShieldPlus />
+            <h3>Equipo ya creado</h3>
+            <p>{ownedTeam.name} ya esta asociado a tu cuenta. Desde esta pantalla podes cargar jugadores y completar la formacion.</p>
+          </article>
+        ) : null}
+
+        {showTeam && !ownedTeam ? <form action={createTeam} className="action-card">
           <ShieldPlus />
           <h3>Crear equipo</h3>
           <p>Subi escudo, sigla y color base. La imagen se adapta al marco del club.</p>

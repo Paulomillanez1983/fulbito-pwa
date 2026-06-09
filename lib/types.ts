@@ -62,6 +62,8 @@ export type ArenaPlayer = {
   position: string | null;
   photo_url: string | null;
   goals: number;
+  yellow_cards?: number;
+  red_cards?: number;
 };
 
 export type ArenaTournament = {

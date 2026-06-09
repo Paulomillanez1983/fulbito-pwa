@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
+  Activity,
   ArrowRight,
+  BadgeCheck,
   CalendarDays,
   ChevronRight,
   CircleDollarSign,
@@ -15,9 +17,11 @@ import {
   Route,
   Shield,
   ShieldCheck,
+  Star,
   Trophy,
   UserCheck,
-  Users
+  Users,
+  X
 } from "lucide-react";
 import { ArenaActions } from "@/components/arena-actions";
 import { InstallAppButton } from "@/components/install-app-button";
@@ -252,18 +256,106 @@ function TeamCrest({ team, size = "normal" }: { team?: ArenaTeam | null; size?: 
   );
 }
 
-function PlayerAvatar({ player }: { player?: ArenaPlayer | null }) {
-  const initials = player?.display_name
+function getPlayerInitials(player?: ArenaPlayer | null) {
+  return player?.display_name
     .split(" ")
     .map((part) => part[0])
     .join("")
     .slice(0, 2)
     .toUpperCase() || "FA";
+}
+
+function getPlayerRating(player: ArenaPlayer, team?: ArenaTeam) {
+  const position = (player.position ?? "").toLowerCase();
+  const positionBoost = position.includes("arquero") ? 5 : position.includes("delantero") ? 4 : position.includes("volante") ? 3 : 2;
+  const cardPenalty = (player.yellow_cards ?? 0) + (player.red_cards ?? 0) * 4;
+  const base = 67 + positionBoost + Math.min(player.goals * 4, 20) + Math.min(team?.played ?? 0, 10) - cardPenalty;
+  return Math.max(48, Math.min(99, base));
+}
+
+function getPlayerStars(rating: number) {
+  if (rating >= 90) return 5;
+  if (rating >= 82) return 4;
+  if (rating >= 74) return 3;
+  return 2;
+}
+
+function getPlayerStatus(player: ArenaPlayer) {
+  if ((player.red_cards ?? 0) > 0) return "Suspendido";
+  return "Disponible";
+}
+
+function PlayerAvatar({ player }: { player?: ArenaPlayer | null }) {
+  const initials = getPlayerInitials(player);
 
   return (
     <span className="player-disc">
       {player?.photo_url ? <img alt="" src={player.photo_url} /> : initials}
     </span>
+  );
+}
+
+function PlayerCardModal({ player, team, onClose }: { player: ArenaPlayer; team?: ArenaTeam; onClose: () => void }) {
+  const rating = getPlayerRating(player, team);
+  const stars = getPlayerStars(rating);
+  const status = getPlayerStatus(player);
+  const played = team?.played ?? 0;
+  const initials = getPlayerInitials(player);
+
+  useEffect(() => {
+    function closeWithEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+
+    window.addEventListener("keydown", closeWithEscape);
+    return () => window.removeEventListener("keydown", closeWithEscape);
+  }, [onClose]);
+
+  return (
+    <div
+      aria-labelledby="player-card-title"
+      aria-modal="true"
+      className="player-card-backdrop"
+      onClick={(event) => {
+        if (event.currentTarget === event.target) onClose();
+      }}
+      role="dialog"
+    >
+      <article className="player-ultimate-card">
+        <button aria-label="Cerrar ficha del jugador" className="player-card-close" onClick={onClose} type="button">
+          <X size={18} />
+        </button>
+        <header>
+          <div>
+            <strong>{rating}</strong>
+            <span>CAL</span>
+          </div>
+          <TeamCrest team={team} />
+        </header>
+        <div className="player-card-portrait">
+          {player.photo_url ? <img alt="" src={player.photo_url} /> : <span>{initials}</span>}
+        </div>
+        <section className="player-card-name">
+          <h2 id="player-card-title">{player.alias || player.display_name}</h2>
+          <span>#{player.jersey_number ?? "-"} / {player.position ?? "Posicion"}</span>
+        </section>
+        <div className="player-card-stars" aria-label={`${stars} estrellas`}>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <Star className={index < stars ? "is-active" : ""} fill="currentColor" key={index} size={17} />
+          ))}
+        </div>
+        <dl className="player-card-metrics">
+          <div><dt>Goles</dt><dd>{player.goals}</dd></div>
+          <div><dt>PJ</dt><dd>{played}</dd></div>
+          <div><dt>Estado</dt><dd>{status}</dd></div>
+          <div><dt>Amarillas</dt><dd>{player.yellow_cards ?? 0}</dd></div>
+        </dl>
+        <footer>
+          <BadgeCheck size={17} />
+          <span>DT o veedor actualiza goles, tarjetas y estado desde el acta.</span>
+        </footer>
+      </article>
+    </div>
   );
 }
 
@@ -454,6 +546,7 @@ function FormationPanel({
   isManager,
   onModeChange,
   onPresetChange,
+  onOpenPlayer,
   onSelectSlot
 }: {
   team?: ArenaTeam;
@@ -465,6 +558,7 @@ function FormationPanel({
   isManager: boolean;
   onModeChange: (mode: FieldMode) => void;
   onPresetChange: (presetId: string) => void;
+  onOpenPlayer: (playerId: string) => void;
   onSelectSlot: (index: number) => void;
 }) {
   return (
@@ -503,8 +597,12 @@ function FormationPanel({
           return (
             <button
               className={`formation-slot formation-slot--button ${selected ? "is-selected" : ""} ${player ? "is-filled" : "is-empty"}`}
+              aria-label={player ? `Abrir ficha de ${player.display_name}` : `Cargar ${slot.label} ${index + 1}`}
               key={`${mode}-${slot.label}-${index}`}
-              onClick={() => onSelectSlot(index)}
+              onClick={() => {
+                onSelectSlot(index);
+                if (player) onOpenPlayer(player.id);
+              }}
               style={{ "--x": `${slot.x}%`, "--y": `${slot.y}%` } as CSSProperties}
               type="button"
             >
@@ -597,6 +695,7 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
   const [selectedVenueId, setSelectedVenueId] = useState(data.venues[0]?.id ?? "");
   const [selectedMatchId, setSelectedMatchId] = useState(data.matches.find((match) => match.status !== "final")?.id ?? data.matches[0]?.id ?? "");
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].slots.length - 1);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [userRoles, setUserRoles] = useState<AppRole[]>(() => data.user?.roles.length ? data.user.roles : ["player"]);
   const [activeRole, setActiveRole] = useState<AppRole>(() => data.user?.roles[0] ?? "player");
   const [roleMessage, setRoleMessage] = useState("");
@@ -611,6 +710,7 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
   const selectedTeam = data.teams.find((team) => team.id === selectedTeamId) ?? data.teams[0];
   const selectedVenue = data.venues.find((venue) => venue.id === selectedVenueId) ?? data.venues[0];
   const selectedPlayers = data.players.filter((player) => player.team_id === selectedTeam?.id);
+  const selectedPlayer = selectedPlayers.find((player) => player.id === selectedPlayerId) ?? null;
   const totalPot = data.teams.length * (data.activeTournament?.registration_fee ?? 0);
   const groups = useMemo(() => groupTeams(data.standings.length ? data.standings : data.teams), [data.standings, data.teams]);
   const knockoutRounds = useMemo(() => buildKnockoutRounds(data.teams), [data.teams]);
@@ -618,7 +718,7 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
   const selectedSlot = currentFormation.slots[selectedSlotIndex] ?? currentFormation.slots[0];
   const isTeamManager = Boolean(
     data.user &&
-    (selectedTeam?.owner_id === data.user.id || userRoles.includes("captain") || userRoles.includes("organizer") || userRoles.includes("admin"))
+    (selectedTeam?.owner_id === data.user.id || userRoles.includes("organizer") || userRoles.includes("admin"))
   );
 
   const openTeam = useCallback((teamId: string) => {
@@ -773,6 +873,7 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
             setFormationPresetId(presetId);
             setSelectedSlotIndex(Math.min(selectedSlotIndex, nextPreset.slots.length - 1));
           }}
+          onOpenPlayer={setSelectedPlayerId}
           onSelectSlot={setSelectedSlotIndex}
           players={selectedPlayers}
           preset={currentFormation}
@@ -780,13 +881,17 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
           selectedSlotIndex={selectedSlotIndex}
           team={selectedTeam}
         />
-        <section className="slot-editor-console">
+        <section className={`slot-editor-console ${isTeamManager ? "" : "slot-editor-console--public"}`}>
           <div>
             <UserCheck size={18} />
             <strong>{slotDraft.label}</strong>
             <span>{isTeamManager ? "Alta rapida desde formacion" : "Ficha publica del puesto"}</span>
           </div>
-          <ArenaActions data={data} mode="slot" selectedTeamId={selectedTeam?.id} slotDraft={slotDraft} />
+          {isTeamManager ? (
+            <ArenaActions data={data} mode="slot" selectedTeamId={selectedTeam?.id} slotDraft={slotDraft} />
+          ) : (
+            <p>Toca un jugador cargado para ver su card. Solo el dueno del club u organizador puede modificar el plantel.</p>
+          )}
         </section>
         <section className="team-stack team-stack--selector" aria-label="Selector de equipos">
           {data.teams.map((team) => <TeamRow key={team.id} onOpen={() => setSelectedTeamId(team.id)} team={team} />)}
@@ -794,16 +899,18 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
         <TeamProfile isManager={isTeamManager} players={selectedPlayers} team={selectedTeam} />
         <section className="player-strip">
           {selectedPlayers.map((player) => (
-            <article key={player.id}>
+            <button key={player.id} onClick={() => setSelectedPlayerId(player.id)} type="button">
               <PlayerAvatar player={player} />
               <div>
                 <strong>{player.display_name}</strong>
                 <span>#{player.jersey_number ?? "-"} / {player.position ?? "Posicion"} / {player.goals} goles</span>
               </div>
-            </article>
+              <Activity size={16} />
+            </button>
           ))}
         </section>
-        <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} />
+        {isTeamManager ? <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} /> : null}
+        {selectedPlayer ? <PlayerCardModal onClose={() => setSelectedPlayerId(null)} player={selectedPlayer} team={selectedTeam} /> : null}
       </>
     );
   }
