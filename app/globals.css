@@ -2825,3 +2825,638 @@ body {
     height: 72px;
   }
 }
+
+/* Mobile UX density + media fit refinement */
+.team-crest {
+  aspect-ratio: 1 / 1.08;
+}
+
+.team-crest img {
+  width: 78%;
+  height: 78%;
+  padding: 0;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 8px 12px rgba(0,0,0,.28));
+}
+
+.player-disc img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.media-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 68px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 12px;
+  padding: 9px;
+  background: rgba(255,255,255,.045);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.media-field input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.media-field__preview {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  overflow: hidden;
+  border: 1px solid rgba(85,246,255,.28);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 30% 20%, rgba(85,246,255,.2), transparent 34%),
+    rgba(4, 8, 16, .86);
+  color: var(--cyan);
+}
+
+.media-field--crest .media-field__preview {
+  clip-path: polygon(50% 3%, 88% 14%, 96% 42%, 78% 78%, 50% 98%, 22% 78%, 4% 42%, 12% 14%);
+  border-radius: 0;
+  background:
+    linear-gradient(135deg, #f9dd83, #fff2c2 56%, #8c5d1c);
+  color: #07111d;
+}
+
+.media-field--avatar .media-field__preview {
+  border-radius: 50%;
+}
+
+.media-field--wide .media-field__preview {
+  width: 86px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+}
+
+.media-field__preview img {
+  width: 100%;
+  height: 100%;
+  object-position: center;
+}
+
+.media-field--crest .media-field__preview img {
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+}
+
+.media-field--avatar .media-field__preview img,
+.media-field--wide .media-field__preview img,
+.media-field--square .media-field__preview img {
+  object-fit: cover;
+}
+
+.media-field__copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.media-field__copy strong,
+.media-field__copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.media-field__copy small {
+  color: var(--muted);
+  font-size: .76rem;
+}
+
+.venue-location-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.venue-location-tools button {
+  min-height: 42px;
+}
+
+.venue-location-tools span {
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(255,255,255,.045);
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.venue-location-tools span.is-ready {
+  border-color: rgba(66,230,140,.42);
+  background: rgba(66,230,140,.12);
+  color: #baffd8;
+}
+
+.venue-map-canvas,
+.venue-picker__map {
+  height: clamp(240px, 44vh, 380px);
+  min-height: 0;
+}
+
+.venue-picker__map {
+  height: 210px;
+}
+
+.venue-map-canvas .maplibregl-canvas,
+.venue-picker__map .maplibregl-canvas {
+  height: 100% !important;
+}
+
+@media (max-width: 760px) {
+  body {
+    padding-bottom: 84px;
+  }
+
+  .game-app-shell {
+    width: calc(100% - 14px);
+    padding-top: 7px;
+  }
+
+  .game-topbar {
+    min-height: 58px;
+    border-radius: 12px;
+    padding: 7px 8px;
+  }
+
+  .game-brand {
+    gap: 8px;
+  }
+
+  .game-brand img {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .game-brand strong {
+    font-size: .86rem;
+  }
+
+  .game-screen {
+    gap: 10px;
+    padding-top: 10px;
+    padding-bottom: 92px;
+  }
+
+  .screen-header,
+  .console-panel,
+  .match-tile,
+  .mini-stat,
+  .team-row,
+  .venue-row,
+  .standings-row,
+  .team-profile-console,
+  .match-detail-console,
+  .venue-spotlight,
+  .venue-map-console,
+  .slot-editor-console,
+  .groups-console article,
+  .action-drawer {
+    border-radius: 12px;
+  }
+
+  .screen-header {
+    gap: 7px;
+    padding: 12px;
+  }
+
+  .screen-header > span,
+  .console-hero-panel > span {
+    padding: 5px 8px;
+    font-size: .68rem;
+  }
+
+  .screen-header h1,
+  .console-hero-panel h1 {
+    font-size: clamp(1.75rem, 8vw, 2.55rem);
+    line-height: .96;
+  }
+
+  .screen-header p,
+  .console-hero-panel p {
+    font-size: .92rem;
+    line-height: 1.38;
+  }
+
+  .console-hero-panel--2026 {
+    min-height: min(45dvh, 390px);
+    gap: 10px;
+    padding: 14px;
+    background-size: auto, auto, auto, min(520px, 112vw) auto, auto;
+  }
+
+  .hero-mark {
+    width: 58px;
+    height: 58px;
+    border-radius: 14px;
+  }
+
+  .console-hero-panel--2026 .install-button,
+  .console-hero-panel--2026 .hero-actions button {
+    min-height: 46px;
+  }
+
+  .mini-grid {
+    gap: 7px;
+  }
+
+  .mini-stat--button {
+    grid-template-columns: 26px minmax(0, 1fr) 16px;
+    grid-template-rows: auto auto;
+    gap: 1px 8px;
+    min-height: 64px;
+    padding: 9px;
+  }
+
+  .mini-stat--button > svg:first-child {
+    grid-row: 1 / span 2;
+    width: 18px;
+    height: 18px;
+  }
+
+  .mini-stat--button > svg:last-child {
+    position: static;
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    align-self: center;
+  }
+
+  .mini-stat--button strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    font-size: .96rem;
+    line-height: 1.05;
+  }
+
+  .mini-stat--button span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: .76rem;
+    line-height: 1.05;
+  }
+
+  .match-tile {
+    min-height: 112px;
+    padding: 11px;
+  }
+
+  .match-tile__meta,
+  .match-tile footer {
+    font-size: .78rem;
+  }
+
+  .match-tile__teams {
+    gap: 8px;
+  }
+
+  .match-tile__teams em {
+    min-height: 42px;
+  }
+
+  .team-crest {
+    width: 42px;
+    height: 47px;
+  }
+
+  .team-crest--large {
+    width: 58px;
+    height: 64px;
+  }
+
+  .match-detail-console {
+    gap: 9px;
+    padding: 11px;
+  }
+
+  .match-detail-console__stage button {
+    min-height: 96px;
+  }
+
+  .match-detail-console__stage em {
+    min-height: 46px;
+  }
+
+  .flow-compact {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .flow-compact article {
+    min-height: 76px;
+    padding: 9px;
+  }
+
+  .flow-compact article strong,
+  .flow-compact article span {
+    font-size: .78rem;
+    line-height: 1.12;
+  }
+
+  .standings-row {
+    min-height: 52px;
+    padding: 8px;
+  }
+
+  .standings-row > span,
+  .groups-console article div > span {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+  }
+
+  .standings-row .team-crest,
+  .groups-console .team-crest {
+    width: 28px;
+    height: 31px;
+  }
+
+  .groups-console article {
+    gap: 6px;
+    padding: 9px;
+  }
+
+  .bracket-console--path article {
+    min-height: 96px;
+    padding: 10px;
+  }
+
+  .formation-console {
+    padding: 9px;
+  }
+
+  .formation-console__head {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .formation-controls button {
+    min-height: 32px;
+  }
+
+  .formation-presets {
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .formation-presets button {
+    flex-basis: 92px;
+    min-height: 48px;
+    padding: 7px;
+  }
+
+  .formation-pitch--console {
+    min-height: 430px;
+  }
+
+  .formation-slot {
+    width: 64px;
+  }
+
+  .player-disc {
+    width: 38px;
+    height: 38px;
+  }
+
+  .formation-slot span {
+    max-width: 58px;
+    padding: 2px 5px;
+    font-size: .66rem;
+  }
+
+  .slot-editor-console {
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .action-drawer summary {
+    min-height: 48px;
+    padding: 0 11px;
+    font-size: .78rem;
+  }
+
+  .action-card {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .action-card h3 {
+    margin-bottom: 0;
+    font-size: 1rem;
+  }
+
+  .action-card p {
+    font-size: .78rem;
+  }
+
+  .action-card input,
+  .action-card select {
+    min-height: 39px;
+    padding: 9px 10px;
+  }
+
+  .media-field {
+    min-height: 60px;
+    padding: 8px;
+  }
+
+  .media-field__preview {
+    width: 46px;
+    height: 46px;
+  }
+
+  .media-field--wide .media-field__preview {
+    width: 78px;
+  }
+
+  .venue-map-head {
+    padding: 10px;
+  }
+
+  .venue-map-canvas {
+    height: clamp(260px, 42vh, 360px);
+  }
+
+  .venue-picker__map {
+    height: 190px;
+  }
+
+  .venue-spotlight {
+    gap: 7px;
+    padding: 11px;
+  }
+
+  .venue-spotlight h2 {
+    font-size: 1.28rem;
+  }
+
+  .venue-stack .venue-row {
+    flex-basis: 68%;
+    min-height: 96px;
+  }
+
+  .money-console {
+    gap: 7px;
+  }
+
+  .role-console {
+    gap: 9px;
+  }
+
+  .role-console__roles button {
+    flex-basis: 92px;
+    min-height: 58px;
+    font-size: .68rem;
+  }
+
+  .selected-role-card--game {
+    padding: 10px;
+  }
+
+  .selected-role-card--game strong,
+  .selected-role-card--game span {
+    line-height: 1.2;
+  }
+
+  .game-tabbar {
+    bottom: 7px;
+    width: min(520px, calc(100% - 14px));
+    gap: 5px;
+    padding: 7px;
+    border-radius: 12px;
+  }
+
+  .game-tabbar button {
+    min-height: 54px;
+    border-radius: 10px;
+    font-size: .67rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .screen-header {
+    padding: 10px;
+  }
+
+  .screen-header h1 {
+    margin-bottom: 0;
+    font-size: clamp(1.65rem, 7.2vw, 2.2rem);
+  }
+
+  .screen-header p {
+    font-size: .86rem;
+    line-height: 1.32;
+  }
+
+  .match-detail-console__stage {
+    grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .match-detail-console__stage button {
+    min-height: 76px;
+    gap: 5px;
+    padding: 7px 5px;
+  }
+
+  .match-detail-console__stage .team-crest--large {
+    width: 44px;
+    height: 49px;
+  }
+
+  .match-detail-console__stage strong {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .78rem;
+  }
+
+  .match-detail-console__stage em {
+    min-height: 40px;
+    font-size: .86rem;
+  }
+
+  .match-detail-console footer button {
+    min-height: 38px;
+    padding: 7px 9px;
+    font-size: .82rem;
+  }
+
+  .standings-compact {
+    gap: 7px;
+  }
+
+  .standings-row {
+    grid-template-columns: 24px 28px 44px minmax(0, 1fr) auto;
+    gap: 6px;
+    min-height: 46px;
+    padding: 7px;
+  }
+
+  .standings-row > span {
+    width: 22px;
+    height: 22px;
+    font-size: .78rem;
+  }
+
+  .standings-row .team-crest {
+    width: 24px;
+    height: 27px;
+  }
+
+  .standings-row strong,
+  .standings-row b {
+    font-size: .86rem;
+  }
+
+  .standings-row small {
+    grid-column: 4 / -1;
+    font-size: .68rem;
+    line-height: 1.1;
+  }
+
+  .groups-console article div {
+    grid-template-columns: 22px 26px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .groups-console small {
+    font-size: .72rem;
+  }
+
+  .venue-location-tools {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .venue-location-tools button {
+    min-height: 38px;
+    padding: 8px 9px;
+    font-size: .84rem;
+    line-height: 1.12;
+  }
+
+  .venue-location-tools span {
+    padding: 7px 8px;
+    font-size: .62rem;
+  }
+}

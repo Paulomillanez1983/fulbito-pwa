@@ -13,13 +13,13 @@ export const roleCatalog: Record<AppRole, {
     actions: ["Completar perfil", "Confirmar asistencia", "Pedir sumarse a un equipo"]
   },
   captain: {
-    label: "Capitan / DT",
+    label: "Capitan/DT",
     headline: "Gestiona tu club de barrio",
     consumes: ["Calendario del equipo", "Rivales", "Plantel", "Resultados pendientes"],
     actions: ["Crear equipo", "Subir escudo", "Invitar jugadores", "Cargar formacion", "Confirmar resultado"]
   },
   venue_owner: {
-    label: "Duenio de cancha",
+    label: "Cancha",
     headline: "Convierte horarios en torneos",
     consumes: ["Reservas", "Partidos en sede", "Ingresos", "Resultados por validar"],
     actions: ["Registrar cancha", "Definir precio por hora", "Crear torneo", "Validar resultados"]
@@ -31,7 +31,7 @@ export const roleCatalog: Record<AppRole, {
     actions: ["Crear torneo", "Aprobar equipos", "Asignar canchas", "Cerrar fechas"]
   },
   referee: {
-    label: "Arbitro / veedor",
+    label: "Veedor",
     headline: "Carga el resultado oficial",
     consumes: ["Partidos asignados", "Planteles", "Historial de incidencias"],
     actions: ["Cargar marcador", "Registrar tarjetas", "Elegir MVP", "Enviar acta"]

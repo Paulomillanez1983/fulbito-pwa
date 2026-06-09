@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ChangeEvent } from "react";
 import { useFormStatus } from "react-dom";
-import { Flag, LoaderCircle, MapPinned, ShieldPlus, UserPlus } from "lucide-react";
+import { Camera, Flag, LoaderCircle, LocateFixed, MapPinned, ShieldPlus, UserPlus } from "lucide-react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ArenaData } from "@/lib/types";
 import type { Map, Marker } from "maplibre-gl";
@@ -35,10 +36,53 @@ function SubmitButton({ idle, pending }: { idle: string; pending: string }) {
   );
 }
 
-const imageTargets: Record<MediaBucket, { width: number; height: number; quality: number }> = {
-  "team-badges": { width: 512, height: 512, quality: 0.82 },
-  "player-photos": { width: 512, height: 512, quality: 0.82 },
-  "venue-photos": { width: 1280, height: 720, quality: 0.78 }
+function MediaField({
+  name,
+  accept,
+  label,
+  helper,
+  variant = "square"
+}: {
+  name: string;
+  accept: string;
+  label: string;
+  helper: string;
+  variant?: "crest" | "avatar" | "wide" | "square";
+}) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [filename, setFilename] = useState("");
+
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
+
+  function onFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setFilename(file?.name ?? "");
+    setPreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  }
+
+  return (
+    <label className={`media-field media-field--${variant}`}>
+      <input accept={accept} name={name} onChange={onFileChange} type="file" />
+      <span className="media-field__preview">
+        {preview ? <img alt="" src={preview} /> : <Camera size={20} />}
+      </span>
+      <span className="media-field__copy">
+        <strong>{label}</strong>
+        <small>{filename || helper}</small>
+      </span>
+    </label>
+  );
+}
+
+const imageTargets: Record<MediaBucket, { width: number; height: number; quality: number; fit: "cover" | "contain" }> = {
+  "team-badges": { width: 512, height: 512, quality: 0.84, fit: "contain" },
+  "player-photos": { width: 512, height: 512, quality: 0.82, fit: "cover" },
+  "venue-photos": { width: 1280, height: 720, quality: 0.78, fit: "cover" }
 };
 
 async function optimizeImageFile(file: File, bucket: MediaBucket) {
@@ -47,27 +91,35 @@ async function optimizeImageFile(file: File, bucket: MediaBucket) {
 
   const target = imageTargets[bucket];
   const bitmap = await createImageBitmap(file);
-  const sourceRatio = bitmap.width / bitmap.height;
-  const targetRatio = target.width / target.height;
-  let sx = 0;
-  let sy = 0;
-  let sw = bitmap.width;
-  let sh = bitmap.height;
-
-  if (sourceRatio > targetRatio) {
-    sw = bitmap.height * targetRatio;
-    sx = (bitmap.width - sw) / 2;
-  } else {
-    sh = bitmap.width / targetRatio;
-    sy = (bitmap.height - sh) / 2;
-  }
-
   const canvas = document.createElement("canvas");
   canvas.width = target.width;
   canvas.height = target.height;
-  const context = canvas.getContext("2d", { alpha: false });
+  const context = canvas.getContext("2d", { alpha: target.fit === "contain" });
   if (!context) return file;
-  context.drawImage(bitmap, sx, sy, sw, sh, 0, 0, target.width, target.height);
+
+  if (target.fit === "contain") {
+    const scale = Math.min(target.width / bitmap.width, target.height / bitmap.height) * 0.82;
+    const dw = bitmap.width * scale;
+    const dh = bitmap.height * scale;
+    context.clearRect(0, 0, target.width, target.height);
+    context.drawImage(bitmap, (target.width - dw) / 2, (target.height - dh) / 2, dw, dh);
+  } else {
+    const sourceRatio = bitmap.width / bitmap.height;
+    const targetRatio = target.width / target.height;
+    let sx = 0;
+    let sy = 0;
+    let sw = bitmap.width;
+    let sh = bitmap.height;
+
+    if (sourceRatio > targetRatio) {
+      sw = bitmap.height * targetRatio;
+      sx = (bitmap.width - sw) / 2;
+    } else {
+      sh = bitmap.width / targetRatio;
+      sy = (bitmap.height - sh) / 2;
+    }
+    context.drawImage(bitmap, sx, sy, sw, sh, 0, 0, target.width, target.height);
+  }
   bitmap.close();
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", target.quality));
@@ -78,9 +130,19 @@ async function optimizeImageFile(file: File, bucket: MediaBucket) {
 
 function VenueLocationPicker() {
   const [coordinates, setCoordinates] = useState({ latitude: -34.6037, longitude: -58.3816 });
+  const [locationReady, setLocationReady] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [status, setStatus] = useState("Usa tu ubicacion actual o toca el mapa para confirmar la sede.");
   const mapNode = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const markerRef = useRef<Marker | null>(null);
+
+  function setMapPoint(next: { latitude: number; longitude: number }, ready = true) {
+    setCoordinates(next);
+    setLocationReady(ready);
+    markerRef.current?.setLngLat([next.longitude, next.latitude]);
+    mapRef.current?.flyTo({ center: [next.longitude, next.latitude], zoom: ready ? 15 : 12.4 });
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -108,13 +170,14 @@ function VenueLocationPicker() {
 
       marker.on("dragend", () => {
         const point = marker.getLngLat();
-        setCoordinates({ latitude: Number(point.lat.toFixed(6)), longitude: Number(point.lng.toFixed(6)) });
+        setMapPoint({ latitude: Number(point.lat.toFixed(6)), longitude: Number(point.lng.toFixed(6)) });
+        setStatus("Ubicacion ajustada desde el puntero.");
       });
 
       map.on("click", (event) => {
         const next = { latitude: Number(event.lngLat.lat.toFixed(6)), longitude: Number(event.lngLat.lng.toFixed(6)) };
-        marker.setLngLat([next.longitude, next.latitude]);
-        setCoordinates(next);
+        setMapPoint(next);
+        setStatus("Ubicacion confirmada desde el mapa.");
       });
 
       mapRef.current = map;
@@ -129,12 +192,45 @@ function VenueLocationPicker() {
     };
   }, []);
 
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      setStatus("Tu navegador no permite tomar ubicacion actual. Toca el mapa para marcar la cancha.");
+      return;
+    }
+
+    setLocating(true);
+    setStatus("Buscando tu ubicacion actual...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const next = {
+          latitude: Number(position.coords.latitude.toFixed(6)),
+          longitude: Number(position.coords.longitude.toFixed(6))
+        };
+        setMapPoint(next);
+        setStatus("Ubicacion actual tomada. Si no es exacta, mueve el puntero.");
+        setLocating(false);
+      },
+      () => {
+        setStatus("No se pudo tomar tu ubicacion. Toca el mapa o mueve el puntero.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, maximumAge: 60000, timeout: 12000 }
+    );
+  }
+
   return (
     <div className="venue-picker">
-      <input name="latitude" type="hidden" value={coordinates.latitude} />
-      <input name="longitude" type="hidden" value={coordinates.longitude} />
+      <input name="latitude" type="hidden" value={locationReady ? coordinates.latitude : ""} />
+      <input name="longitude" type="hidden" value={locationReady ? coordinates.longitude : ""} />
+      <div className="venue-location-tools">
+        <button disabled={locating} onClick={useCurrentLocation} type="button">
+          {locating ? <LoaderCircle className="button-spinner" size={16} /> : <LocateFixed size={16} />}
+          {locating ? "Buscando ubicacion" : "Usar mi ubicacion actual"}
+        </button>
+        <span className={locationReady ? "is-ready" : ""}>{locationReady ? "Ubicacion lista" : "Pendiente"}</span>
+      </div>
       <div className="venue-picker__map" ref={mapNode} />
-      <p>Mové el marcador o tocá el mapa para ubicar la cancha.</p>
+      <p>{status}</p>
     </div>
   );
 }
@@ -211,6 +307,13 @@ export function ArenaActions({
     setMessage("");
     const name = String(formData.get("venueName") || "").trim();
     if (!name) return setMessage("La cancha necesita nombre.");
+    const latitudeValue = String(formData.get("latitude") || "");
+    const longitudeValue = String(formData.get("longitude") || "");
+    const latitude = Number(latitudeValue);
+    const longitude = Number(longitudeValue);
+    if (!latitudeValue || !longitudeValue || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      return setMessage("Selecciona la ubicacion de la cancha con el boton o el mapa.");
+    }
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Primero entra con Google.");
     let coverUrl: string | null = null;
@@ -226,8 +329,8 @@ export function ArenaActions({
       neighborhood: String(formData.get("venueNeighborhood") || "").trim() || "Barrio sin cargar",
       address: String(formData.get("venueAddress") || "").trim() || null,
       surface: String(formData.get("venueSurface") || "").trim() || "Sintetico",
-      latitude: Number(formData.get("latitude") || 0) || null,
-      longitude: Number(formData.get("longitude") || 0) || null,
+      latitude,
+      longitude,
       price_per_hour: Number(formData.get("pricePerHour") || 0),
       inscription_fee: Number(formData.get("inscriptionFee") || 0),
       cover_url: coverUrl,
@@ -291,7 +394,7 @@ export function ArenaActions({
           <input name="teamName" placeholder="Nombre del club" />
           <input name="shortName" maxLength={4} placeholder="Sigla" />
           <input name="neighborhood" placeholder="Barrio" />
-          <input name="badgeFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" />
+          <MediaField accept="image/png,image/jpeg,image/webp,image/svg+xml" helper="PNG, JPG, WebP o SVG. Se ajusta al escudo." label="Escudo del equipo" name="badgeFile" variant="crest" />
           <input name="primaryColor" type="color" defaultValue="#eec15c" />
           <SubmitButton idle="Guardar equipo" pending="Creando equipo" />
         </form> : null}
@@ -307,7 +410,7 @@ export function ArenaActions({
           <VenueLocationPicker />
           <input name="pricePerHour" inputMode="numeric" placeholder="Precio por hora" />
           <input name="inscriptionFee" inputMode="numeric" placeholder="Inscripcion sugerida" />
-          <input name="venuePhoto" type="file" accept="image/png,image/jpeg,image/webp" />
+          <MediaField accept="image/png,image/jpeg,image/webp" helper="Foto horizontal optimizada para portada." label="Foto de la cancha" name="venuePhoto" variant="wide" />
           <SubmitButton idle="Guardar cancha" pending="Registrando cancha" />
         </form> : null}
 
@@ -324,7 +427,7 @@ export function ArenaActions({
           <input name="alias" placeholder="Apodo" />
           <input name="jerseyNumber" inputMode="numeric" placeholder="Dorsal" defaultValue={slotDraft?.jersey} />
           <input name="position" placeholder="Posicion" defaultValue={slotDraft?.position} />
-          <input name="playerPhoto" type="file" accept="image/png,image/jpeg,image/webp" />
+          <MediaField accept="image/png,image/jpeg,image/webp" helper="Foto cuadrada. Se recorta al rostro." label="Foto del jugador" name="playerPhoto" variant="avatar" />
           <SubmitButton idle={mode === "slot" ? "Guardar en posicion" : "Guardar jugador"} pending="Guardando jugador" />
         </form> : null}
 
