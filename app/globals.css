@@ -5107,3 +5107,71 @@ body::after {
     width: 174vw;
   }
 }
+
+/* Raster stadium background pass: use the generated field scene instead of CSS-only pitch layers. */
+body::before {
+  background-image:
+    linear-gradient(180deg, rgba(1,5,12,.36) 0 22%, rgba(1,5,12,.08) 48%, rgba(1,5,12,.18) 72%, rgba(1,5,12,.48) 100%),
+    radial-gradient(circle at 50% 34%, rgba(57,235,255,.13), transparent 34%),
+    url("/assets/arena-stadium-bg-v2.webp");
+  background-position: center center, center center, center bottom;
+  background-size: cover, cover, cover;
+  opacity: .88;
+  filter: saturate(1.12) contrast(1.04);
+}
+
+body::after,
+.game-app-shell::before,
+.game-app-shell::after,
+.game-screen::before,
+.game-screen::after {
+  display: none;
+}
+
+.screen-header,
+.console-panel,
+.match-tile,
+.mini-stat,
+.team-row,
+.venue-row,
+.standings-compact article,
+.player-strip article,
+.player-strip button {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.025)),
+    rgba(7, 12, 22, .74);
+  backdrop-filter: blur(18px) saturate(1.15);
+}
+
+.console-hero-panel--2026 {
+  background:
+    radial-gradient(circle at 84% 39%, rgba(255, 210, 102, .28), transparent 23%),
+    radial-gradient(circle at 22% 16%, rgba(57,235,255,.18), transparent 28%),
+    linear-gradient(90deg, rgba(4,8,16,.86) 0 51%, rgba(4,8,16,.58) 58%, rgba(4,8,16,.28) 100%),
+    url("/assets/arena-cup.svg") right 26px center / min(330px, 46vw) auto no-repeat,
+    rgba(4, 8, 16, .52);
+}
+
+.match-tile--featured,
+.mini-stat {
+  background:
+    radial-gradient(circle at 82% 20%, rgba(57,235,255,.12), transparent 30%),
+    linear-gradient(180deg, rgba(14,24,39,.82), rgba(4,8,16,.68));
+}
+
+@media (max-width: 760px) {
+  body::before {
+    background-position: center center, center center, center bottom;
+    background-size: cover, cover, auto 100dvh;
+    opacity: .92;
+  }
+
+  .console-hero-panel--2026 {
+    background:
+      radial-gradient(circle at 83% 26%, rgba(255, 210, 102, .23), transparent 27%),
+      radial-gradient(circle at 24% 16%, rgba(57,235,255,.16), transparent 30%),
+      linear-gradient(180deg, rgba(4,8,16,.72), rgba(4,8,16,.9)),
+      url("/assets/arena-cup.svg") right -16px top 28px / 210px auto no-repeat,
+      rgba(4, 8, 16, .5);
+  }
+}
