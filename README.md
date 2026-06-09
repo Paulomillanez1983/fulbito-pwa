@@ -44,7 +44,7 @@ Variables:
 
 ```text
 NEXT_PUBLIC_SITE_URL=https://fulbito-pwa.vercel.app
-NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://tlggovsdkeptwsyytbsz.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 ```
 
@@ -53,7 +53,10 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxx
 Proyecto separado:
 
 ```text
-fulbito-arena
+Name: fulbito-arena
+Ref: tlggovsdkeptwsyytbsz
+URL: https://tlggovsdkeptwsyytbsz.supabase.co
+Region: sa-east-1
 ```
 
 Aplicar migraciones:
@@ -62,11 +65,33 @@ Aplicar migraciones:
 supabase db push --linked --yes
 ```
 
-La migracion inicial crea tablas, policies RLS, buckets de Storage y demo online.
+La migracion inicial crea:
+
+- Tablas: `profiles`, `user_roles`, `venues`, `teams`, `team_members`, `tournaments`, `tournament_teams`, `matches`, `match_result_submissions`, `result_confirmations`, `lineups`, `lineup_slots`.
+- RLS activo en todas las tablas publicas.
+- Buckets publicos de lectura y upload autenticado: `team-badges`, `player-photos`, `venue-photos`.
+- Demo online con canchas, equipos, planteles, torneo, fixture y tabla.
 
 ## Google OAuth
 
 El codigo ya llama a Supabase Auth con provider `google`. Para que el login funcione en produccion, el proveedor Google debe estar habilitado en Supabase Dashboard con Client ID/Secret de Google Cloud y redirects permitidos.
+
+Callback autorizado en Google Cloud:
+
+```text
+https://tlggovsdkeptwsyytbsz.supabase.co/auth/v1/callback
+```
+
+Redirects permitidos en Supabase Auth:
+
+```text
+https://fulbito-pwa.vercel.app/**
+https://*.vercel.app/**
+http://localhost:3000/**
+http://127.0.0.1:3000/**
+```
+
+No usar `service_role` en el frontend. La app solo necesita la URL publica y la publishable key; permisos de escritura quedan controlados por Auth + RLS.
 
 ## Assets
 
