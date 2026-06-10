@@ -2516,6 +2516,118 @@ body::after {
   width: 100%;
 }
 
+.player-invite-panel,
+.player-self-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(66,230,140,.22);
+  border-radius: 14px;
+  padding: 13px;
+  background:
+    radial-gradient(circle at 92% 0, rgba(66,230,140,.16), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025)),
+    rgba(4, 12, 18, .84);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.player-invite-panel {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.player-invite-panel span,
+.player-invite-panel strong,
+.player-invite-panel p,
+.player-self-panel span,
+.player-self-panel strong,
+.player-self-panel small {
+  display: block;
+}
+
+.player-invite-panel span,
+.player-self-panel span {
+  color: #8dffbd;
+  font-size: .72rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.player-invite-panel strong,
+.player-self-panel strong {
+  color: #fff8e8;
+  font-size: 1.05rem;
+}
+
+.player-invite-panel p,
+.player-self-panel small {
+  margin: 4px 0 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.player-invite-panel a,
+.player-invite-panel button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  border: 1px solid rgba(66,230,140,.36);
+  border-radius: 11px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(66,230,140,.26), rgba(52,201,255,.12));
+  color: #e8fff1;
+  font-weight: 1000;
+  text-align: center;
+  text-decoration: none;
+}
+
+.player-invite-panel button:disabled {
+  cursor: not-allowed;
+  opacity: .68;
+}
+
+.player-self-panel > header {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.player-self-panel > header svg {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(66,230,140,.28);
+  border-radius: 12px;
+  padding: 8px;
+  background: rgba(66,230,140,.1);
+  color: #8dffbd;
+}
+
+.player-self-panel__ready {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 9px;
+  background: rgba(255,255,255,.045);
+}
+
+.player-self-panel__ready span {
+  color: var(--muted);
+  font-size: .82rem;
+  text-transform: none;
+}
+
+.action-card--self-player {
+  background:
+    radial-gradient(circle at 100% 0, rgba(66,230,140,.13), transparent 32%),
+    rgba(6, 10, 18, .82) !important;
+}
+
 .inline-whatsapp-button {
   display: inline-flex;
   align-items: center;
@@ -2556,6 +2668,10 @@ body::after {
   .hero-mark {
     width: 72px;
     height: 72px;
+  }
+
+  .player-invite-panel {
+    grid-template-columns: 1fr;
   }
 
   .role-console__roles {

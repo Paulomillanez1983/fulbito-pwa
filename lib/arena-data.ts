@@ -67,7 +67,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
       user || normalizedJoinCode ? supabase.from("tournament_teams").select("tournament_id,team_id") : emptyResult,
       user ? supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(12) : emptyResult,
       user ? supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(80) : emptyResult,
-      user ? supabase.from("account_entitlements").select("*").eq("owner_id", user.id).order("created_at", { ascending: false }) : emptyResult,
+      user ? supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }) : emptyResult,
       supabase.from("billing_plan_settings").select("*").eq("is_active", true).order("sort_order", { ascending: true })
     ]);
 

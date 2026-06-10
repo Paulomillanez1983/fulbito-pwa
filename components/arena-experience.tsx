@@ -968,6 +968,84 @@ function SplashScreen() {
   );
 }
 
+function TeamPlayerInvitePanel({
+  players,
+  rosterRule,
+  team,
+  tournament
+}: {
+  players: ArenaPlayer[];
+  rosterRule: ReturnType<typeof getRosterRule>;
+  team: ArenaTeam;
+  tournament: ArenaTournament | null;
+}) {
+  const [href, setHref] = useState("");
+  const rosterFull = players.length >= rosterRule.maxPlayers;
+
+  useEffect(() => {
+    if (!tournament?.slug || !team.slug) return;
+    const joinUrl = `${window.location.origin}/?join=${encodeURIComponent(tournament.slug)}&team=${encodeURIComponent(team.slug)}`;
+    const text = `Te invito a sumarte a ${team.name} en ${tournament.name}. Entra a ${joinUrl}, carga tu nombre, dorsal, apodo y foto para quedar en el plantel.`;
+    setHref(`https://wa.me/?text=${encodeURIComponent(text)}`);
+  }, [team.name, team.slug, tournament?.name, tournament?.slug]);
+
+  return (
+    <section className="player-invite-panel">
+      <div>
+        <span>Invitar plantel</span>
+        <strong>{players.length}/{rosterRule.maxPlayers} jugadores</strong>
+        <p>Compartile este link a los jugadores. Cada uno entra con Google y completa su propia ficha dentro de {team.name}.</p>
+      </div>
+      {href && !rosterFull ? (
+        <a href={href} rel="noreferrer" target="_blank">Invitar jugadores por WhatsApp</a>
+      ) : (
+        <button disabled type="button">{rosterFull ? "Plantel completo" : "Preparando link"}</button>
+      )}
+    </section>
+  );
+}
+
+function PlayerSelfJoinPanel({
+  data,
+  players,
+  rosterRule,
+  team
+}: {
+  data: ArenaData;
+  players: ArenaPlayer[];
+  rosterRule: ReturnType<typeof getRosterRule>;
+  team: ArenaTeam;
+}) {
+  const ownPlayer = data.user ? players.find((player) => player.profile_id === data.user?.id) : null;
+  const rosterFull = players.length >= rosterRule.maxPlayers && !ownPlayer;
+
+  return (
+    <section className="player-self-panel">
+      <header>
+        <UserCheck size={18} />
+        <div>
+          <span>Entrada de jugador</span>
+          <strong>{ownPlayer ? "Tu ficha ya esta en el plantel" : `Completa tu ficha en ${team.name}`}</strong>
+          <small>{rosterRule.label}: {rosterRule.starters} titulares + {rosterRule.substitutes} suplentes.</small>
+        </div>
+      </header>
+      {ownPlayer ? (
+        <div className="player-self-panel__ready">
+          <PlayerAvatar player={ownPlayer} />
+          <div>
+            <strong>{ownPlayer.display_name}</strong>
+            <span>#{ownPlayer.jersey_number ?? "-"} / {ownPlayer.alias ?? "Sin apodo"} / {ownPlayer.position ?? "Posicion"}</span>
+          </div>
+        </div>
+      ) : rosterFull ? (
+        <p>El plantel esta completo. Pedile al capitan que libere un lugar o cambie la convocatoria.</p>
+      ) : (
+        <ArenaActions data={data} mode="self-player" selectedTeamId={team.id} />
+      )}
+    </section>
+  );
+}
+
 export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: ArenaData; joinCode?: string; inviteTeamCode?: string }) {
   const inviteMode = Boolean(joinCode && data.activeTournament);
   const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
@@ -976,7 +1054,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   const invitedTeam = inviteTeamCode
     ? data.teams.find((team) => team.slug === inviteTeamCode || team.id === inviteTeamCode || team.short_name.toLowerCase() === inviteTeamCode.toLowerCase())
     : null;
-  const inferredTeam = ownedTeam ?? memberTeam ?? invitedTeam ?? (inviteMode ? null : data.teams[0] ?? null);
+  const playerInviteMode = Boolean(inviteMode && inviteTeamCode && invitedTeam);
+  const inferredTeam = invitedTeam ?? ownedTeam ?? memberTeam ?? (inviteMode ? null : data.teams[0] ?? null);
 
   const [showSplash, setShowSplash] = useState(true);
   const [active, setActive] = useState<TabId>(() => inviteMode && data.user ? "squad" : "home");
@@ -1114,11 +1193,11 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           <section className="join-tournament-banner join-tournament-banner--priority">
             <Trophy size={20} />
             <div>
-              <span>Invitacion recibida</span>
-              <strong>{data.activeTournament?.name}</strong>
-              <small>Este link te lleva a la misma copa que creo el organizador.</small>
+              <span>{playerInviteMode ? "Invitacion al plantel" : "Invitacion recibida"}</span>
+              <strong>{playerInviteMode ? invitedTeam?.name : data.activeTournament?.name}</strong>
+              <small>{playerInviteMode ? `Este link te suma al equipo en ${data.activeTournament?.name}.` : "Este link te lleva a la misma copa que creo el organizador."}</small>
             </div>
-            <button onClick={() => (data.user ? setActive("squad") : openLoginPanel())} type="button">Cargar equipo</button>
+            <button onClick={() => (data.user ? setActive("squad") : openLoginPanel())} type="button">{playerInviteMode ? "Cargar ficha" : "Cargar equipo"}</button>
           </section>
         ) : null}
 
@@ -1155,13 +1234,17 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
 
         <section className="console-panel">
           <ScreenHeader
-            eyebrow={inviteMode ? "Entrada de equipo" : data.user ? "Tu arena" : "Crear copa"}
-            title={inviteMode ? data.user ? "Carga tu club invitado" : "Entra para sumarte" : data.user ? roleCatalog[activeRole].label : "Crea tu Mundial barrial"}
+            eyebrow={inviteMode ? playerInviteMode ? "Entrada de jugador" : "Entrada de equipo" : data.user ? "Tu arena" : "Crear copa"}
+            title={inviteMode ? data.user ? playerInviteMode ? "Completa tu ficha" : "Carga tu club invitado" : "Entra para sumarte" : data.user ? roleCatalog[activeRole].label : "Crea tu Mundial barrial"}
           >
             {inviteMode
               ? data.user
-                ? "Completa o inscribi tu equipo en esta copa. Despues podes volver al inicio para crear otra arena."
-                : "Primero entra con Google. Al volver, Fulbito te lleva directo a cargar el equipo para esta copa."
+                ? playerInviteMode
+                  ? "Carga tus datos como jugador para que el capitan te vea en el plantel."
+                  : "Completa o inscribi tu equipo en esta copa. Despues podes volver al inicio para crear otra arena."
+                : playerInviteMode
+                  ? "Primero entra con Google. Al volver, Fulbito te lleva directo a completar tu ficha."
+                  : "Primero entra con Google. Al volver, Fulbito te lleva directo a cargar el equipo para esta copa."
               : data.user
               ? "Elegi como participas hoy: jugador, capitan, cancha, organizador o veedor. Cada rol abre acciones distintas."
               : "Entra con Google para armar una copa, elegir formato, invitar equipos y seguir el torneo desde el celular."}
@@ -1169,7 +1252,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           {inviteMode && data.user ? (
             <div className="join-focus-actions">
               <button className="join-focus-button" onClick={() => setActive("squad")} type="button">
-                Cargar equipo en {data.activeTournament?.name}
+                {playerInviteMode ? `Completar ficha en ${invitedTeam?.name}` : `Cargar equipo en ${data.activeTournament?.name}`}
                 <ChevronRight size={18} />
               </button>
               <button className="join-secondary-button" onClick={() => { window.location.href = "/"; }} type="button">
@@ -1292,6 +1375,12 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
             ? `${rosterRule.label}: hasta ${rosterRule.maxPlayers} jugadores (${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes).`
             : "Toca una posicion del campo para cargar jugador. Cambia de equipo desde el selector."}
         </ScreenHeader>
+        {isTeamManager && data.activeTournament ? (
+          <TeamPlayerInvitePanel players={selectedPlayers} rosterRule={rosterRule} team={selectedTeam} tournament={data.activeTournament} />
+        ) : null}
+        {data.user && (playerInviteMode || (selectedTeam.owner_id === data.user.id && !selectedPlayers.some((player) => player.profile_id === data.user?.id))) ? (
+          <PlayerSelfJoinPanel data={data} players={selectedPlayers} rosterRule={rosterRule} team={selectedTeam} />
+        ) : null}
         <FormationPanel
           isManager={isTeamManager}
           mode={formationMode}
