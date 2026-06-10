@@ -2200,9 +2200,11 @@ body::after {
 
 .cup-tier-selector {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(132px, 1fr);
   gap: 8px;
   overflow-x: auto;
+  padding-bottom: 2px;
 }
 
 .cup-tier-selector button {
@@ -2224,7 +2226,6 @@ body::after {
 .cup-tier-selector button strong {
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .cup-tier-selector button span {
@@ -2232,11 +2233,13 @@ body::after {
   font-size: .64rem;
   font-weight: 1000;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .cup-tier-selector button strong {
   font-size: .82rem;
   font-weight: 1000;
+  line-height: 1.08;
 }
 
 .cup-tier-selector button.is-active {
