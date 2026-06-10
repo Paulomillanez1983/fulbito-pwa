@@ -1,4 +1,4 @@
-import type { BillingPlanCode, PaymentRequest } from "@/lib/types";
+import type { BillingPlanCode, BillingPlanSetting, PaymentRequest } from "@/lib/types";
 
 export type PaymentTargetType = "team" | "tournament" | "sponsor" | "venue";
 
@@ -65,4 +65,23 @@ export const paymentStatusMeta: Record<PaymentRequest["status"], { label: string
 
 export function formatPaymentMoney(value: number) {
   return `$ ${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+}
+
+export function mergePaymentPlans(settings: BillingPlanSetting[] = []) {
+  if (!settings.length) return paymentPlans;
+  const byCode = new Map(settings.map((setting) => [setting.plan_code, setting]));
+  return paymentPlans
+    .map((plan) => {
+      const setting = byCode.get(plan.code);
+      if (!setting || !setting.is_active) return setting?.is_active === false ? null : plan;
+      return {
+        ...plan,
+        title: setting.title,
+        amount: setting.amount,
+        kicker: setting.kicker,
+        description: setting.description,
+        features: setting.features.length ? setting.features : plan.features
+      };
+    })
+    .filter((plan): plan is PaymentPlan => Boolean(plan));
 }

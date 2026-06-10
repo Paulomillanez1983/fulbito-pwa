@@ -238,5 +238,6 @@ export const demoArenaData: ArenaData = {
   standings: computeStandings(teams, relatedMatches),
   paymentRequests: [],
   paymentMessages: [],
-  entitlements: []
+  entitlements: [],
+  billingPlans: []
 };

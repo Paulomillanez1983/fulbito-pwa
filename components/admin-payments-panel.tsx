@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { CheckCircle2, Clock3, ExternalLink, LoaderCircle, MessageCircle, Send, XCircle } from "lucide-react";
-import { formatPaymentMoney, paymentStatusMeta } from "@/lib/payments";
+import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AccountEntitlement, AppRole, PaymentMessage, PaymentRequest } from "@/lib/types";
+import type { AccountEntitlement, AppRole, BillingPlanSetting, PaymentMessage, PaymentRequest } from "@/lib/types";
 
 const statusIcons: Record<PaymentRequest["status"], typeof Clock3> = {
   pending_review: Clock3,
@@ -41,17 +41,100 @@ function Requester({ profile }: { profile?: AdminProfile }) {
   );
 }
 
+function AdminPlanPrices({
+  adminId,
+  initialPlans
+}: {
+  adminId: string;
+  initialPlans: BillingPlanSetting[];
+}) {
+  const [settings, setSettings] = useState(initialPlans);
+  const [busyCode, setBusyCode] = useState("");
+  const [notice, setNotice] = useState("");
+  const plans = mergePaymentPlans(settings);
+
+  async function submit(event: FormEvent<HTMLFormElement>, planCode: BillingPlanSetting["plan_code"]) {
+    event.preventDefault();
+    setNotice("");
+    setBusyCode(planCode);
+    const form = new FormData(event.currentTarget);
+    const amount = Number(form.get("amount") || 0);
+    const plan = plans.find((item) => item.code === planCode);
+    if (!plan) {
+      setNotice("No se encontro el plan.");
+      setBusyCode("");
+      return;
+    }
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("billing_plan_settings")
+        .upsert({
+          plan_code: plan.code,
+          title: plan.title,
+          kicker: plan.kicker,
+          description: plan.description,
+          amount: Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : plan.amount,
+          features: plan.features,
+          is_active: true,
+          updated_by: adminId
+        }, { onConflict: "plan_code" })
+        .select()
+        .single();
+      if (error) throw error;
+      setSettings((current) => {
+        const next = data as BillingPlanSetting;
+        const exists = current.some((item) => item.plan_code === next.plan_code);
+        return exists ? current.map((item) => item.plan_code === next.plan_code ? next : item) : [...current, next];
+      });
+      setNotice("Precio actualizado.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo actualizar el precio.");
+    } finally {
+      setBusyCode("");
+    }
+  }
+
+  return (
+    <section className="admin-plan-prices">
+      <header>
+        <span>Precios Pro</span>
+        <h2>Modificar valores</h2>
+        <p>Estos importes se reflejan en el onboarding de usuarios sin tocar codigo.</p>
+      </header>
+      <div>
+        {plans.map((plan) => (
+          <form key={plan.code} onSubmit={(event) => submit(event, plan.code)}>
+            <div>
+              <strong>{plan.title}</strong>
+              <small>{plan.kicker}</small>
+            </div>
+            <input defaultValue={plan.amount} inputMode="numeric" name="amount" />
+            <button disabled={busyCode === plan.code} type="submit">
+              {busyCode === plan.code ? <LoaderCircle className="button-spinner" size={16} /> : null}
+              Guardar precio
+            </button>
+          </form>
+        ))}
+      </div>
+      {notice ? <p>{notice}</p> : null}
+    </section>
+  );
+}
+
 export function AdminPaymentsPanel({
   adminId,
   requests: initialRequests,
   messages: initialMessages,
   profiles,
+  billingPlans,
   roles
 }: {
   adminId: string;
   requests: PaymentRequest[];
   messages: PaymentMessage[];
   profiles: AdminProfile[];
+  billingPlans: BillingPlanSetting[];
   roles: AppRole[];
 }) {
   const [requests, setRequests] = useState(initialRequests);
@@ -191,6 +274,8 @@ export function AdminPaymentsPanel({
         <article><strong>{requests.filter((item) => item.status === "approved").length}</strong><span>Aprobados</span></article>
         <article><strong>{formatPaymentMoney(requests.reduce((total, item) => item.status === "approved" ? total + item.amount : total, 0))}</strong><span>Activado</span></article>
       </section>
+
+      <AdminPlanPrices adminId={adminId} initialPlans={billingPlans} />
 
       {notice ? <p className="admin-notice">{notice}</p> : null}
 

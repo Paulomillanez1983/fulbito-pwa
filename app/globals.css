@@ -5372,13 +5372,16 @@ body::after,
   box-shadow: 0 0 12px rgba(52,201,255,.5);
 }
 
-.plan-payment-form {
+.plan-payment-form,
+.creator-form {
   display: grid;
   gap: 8px;
 }
 
 .plan-payment-form input,
 .plan-payment-form select,
+.creator-form input,
+.creator-form select,
 .payment-thread form input,
 .admin-chat form input {
   width: 100%;
@@ -5389,6 +5392,54 @@ body::after,
   background: rgba(2,6,12,.68);
   color: var(--ink);
   outline: 0;
+}
+
+.creator-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(96px, .45fr);
+  gap: 8px;
+}
+
+.creator-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.creator-toggle button {
+  min-height: 38px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 10px;
+  background: rgba(255,255,255,.055);
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.creator-toggle button.is-active {
+  border-color: rgba(241,199,91,.42);
+  background: rgba(241,199,91,.14);
+  color: #ffe39a;
+}
+
+.inline-payment-account {
+  display: grid;
+  gap: 3px;
+  border: 1px solid rgba(241,199,91,.26);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(241,199,91,.08);
+}
+
+.inline-payment-account span,
+.inline-payment-account small {
+  color: var(--muted);
+  font-size: .78rem;
+}
+
+.inline-payment-account b {
+  color: #fff8df;
+  font-size: 1.08rem;
 }
 
 .proof-upload {
@@ -5414,6 +5465,7 @@ body::after,
 }
 
 .plan-payment-form button,
+.creator-form > button,
 .payment-thread form button,
 .admin-review-actions button,
 .admin-payment-card__body button,
@@ -5432,6 +5484,7 @@ body::after,
 }
 
 .plan-payment-form button:disabled,
+.creator-form > button:disabled,
 .payment-thread form button:disabled,
 .admin-review-actions button:disabled,
 .admin-payment-card__body button:disabled,
@@ -5566,6 +5619,19 @@ body::after,
   color: var(--muted);
 }
 
+.whatsapp-invite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid rgba(66,230,140,.3);
+  border-radius: 11px;
+  background: rgba(66,230,140,.11);
+  color: #baffd0;
+  font-weight: 1000;
+  text-decoration: none;
+}
+
 .empty-payment-state {
   margin: 0;
 }
@@ -5645,6 +5711,105 @@ body::after,
 
 .admin-stats span {
   color: var(--muted);
+}
+
+.admin-plan-prices {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 14px;
+  padding: 13px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025)),
+    rgba(5, 10, 18, .76);
+}
+
+.admin-plan-prices header {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-plan-prices header span {
+  width: max-content;
+  border: 1px solid rgba(241,199,91,.4);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(241,199,91,.12);
+  color: #ffe39a;
+  font-size: .72rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.admin-plan-prices h2,
+.admin-plan-prices p {
+  margin: 0;
+}
+
+.admin-plan-prices p {
+  color: var(--muted);
+}
+
+.admin-plan-prices > div {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-plan-prices form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 150px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 9px;
+  background: rgba(255,255,255,.04);
+}
+
+.admin-plan-prices strong,
+.admin-plan-prices small {
+  display: block;
+}
+
+.admin-plan-prices small {
+  color: var(--muted);
+}
+
+.admin-plan-prices input {
+  min-height: 40px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: rgba(2,6,12,.68);
+  color: var(--ink);
+}
+
+.admin-plan-prices button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  border: 1px solid rgba(241,199,91,.32);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255,231,134,.96), rgba(184,116,27,.96));
+  color: #06070b;
+  cursor: pointer;
+  font-weight: 1000;
+}
+
+.admin-plan-prices button:disabled {
+  cursor: wait;
+  opacity: .66;
+}
+
+.admin-plan-prices > p {
+  border: 1px solid rgba(52,201,255,.25);
+  border-radius: 10px;
+  padding: 8px;
+  background: rgba(52,201,255,.08);
+  color: #d7fbff;
 }
 
 .admin-notice {
@@ -5744,6 +5909,11 @@ body::after,
 
   .payment-plan-card {
     padding: 11px;
+  }
+
+  .creator-inline,
+  .admin-plan-prices form {
+    grid-template-columns: 1fr;
   }
 
   .payment-thread > header,

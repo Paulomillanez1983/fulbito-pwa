@@ -2,7 +2,7 @@ import { AdminPaymentsPanel } from "@/components/admin-payments-panel";
 import { LoginPanel } from "@/components/login-panel";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AppRole, PaymentMessage, PaymentRequest } from "@/lib/types";
+import type { AppRole, BillingPlanSetting, PaymentMessage, PaymentRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -63,9 +63,10 @@ export default async function AdminPage() {
     );
   }
 
-  const [requestsResult, messagesResult] = await Promise.all([
+  const [requestsResult, messagesResult, billingPlansResult] = await Promise.all([
     supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(80),
-    supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(300)
+    supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(300),
+    supabase.from("billing_plan_settings").select("*").order("sort_order", { ascending: true })
   ]);
 
   const requests = (requestsResult.data ?? []) as PaymentRequest[];
@@ -78,6 +79,7 @@ export default async function AdminPage() {
   return (
     <AdminPaymentsPanel
       adminId={user.id}
+      billingPlans={(billingPlansResult.data ?? []) as BillingPlanSetting[]}
       messages={messages}
       profiles={(profilesResult.data ?? []) as AdminProfile[]}
       requests={requests}

@@ -149,6 +149,20 @@ export type AccountEntitlement = {
   created_at: string;
 };
 
+export type BillingPlanSetting = {
+  plan_code: BillingPlanCode;
+  title: string;
+  kicker: string;
+  description: string;
+  amount: number;
+  features: string[];
+  is_active: boolean;
+  sort_order: number;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ArenaData = {
   source: "supabase" | "demo";
   configured: boolean;
@@ -162,4 +176,5 @@ export type ArenaData = {
   paymentRequests: PaymentRequest[];
   paymentMessages: PaymentMessage[];
   entitlements: AccountEntitlement[];
+  billingPlans: BillingPlanSetting[];
 };
