@@ -2026,6 +2026,257 @@ body::after {
   color: var(--muted);
 }
 
+.competition-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 999px;
+  padding: 6px;
+  background: rgba(5, 9, 17, .76);
+  backdrop-filter: blur(16px);
+}
+
+.competition-tabs button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  padding: 0 15px;
+  background: rgba(255,255,255,.045);
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 950;
+}
+
+.competition-tabs button.is-active {
+  border-color: rgba(241,199,91,.64);
+  background: linear-gradient(135deg, rgba(255,231,134,.2), rgba(52,201,255,.08));
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 rgba(241,199,91,.55);
+}
+
+.league-podium {
+  display: grid;
+  gap: 8px;
+}
+
+.classification-console,
+.competition-bracket {
+  display: grid;
+  gap: 12px;
+}
+
+.classification-console > header,
+.competition-bracket > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 2px;
+}
+
+.classification-console > header span,
+.competition-bracket > header span {
+  color: var(--gold);
+  font-size: .78rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.classification-console > header strong,
+.competition-bracket > header strong {
+  color: var(--ink);
+  font-size: 1.32rem;
+}
+
+.classification-group {
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(52,201,255,.08), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025)),
+    rgba(5, 10, 18, .82);
+}
+
+.classification-group > header,
+.classification-row {
+  display: grid;
+  grid-template-columns: 28px 34px minmax(58px, 1fr) minmax(154px, .92fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.classification-group > header {
+  min-height: 48px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  padding: 0 11px;
+}
+
+.classification-group > header strong {
+  grid-column: 1 / 4;
+  font-size: 1.02rem;
+}
+
+.classification-group > header div,
+.classification-row div {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(20px, 1fr));
+  gap: 3px;
+  text-align: center;
+}
+
+.classification-group > header div {
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 950;
+}
+
+.classification-row {
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  padding: 8px 11px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.classification-row:last-child {
+  border-bottom: 0;
+}
+
+.classification-row:hover {
+  background: rgba(255,255,255,.045);
+}
+
+.classification-row > span:first-child {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  background: rgba(241,199,91,.14);
+  color: var(--gold);
+  font-weight: 1000;
+}
+
+.classification-row strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.classification-row div {
+  color: #dfe8f3;
+  font-weight: 850;
+}
+
+.classification-row div b {
+  color: var(--gold);
+}
+
+.classification-row--empty {
+  cursor: default;
+  opacity: .58;
+}
+
+.classification-row--empty i {
+  width: 30px;
+  height: 30px;
+  border: 1px dashed rgba(255,255,255,.16);
+  border-radius: 9px;
+}
+
+.competition-bracket__scroll {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(178px, 210px);
+  gap: 14px;
+  overflow-x: auto;
+  padding: 2px 2px 8px;
+}
+
+.competition-round {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.competition-round > header {
+  display: grid;
+  gap: 3px;
+  min-height: 54px;
+  border: 1px solid rgba(241,199,91,.18);
+  border-radius: 12px;
+  padding: 9px;
+  background: rgba(241,199,91,.08);
+}
+
+.competition-round > header strong,
+.competition-round > header span {
+  display: block;
+}
+
+.competition-round > header span {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 850;
+}
+
+.competition-round > div {
+  display: grid;
+  gap: 12px;
+}
+
+.competition-match-slot {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.025)),
+    rgba(5, 10, 18, .82);
+}
+
+.competition-match-slot::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -14px;
+  width: 14px;
+  border-top: 1px solid rgba(241,199,91,.26);
+}
+
+.competition-round:last-child .competition-match-slot::after {
+  display: none;
+}
+
+.competition-match-slot small {
+  color: var(--gold);
+  font-size: .66rem;
+  font-weight: 1000;
+}
+
+.competition-match-slot span {
+  display: grid;
+  align-items: center;
+  min-height: 30px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  padding: 0 8px;
+  background: rgba(255,255,255,.045);
+  color: var(--ink);
+  font-weight: 950;
+}
+
 .mini-stat--button {
   position: relative;
   border-radius: 12px;
@@ -2059,9 +2310,7 @@ body::after {
 
 .draw-live-teaser {
   display: grid;
-  grid-template-columns: 86px minmax(0, 1fr);
   gap: 12px;
-  align-items: center;
   border: 1px solid rgba(52,201,255,.22);
   border-radius: 14px;
   padding: 12px;
@@ -2072,11 +2321,18 @@ body::after {
   box-shadow: 0 20px 60px rgba(0,0,0,.34);
 }
 
+.draw-live-teaser__hero {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
 .draw-live-teaser__pot {
   position: relative;
   display: grid;
   place-items: center;
-  width: 76px;
+  width: 96px;
   aspect-ratio: 1;
   border: 1px solid rgba(241,199,91,.34);
   border-radius: 999px;
@@ -2085,6 +2341,9 @@ body::after {
     radial-gradient(circle at 50% 56%, rgba(52,201,255,.2), transparent 34%),
     rgba(4,8,14,.82);
   overflow: hidden;
+  box-shadow:
+    inset 0 0 22px rgba(52,201,255,.12),
+    0 0 28px rgba(241,199,91,.12);
 }
 
 .draw-live-teaser__pot::before {
@@ -2096,11 +2355,11 @@ body::after {
   animation: draw-pot-spin 8s linear infinite;
 }
 
-.draw-live-teaser__pot span {
+.draw-live-teaser__ball {
   position: absolute;
   display: grid;
   place-items: center;
-  width: 24px;
+  width: 25px;
   aspect-ratio: 1;
   border-radius: 999px;
   background: linear-gradient(135deg, #ffe789, #c48921);
@@ -2112,13 +2371,43 @@ body::after {
   animation-delay: var(--delay);
 }
 
+.draw-live-teaser__gate {
+  position: absolute;
+  right: 7px;
+  bottom: 18px;
+  z-index: 2;
+  width: 22px;
+  height: 13px;
+  border: 1px solid rgba(255,255,255,.34);
+  border-radius: 999px;
+  background: rgba(2,6,12,.72);
+  box-shadow: 0 0 12px rgba(52,201,255,.22);
+}
+
+.draw-live-teaser__exit-ball {
+  position: absolute;
+  right: -2px;
+  bottom: 14px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle at 32% 28%, #fff4a9, #d29626 62%, #6b3f06);
+  color: #07101a;
+  font-size: .68rem;
+  font-weight: 1000;
+  animation: draw-ball-exit 1.15s ease-in-out infinite;
+}
+
 .draw-live-teaser span,
 .draw-live-teaser strong,
 .draw-live-teaser p {
   display: block;
 }
 
-.draw-live-teaser > div:nth-child(2) > span {
+.draw-live-teaser__hero > div > span {
   color: var(--gold);
   font-size: .74rem;
   font-weight: 950;
@@ -2181,9 +2470,70 @@ body::after {
   font-weight: 850;
 }
 
+.draw-show {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 10px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(241,199,91,.1), transparent 32%),
+    rgba(2,6,12,.45);
+}
+
+.draw-show__progress {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,255,255,.1);
+}
+
+.draw-show__progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #34c9ff, #ffe077);
+  box-shadow: 0 0 16px rgba(52,201,255,.28);
+  transition: width .5s ease;
+}
+
+.draw-show__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.draw-show__meta b,
+.draw-show__meta small {
+  display: block;
+}
+
+.draw-show__meta small {
+  color: var(--muted);
+  text-align: right;
+}
+
+.draw-show__events {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.draw-show__events span {
+  flex: 0 0 auto;
+  border: 1px solid rgba(241,199,91,.18);
+  border-radius: 999px;
+  padding: 6px 8px;
+  background: rgba(241,199,91,.08);
+  color: #ffe39a;
+  font-size: .72rem;
+  font-weight: 900;
+}
+
 .draw-official-console,
 .draw-result-preview {
-  grid-column: 1 / -1;
   display: grid;
   gap: 8px;
 }
@@ -2417,6 +2767,21 @@ body::after {
 @keyframes draw-ball-float {
   0%, 100% { margin-top: -3px; }
   50% { margin-top: 5px; }
+}
+
+@keyframes draw-ball-exit {
+  0% {
+    opacity: 0;
+    transform: translate(-28px, -8px) scale(.64);
+  }
+  42% {
+    opacity: 1;
+    transform: translate(1px, 1px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(50px, 18px) scale(.86);
+  }
 }
 
 .screen-header {
@@ -6570,17 +6935,61 @@ body::after,
   }
 
   .draw-live-teaser {
-    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .draw-live-teaser__hero {
+    grid-template-columns: 74px minmax(0, 1fr);
   }
 
   .draw-live-teaser__pot {
-    width: 66px;
+    width: 68px;
+  }
+
+  .draw-live-teaser__ball {
+    width: 20px;
+    transform: rotate(var(--angle)) translateY(-18px);
+  }
+
+  .draw-live-teaser__exit-ball {
+    width: 24px;
+  }
+
+  .draw-show__meta {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .draw-show__meta small {
+    text-align: left;
   }
 
   .draw-live-teaser__actions,
   .draw-result-preview,
   .draw-official-console {
     grid-template-columns: 1fr;
+  }
+
+  .competition-tabs {
+    border-radius: 14px;
+  }
+
+  .classification-group > header,
+  .classification-row {
+    grid-template-columns: 26px 32px minmax(45px, 1fr) minmax(142px, .92fr);
+    gap: 6px;
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+
+  .classification-group > header div,
+  .classification-row div {
+    grid-template-columns: repeat(6, minmax(18px, 1fr));
+    font-size: .72rem;
+  }
+
+  .competition-bracket__scroll {
+    grid-auto-columns: minmax(158px, 182px);
   }
 
   .youtube-follow-strip {

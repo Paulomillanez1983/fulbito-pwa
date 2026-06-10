@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FormEvent, ReactNode } from "react";
 import {
   Activity,
@@ -43,6 +43,7 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaVenue, FieldMode, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
+type LeagueView = "classification" | "bracket";
 
 const tabs: Array<{ id: TabId; label: string; icon: typeof Gamepad2 }> = [
   { id: "home", label: "Inicio", icon: Gamepad2 },
@@ -315,6 +316,40 @@ function buildKnockoutRounds(teams: ArenaTeam[]) {
   return rounds;
 }
 
+function buildSimulatedDrawTeams(teams: ArenaTeam[], maxTeams: number) {
+  const plannedCount = Math.max(4, maxTeams, teams.length);
+  const nextTeams = [...teams];
+  for (let index = nextTeams.length; index < plannedCount; index += 1) {
+    const teamNumber = index + 1;
+    nextTeams.push({
+      id: `demo-team-${teamNumber}`,
+      name: `Equipo demo ${String(teamNumber).padStart(2, "0")}`,
+      slug: `equipo-demo-${teamNumber}`,
+      short_name: `D${String(teamNumber).padStart(2, "0")}`,
+      badge_url: null,
+      primary_color: index % 2 === 0 ? "#34c9ff" : "#f1c75b",
+      neighborhood: "Demo",
+      home_venue_id: null,
+      points: 0,
+      played: 0,
+      won: 0,
+      drawn: 0,
+      lost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+      goalDiff: 0
+    });
+  }
+  return nextTeams;
+}
+
+function findDrawDestination(draw: DrawResult, team: DrawResult["teams"][number]) {
+  const group = draw.groups.find((item) => item.teams.some((groupTeam) => groupTeam.id === team.id));
+  if (group) return `Grupo ${group.code}`;
+  const bracket = draw.bracket.find((slot) => slot.home === team.shortName || slot.away === team.shortName);
+  return bracket?.label ?? "Llave principal";
+}
+
 function TeamCrest({ team, size = "normal" }: { team?: ArenaTeam | null; size?: "normal" | "large" }) {
   return (
     <span className={`team-crest ${size === "large" ? "team-crest--large" : ""}`} style={{ "--crest": team?.primary_color ?? "#eec15c" } as CSSProperties}>
@@ -471,10 +506,25 @@ function DrawLiveTeaser({
   const [demoDraw, setDemoDraw] = useState<DrawResult | null>(null);
   const [officialDraw, setOfficialDraw] = useState<ArenaTournamentDraw | null>(null);
   const [stage, setStage] = useState("");
+  const [demoRunning, setDemoRunning] = useState(false);
+  const [demoProgress, setDemoProgress] = useState(0);
+  const [currentBall, setCurrentBall] = useState("");
+  const [drawEvents, setDrawEvents] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [youtubeWatchUrl, setYoutubeWatchUrl] = useState("");
+  const demoTimersRef = useRef<number[]>([]);
   const { followed: youtubeFollowed, markFollowed: markYouTubeFollowed } = useYouTubeFollowState();
+
+  function clearDemoTimers() {
+    demoTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    demoTimersRef.current = [];
+  }
+
+  useEffect(() => {
+    return () => clearDemoTimers();
+  }, []);
+
   if (!tournament) return null;
   const activeDrawTournament = tournament;
   const tournamentTeamIds = new Set(
@@ -491,24 +541,54 @@ function DrawLiveTeaser({
   const canManage = Boolean(data.user && data.user.id === activeDrawTournament.organizer_id);
   const visibleGroups = savedDraw?.groups ?? demoDraw?.groups ?? [];
   const visibleBracket = savedDraw?.bracket ?? demoDraw?.bracket ?? [];
+  const demoSecondsLeft = Math.max(0, 120 - Math.round(demoProgress * 120 / 100));
 
   function runDemoDraw() {
-    if (enrolledTeams.length < 2) {
-      setMessage("El demo necesita al menos 2 equipos inscriptos.");
-      return;
-    }
+    clearDemoTimers();
     const seed = `demo-${activeDrawTournament.id}-${Date.now()}`;
+    const simulatedTeams = buildSimulatedDrawTeams(enrolledTeams, maxTeams);
     const result = buildTournamentDraw({
-      teams: enrolledTeams,
+      teams: simulatedTeams,
       format: activeDrawTournament.format,
       maxTeams,
       seed
     });
     setDemoDraw(result);
-    setStage("Bolillero en marcha");
-    setMessage("Demo rapido: no guarda resultado y se puede repetir para revisar la experiencia visual.");
-    window.setTimeout(() => setStage("Saliendo bolillas"), 1600);
-    window.setTimeout(() => setStage(activeDrawTournament.format === "knockout" ? "Llave generada" : "Grupos generados"), 3400);
+    setDemoRunning(true);
+    setDemoProgress(0);
+    setCurrentBall("");
+    setDrawEvents([]);
+    setStage("Bolillero oficial en simulacion");
+    setMessage("Demo visual de 2 minutos: completa cupos con equipos demo, no guarda resultado y se puede repetir.");
+
+    const durationMs = 120000;
+    const progressInterval = window.setInterval(() => {
+      setDemoProgress((current) => {
+        const next = Math.min(100, current + 100 / 120);
+        if (next >= 100) window.clearInterval(progressInterval);
+        return next;
+      });
+    }, 1000);
+    demoTimersRef.current.push(progressInterval);
+
+    result.teams.forEach((team, index) => {
+      const delay = Math.round(((index + 1) / (result.teams.length + 1)) * durationMs);
+      const timer = window.setTimeout(() => {
+        const destination = findDrawDestination(result, team);
+        setCurrentBall(team.shortName);
+        setDrawEvents((current) => [`${team.shortName} -> ${destination}`, ...current].slice(0, 6));
+        setStage(index === result.teams.length - 1 ? "Ultimas bolillas" : `Bolilla ${index + 1} de ${result.teams.length}`);
+      }, delay);
+      demoTimersRef.current.push(timer);
+    });
+
+    const finishTimer = window.setTimeout(() => {
+      setDemoProgress(100);
+      setDemoRunning(false);
+      setCurrentBall("");
+      setStage(activeDrawTournament.format === "knockout" ? "Llave demo generada" : "Grupos demo generados");
+    }, durationMs);
+    demoTimersRef.current.push(finishTimer);
   }
 
   async function createOfficialDraw() {
@@ -535,24 +615,39 @@ function DrawLiveTeaser({
   }
 
   return (
-    <section className="draw-live-teaser">
-      <div className="draw-live-teaser__pot" aria-hidden="true">
-        {groupLabels.map((group, index) => (
-          <span key={group} style={{ "--angle": `${index * 88}deg`, "--delay": `${index * 120}ms` } as CSSProperties}>{group}</span>
-        ))}
+    <section className={`draw-live-teaser ${demoRunning ? "is-running" : ""}`}>
+      <div className="draw-live-teaser__hero">
+        <div className="draw-live-teaser__pot" aria-hidden="true">
+          <span className="draw-live-teaser__gate" />
+          {groupLabels.map((group, index) => (
+            <span className="draw-live-teaser__ball" key={group} style={{ "--angle": `${index * 88}deg`, "--delay": `${index * 120}ms` } as CSSProperties}>{group}</span>
+          ))}
+          {currentBall ? <span className="draw-live-teaser__exit-ball">{currentBall}</span> : null}
+        </div>
+        <div>
+          <span>Sorteo Fulbito Live</span>
+          <strong>{savedDraw ? "Sorteo oficial auditado" : isReady ? "Bolillero listo para fixture" : `${teamCount}/${maxTeams} equipos reales`}</strong>
+          <p>
+            Demo de 2 minutos con bolillas, grupos y llave visual. El oficial queda auditado y no se repite.
+          </p>
+          {stage ? <small className="draw-live-teaser__stage">{stage}</small> : null}
+        </div>
       </div>
-      <div>
-        <span>Sorteo Fulbito Live</span>
-        <strong>{savedDraw ? "Sorteo oficial auditado" : isReady ? "Bolillero listo para fixture" : `${teamCount}/${maxTeams} equipos en el bolillero`}</strong>
-        <p>
-          Demo libre para probar. Oficial: una sola ejecucion, 2 a 3 minutos de show visual,
-          grupos o llave segun formato y resultado guardado para compartir por YouTube.
-        </p>
-        {stage ? <small className="draw-live-teaser__stage">{stage}</small> : null}
+      <div className="draw-show">
+        <div className="draw-show__progress">
+          <span style={{ width: `${demoProgress}%` }} />
+        </div>
+        <div className="draw-show__meta">
+          <b>{demoRunning ? `Demo en curso ${String(Math.floor(demoSecondsLeft / 60)).padStart(2, "0")}:${String(demoSecondsLeft % 60).padStart(2, "0")}` : savedDraw ? "Resultado oficial guardado" : "Listo para probar el show"}</b>
+          <small>{currentBall ? `Sale bolilla ${currentBall}` : "Las bolillas van cayendo en grupos o llaves."}</small>
+        </div>
+        <div className="draw-show__events">
+          {drawEvents.length ? drawEvents.map((event) => <span key={event}>{event}</span>) : <span>Esperando primera extraccion</span>}
+        </div>
       </div>
       <div className="draw-live-teaser__actions">
         <button onClick={onOpenTournaments} type="button">Ver equipos</button>
-        <button onClick={runDemoDraw} type="button">Demo sorteo</button>
+        <button disabled={demoRunning} onClick={runDemoDraw} type="button">{demoRunning ? "Demo corriendo" : "Demo 2 minutos"}</button>
         {!youtubeFollowed ? (
           <a href={fulbitoLiveChannelUrl} onClick={markYouTubeFollowed} rel="noreferrer" target="_blank">
             <YouTubeLogo size={18} />
@@ -981,7 +1076,7 @@ function VenueRow({ venue, onOpen }: { venue: ArenaVenue; onOpen: () => void }) 
 
 function StandingCompact({ teams, onTeamOpen }: { teams: ArenaTeam[]; onTeamOpen: (teamId: string) => void }) {
   return (
-    <div className="standings-compact">
+    <div className="standings-compact league-podium">
       {teams.map((team, index) => (
         <button className="standings-row" key={team.id} onClick={() => onTeamOpen(team.id)} type="button">
           <span>{index + 1}</span>
@@ -992,6 +1087,72 @@ function StandingCompact({ teams, onTeamOpen }: { teams: ArenaTeam[]; onTeamOpen
         </button>
       ))}
     </div>
+  );
+}
+
+function CompetitionTabs({
+  active,
+  onChange
+}: {
+  active: LeagueView;
+  onChange: (view: LeagueView) => void;
+}) {
+  return (
+    <section className="competition-tabs" aria-label="Vista de competicion">
+      <button className={active === "classification" ? "is-active" : ""} onClick={() => onChange("classification")} type="button">Clasificacion</button>
+      <button className={active === "bracket" ? "is-active" : ""} onClick={() => onChange("bracket")} type="button">Eliminatorias</button>
+    </section>
+  );
+}
+
+function ClassificationTables({ groups, onTeamOpen }: { groups: ArenaTeam[][]; onTeamOpen: (teamId: string) => void }) {
+  return (
+    <section className="classification-console">
+      <header>
+        <span>Clasificacion</span>
+        <strong>Grupos y tabla</strong>
+      </header>
+      {groups.map((group, groupIndex) => (
+        <article className="classification-group" key={`classification-${groupIndex}`}>
+          <header>
+            <strong>Grupo {String.fromCharCode(65 + groupIndex)}</strong>
+            <div>
+              <span>PJ</span>
+              <span>G</span>
+              <span>E</span>
+              <span>P</span>
+              <span>DG</span>
+              <span>Pts</span>
+            </div>
+          </header>
+          {group.map((team, index) => (
+            <button className="classification-row" key={team.id} onClick={() => onTeamOpen(team.id)} type="button">
+              <span>{index + 1}</span>
+              <TeamCrest team={team} />
+              <strong>{team.short_name}</strong>
+              <div>
+                <span>{team.played ?? 0}</span>
+                <span>{team.won ?? 0}</span>
+                <span>{team.drawn ?? 0}</span>
+                <span>{team.lost ?? 0}</span>
+                <span>{team.goalDiff ?? 0}</span>
+                <b>{team.points ?? 0}</b>
+              </div>
+            </button>
+          ))}
+          {Array.from({ length: Math.max(0, 4 - group.length) }).map((_, index) => (
+            <div className="classification-row classification-row--empty" key={`empty-${groupIndex}-${index}`}>
+              <span>{group.length + index + 1}</span>
+              <i />
+              <strong>Por definir</strong>
+              <div>
+                <span>0</span><span>0</span><span>0</span><span>0</span><span>0</span><b>0</b>
+              </div>
+            </div>
+          ))}
+        </article>
+      ))}
+    </section>
   );
 }
 
@@ -1182,45 +1343,40 @@ function FormationPanel({
   );
 }
 
-function GroupTables({ groups }: { groups: ArenaTeam[][] }) {
+function CompetitionBracket({ rounds, teams }: { rounds: Array<{ label: string; slots: number }>; teams: ArenaTeam[] }) {
+  const seededTeams = teams.length ? teams : [];
   return (
-    <section className="groups-console">
-      {groups.map((group, groupIndex) => (
-        <article key={`group-${groupIndex}`}>
-          <header>
-            <strong>Grupo {String.fromCharCode(65 + groupIndex)}</strong>
-            <span>{group.length}/4 equipos</span>
-          </header>
-          {group.map((team, index) => (
-            <div key={team.id}>
-              <span>{index + 1}</span>
-              <TeamCrest team={team} />
-              <b>{team.short_name}</b>
-              <small>{team.points ?? 0} pts</small>
-            </div>
-          ))}
-        </article>
-      ))}
-    </section>
-  );
-}
-
-function KnockoutPath({ rounds, teams }: { rounds: Array<{ label: string; slots: number }>; teams: ArenaTeam[] }) {
-  return (
-    <section className="console-panel bracket-console bracket-console--path">
-      {rounds.map((round, index) => (
-        <article key={round.label}>
-          <span>0{index + 1}</span>
-          <strong>{round.label}</strong>
-          <small>{round.slots} clasificados</small>
-          <div>
-            {Array.from({ length: Math.min(4, Math.max(1, round.slots / 2)) }).map((_, slot) => {
-              const team = teams[(index + slot) % Math.max(teams.length, 1)];
-              return <i key={`${round.label}-${slot}`}>{team?.short_name ?? "TBD"}</i>;
-            })}
-          </div>
-        </article>
-      ))}
+    <section className="competition-bracket">
+      <header>
+        <span>Eliminatorias</span>
+        <strong>Camino a la final</strong>
+      </header>
+      <div className="competition-bracket__scroll">
+        {rounds.map((round, roundIndex) => {
+          const pairCount = Math.max(1, Math.ceil(round.slots / 2));
+          return (
+            <article className="competition-round" key={round.label}>
+              <header>
+                <strong>{round.label}</strong>
+                <span>{round.slots} clasificados</span>
+              </header>
+              <div>
+                {Array.from({ length: Math.min(pairCount, 8) }).map((_, slot) => {
+                  const home = seededTeams[(slot * 2 + roundIndex) % Math.max(seededTeams.length, 1)];
+                  const away = seededTeams[(slot * 2 + 1 + roundIndex) % Math.max(seededTeams.length, 1)];
+                  return (
+                    <div className="competition-match-slot" key={`${round.label}-${slot}`}>
+                      <small>{slot + 1 < 10 ? `P0${slot + 1}` : `P${slot + 1}`}</small>
+                      <span>{home?.short_name ?? "TBD"}</span>
+                      <span>{roundIndex === 0 ? away?.short_name ?? "TBD" : `W${slot + 1}`}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -1494,6 +1650,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
 
   const [showSplash, setShowSplash] = useState(true);
   const [active, setActive] = useState<TabId>(() => inviteMode && data.user ? "squad" : "home");
+  const [leagueView, setLeagueView] = useState<LeagueView>("classification");
   const [formationMode, setFormationMode] = useState<FieldMode>(data.activeTournament?.field_mode ?? "7v7");
   const [formationPresetId, setFormationPresetId] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].id);
   const [selectedTeamId, setSelectedTeamId] = useState(inferredTeam?.id ?? "");
@@ -1831,16 +1988,23 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   }
 
   function renderLeague() {
+    const rankingTeams = data.standings.length ? data.standings : data.teams;
     return (
       <>
         <ScreenHeader eyebrow="Camino a la copa" title="Liga">
-          Grupos de cuatro, tabla automatica y llave eliminatoria generada segun cantidad de equipos.
+          Clasificacion por grupos, tabla automatica y eliminatorias con camino visual hacia la final.
         </ScreenHeader>
+        <CompetitionTabs active={leagueView} onChange={setLeagueView} />
         {data.teams.length ? (
           <>
-            <StandingCompact onTeamOpen={openTeam} teams={data.standings} />
-            <GroupTables groups={groups} />
-            <KnockoutPath rounds={knockoutRounds} teams={data.standings.length ? data.standings : data.teams} />
+            {leagueView === "classification" ? (
+              <>
+                <StandingCompact onTeamOpen={openTeam} teams={rankingTeams} />
+                <ClassificationTables groups={groups} onTeamOpen={openTeam} />
+              </>
+            ) : (
+              <CompetitionBracket rounds={knockoutRounds} teams={rankingTeams} />
+            )}
           </>
         ) : (
           <EmptyState icon={<Trophy />} title="Sin tabla todavia">
