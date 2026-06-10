@@ -621,30 +621,39 @@ function YouTubeFollowStrip() {
 }
 
 function ArenaAdBoards() {
-  const leftSponsors = [
+  const mainSponsors = [
     <><YouTubeLogo size={14} /> Segui Fulbito TV</>,
+    "Fulbito Live",
     "TikTok @FulbitoArena",
+    "Sorteos en vivo",
+    "Sponsor local",
+    "Tu marca aca"
+  ];
+  const sideSponsors = [
+    <><YouTubeLogo size={14} /> Fulbito TV</>,
     "Coca-Cola demo",
     "Mercado Pago demo",
-    "Sponsor local",
-    "Fulbito Live"
-  ];
-  const rightSponsors = [
     "Mercado Libre demo",
-    <><YouTubeLogo size={14} /> Sorteos en vivo</>,
-    "Tu marca aca",
     "Finales por YouTube",
-    "Fulbito Arena",
-    "Publicidad barrial"
+    "Publicidad barrial",
+    "Fulbito Arena"
   ];
+  const repeatedMainSponsors = [...mainSponsors, ...mainSponsors, ...mainSponsors];
+  const repeatedSideSponsors = [...sideSponsors, ...sideSponsors, ...sideSponsors];
 
   return (
     <div aria-hidden="true" className="arena-ad-boards">
-      <div className="arena-ad-boards__lane arena-ad-boards__lane--left">
-        {[...leftSponsors, ...leftSponsors].map((item, index) => <span key={`left-${index}`}>{item}</span>)}
+      <div className="arena-ad-boards__lane arena-ad-boards__lane--front">
+        {repeatedMainSponsors.map((item, index) => <span key={`front-${index}`}>{item}</span>)}
       </div>
-      <div className="arena-ad-boards__lane arena-ad-boards__lane--right">
-        {[...rightSponsors, ...rightSponsors].map((item, index) => <span key={`right-${index}`}>{item}</span>)}
+      <div className="arena-ad-boards__lane arena-ad-boards__lane--back">
+        {repeatedSideSponsors.map((item, index) => <span key={`back-${index}`}>{item}</span>)}
+      </div>
+      <div className="arena-ad-boards__lane arena-ad-boards__lane--side arena-ad-boards__lane--side-left">
+        {repeatedSideSponsors.map((item, index) => <span key={`side-left-${index}`}>{item}</span>)}
+      </div>
+      <div className="arena-ad-boards__lane arena-ad-boards__lane--side arena-ad-boards__lane--side-right">
+        {repeatedMainSponsors.map((item, index) => <span key={`side-right-${index}`}>{item}</span>)}
       </div>
     </div>
   );

@@ -1741,8 +1741,8 @@ th {
 .game-tabbar {
   position: fixed;
   left: 50%;
-  bottom: 12px;
-  z-index: 60;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 90;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 6px;
@@ -1876,7 +1876,7 @@ th {
   }
 
   .game-tabbar {
-    bottom: 10px;
+    bottom: calc(10px + env(safe-area-inset-bottom));
   }
 }
 
@@ -2297,36 +2297,56 @@ body::after {
   pointer-events: none;
   position: fixed;
   left: 50%;
-  bottom: 106px;
+  bottom: calc(104px + env(safe-area-inset-bottom));
   z-index: 1;
-  width: min(1220px, 112vw);
+  width: min(1180px, 118vw);
+  height: 150px;
   transform: translateX(-50%);
-  opacity: .96;
-  overflow: hidden;
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  opacity: .98;
+  overflow: visible;
+  filter: drop-shadow(0 10px 26px rgba(0,0,0,.72));
 }
 
 .arena-ad-boards__lane {
   position: absolute;
   display: flex;
-  gap: 8px;
-  width: 150%;
+  align-items: center;
+  gap: 7px;
+  width: max-content;
+  min-width: 220%;
   overflow: visible;
-  filter: drop-shadow(0 4px 10px rgba(0,0,0,.5));
   will-change: transform;
 }
 
-.arena-ad-boards__lane--left {
-  left: -8%;
-  bottom: 68px;
-  animation: arena-board-scroll-left 18s linear infinite;
+.arena-ad-boards__lane--front {
+  left: -32%;
+  bottom: 9px;
+  transform-origin: 50% 100%;
+  animation: arena-board-scroll-front 24s linear infinite;
 }
 
-.arena-ad-boards__lane--right {
-  right: -8%;
-  bottom: 34px;
-  justify-content: flex-start;
-  animation: arena-board-scroll-right 22s linear infinite;
+.arena-ad-boards__lane--back {
+  left: -18%;
+  bottom: 58px;
+  opacity: .74;
+  transform-origin: 50% 100%;
+  animation: arena-board-scroll-back 31s linear infinite;
+}
+
+.arena-ad-boards__lane--side {
+  bottom: 46px;
+  min-width: 138%;
+  opacity: .82;
+}
+
+.arena-ad-boards__lane--side-left {
+  left: -46%;
+  animation: arena-board-scroll-side-left 26s linear infinite;
+}
+
+.arena-ad-boards__lane--side-right {
+  right: -46%;
+  animation: arena-board-scroll-side-right 28s linear infinite;
 }
 
 .arena-ad-boards span {
@@ -2335,20 +2355,20 @@ body::after {
   justify-content: center;
   gap: 6px;
   flex: 0 0 auto;
-  min-width: 172px;
-  min-height: 34px;
+  min-width: 178px;
+  min-height: 35px;
   border: 1px solid rgba(241,199,91,.62);
   border-radius: 4px;
   padding: 0 12px;
   background:
-    linear-gradient(90deg, rgba(255,255,255,.16), rgba(255,255,255,.04)),
-    rgba(2,7,14,.94);
+    linear-gradient(90deg, rgba(255,255,255,.22), rgba(255,255,255,.06)),
+    rgba(2,7,14,.98);
   color: #ffe799;
-  font-size: .72rem;
+  font-size: .74rem;
   font-weight: 1000;
   letter-spacing: .03em;
   line-height: 1;
-  text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(255,231,153,.18);
+  text-shadow: 0 1px 2px rgba(0,0,0,1), 0 0 12px rgba(255,231,153,.3);
   text-transform: uppercase;
   white-space: nowrap;
   animation: arena-board-glow 3.8s ease-in-out infinite alternate;
@@ -2364,9 +2384,7 @@ body::after {
   color: #f8f3e6;
 }
 
-.game-topbar,
-.game-screen,
-.game-tabbar {
+.game-screen {
   position: relative;
   z-index: 2;
 }
@@ -2380,21 +2398,39 @@ body::after {
   }
 }
 
-@keyframes arena-board-scroll-left {
+@keyframes arena-board-scroll-front {
   from {
-    transform: translateX(0) perspective(680px) rotateX(44deg) rotateZ(.6deg);
+    transform: translateX(0) perspective(760px) rotateX(43deg);
   }
   to {
-    transform: translateX(-38%) perspective(680px) rotateX(44deg) rotateZ(.6deg);
+    transform: translateX(-34%) perspective(760px) rotateX(43deg);
   }
 }
 
-@keyframes arena-board-scroll-right {
+@keyframes arena-board-scroll-back {
   from {
-    transform: translateX(-38%) perspective(680px) rotateX(44deg) rotateZ(-.6deg);
+    transform: translateX(-34%) perspective(820px) rotateX(52deg) scale(.9);
   }
   to {
-    transform: translateX(0) perspective(680px) rotateX(44deg) rotateZ(-.6deg);
+    transform: translateX(0) perspective(820px) rotateX(52deg) scale(.9);
+  }
+}
+
+@keyframes arena-board-scroll-side-left {
+  from {
+    transform: translateX(0) perspective(760px) rotateX(50deg) rotateZ(7deg) scale(.86);
+  }
+  to {
+    transform: translateX(-30%) perspective(760px) rotateX(50deg) rotateZ(7deg) scale(.86);
+  }
+}
+
+@keyframes arena-board-scroll-side-right {
+  from {
+    transform: translateX(-30%) perspective(760px) rotateX(50deg) rotateZ(-7deg) scale(.86);
+  }
+  to {
+    transform: translateX(0) perspective(760px) rotateX(50deg) rotateZ(-7deg) scale(.86);
   }
 }
 
@@ -4170,7 +4206,7 @@ body {
   }
 
   .game-tabbar {
-    bottom: 7px;
+    bottom: calc(7px + env(safe-area-inset-bottom));
     width: min(520px, calc(100% - 14px));
     gap: 5px;
     padding: 7px;
@@ -6534,31 +6570,45 @@ body::after,
 
 @media (max-width: 520px) {
   .arena-ad-boards {
-    bottom: 88px;
-    width: 120vw;
-    opacity: .9;
+    bottom: calc(96px + env(safe-area-inset-bottom));
+    width: 128vw;
+    height: 124px;
+    opacity: .96;
   }
 
   .arena-ad-boards__lane {
-    width: 168%;
+    min-width: 240%;
     gap: 6px;
   }
 
-  .arena-ad-boards__lane--left {
-    left: -24%;
-    bottom: 42px;
+  .arena-ad-boards__lane--front {
+    left: -42%;
+    bottom: 4px;
   }
 
-  .arena-ad-boards__lane--right {
-    right: -24%;
-    bottom: 18px;
+  .arena-ad-boards__lane--back {
+    left: -30%;
+    bottom: 45px;
+  }
+
+  .arena-ad-boards__lane--side {
+    bottom: 32px;
+    min-width: 178%;
+  }
+
+  .arena-ad-boards__lane--side-left {
+    left: -62%;
+  }
+
+  .arena-ad-boards__lane--side-right {
+    right: -62%;
   }
 
   .arena-ad-boards span {
-    min-width: 136px;
-    min-height: 28px;
-    padding: 0 9px;
-    font-size: .62rem;
+    min-width: 142px;
+    min-height: 29px;
+    padding: 0 10px;
+    font-size: .64rem;
   }
 
   .draw-live-teaser {
