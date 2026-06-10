@@ -2,7 +2,7 @@ import { AdminPaymentsPanel } from "@/components/admin-payments-panel";
 import { LoginPanel } from "@/components/login-panel";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AppRole, BillingPlanSetting, PaymentMessage, PaymentRequest } from "@/lib/types";
+import type { AccountEntitlement, AppRole, BillingPlanSetting, FieldMode, PaymentMessage, PaymentRequest } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +10,48 @@ type AdminProfile = {
   id: string;
   display_name: string;
   avatar_url: string | null;
+};
+
+type AdminTeamRow = {
+  id: string;
+  owner_id: string | null;
+  name: string;
+  slug: string;
+  short_name: string;
+  badge_url: string | null;
+  primary_color: string;
+  neighborhood: string | null;
+  created_at: string;
+};
+
+type AdminTournamentRow = {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  field_mode: FieldMode;
+};
+
+type AdminTournamentTeamRow = {
+  tournament_id: string;
+  team_id: string;
+  status: string;
+  created_at: string;
+};
+
+export type AdminTeamAuditItem = {
+  team: AdminTeamRow;
+  owner: AdminProfile | null;
+  playerCount: number;
+  tournaments: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    status: string;
+    teamStatus: string;
+    fieldMode: FieldMode;
+  }>;
+  entitlements: AccountEntitlement[];
 };
 
 export default async function AdminPage() {
@@ -63,27 +105,80 @@ export default async function AdminPage() {
     );
   }
 
-  const [requestsResult, messagesResult, billingPlansResult] = await Promise.all([
+  const [requestsResult, messagesResult, billingPlansResult, teamsResult, teamMembersResult, tournamentTeamsResult, tournamentsAuditResult, entitlementsAuditResult] = await Promise.all([
     supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(80),
     supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(300),
-    supabase.from("billing_plan_settings").select("*").order("sort_order", { ascending: true })
+    supabase.from("billing_plan_settings").select("*").order("sort_order", { ascending: true }),
+    supabase.from("teams").select("id,owner_id,name,slug,short_name,badge_url,primary_color,neighborhood,created_at").order("created_at", { ascending: false }).limit(160),
+    supabase.from("team_members").select("id,team_id").limit(3000),
+    supabase.from("tournament_teams").select("tournament_id,team_id,status,created_at").order("created_at", { ascending: false }).limit(600),
+    supabase.from("tournaments").select("id,name,slug,status,field_mode").order("created_at", { ascending: false }).limit(160),
+    supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }).limit(400)
   ]);
 
   const requests = (requestsResult.data ?? []) as PaymentRequest[];
   const messages = (messagesResult.data ?? []) as PaymentMessage[];
-  const profileIds = Array.from(new Set([...requests.map((item) => item.requester_id), ...messages.map((item) => item.sender_id)]));
+  const teamRows = (teamsResult.data ?? []) as AdminTeamRow[];
+  const teamMembers = (teamMembersResult.data ?? []) as Array<{ id: string; team_id: string }>;
+  const tournamentTeams = (tournamentTeamsResult.data ?? []) as AdminTournamentTeamRow[];
+  const tournaments = (tournamentsAuditResult.data ?? []) as AdminTournamentRow[];
+  const entitlements = (entitlementsAuditResult.data ?? []) as AccountEntitlement[];
+  const profileIds = Array.from(new Set([
+    ...requests.map((item) => item.requester_id),
+    ...messages.map((item) => item.sender_id),
+    ...teamRows.map((item) => item.owner_id).filter(Boolean)
+  ] as string[]));
   const profilesResult = profileIds.length
     ? await supabase.from("profiles").select("id,display_name,avatar_url").in("id", profileIds)
     : { data: [] };
+  const profiles = (profilesResult.data ?? []) as AdminProfile[];
+  const profileMap = new Map(profiles.map((profile) => [profile.id, profile]));
+  const playerCountByTeam = teamMembers.reduce<Record<string, number>>((groups, item) => {
+    groups[item.team_id] = (groups[item.team_id] ?? 0) + 1;
+    return groups;
+  }, {});
+  const tournamentMap = new Map(tournaments.map((tournament) => [tournament.id, tournament]));
+  const enrollmentsByTeam = tournamentTeams.reduce<Record<string, AdminTournamentTeamRow[]>>((groups, item) => {
+    groups[item.team_id] = groups[item.team_id] ?? [];
+    groups[item.team_id].push(item);
+    return groups;
+  }, {});
+  const entitlementsByTarget = entitlements.reduce<Record<string, AccountEntitlement[]>>((groups, item) => {
+    if (!item.target_id) return groups;
+    groups[item.target_id] = groups[item.target_id] ?? [];
+    groups[item.target_id].push(item);
+    return groups;
+  }, {});
+  const teamAudit: AdminTeamAuditItem[] = teamRows.map((team) => ({
+    team,
+    owner: team.owner_id ? profileMap.get(team.owner_id) ?? null : null,
+    playerCount: playerCountByTeam[team.id] ?? 0,
+    tournaments: (enrollmentsByTeam[team.id] ?? [])
+      .map((enrollment) => {
+        const tournament = tournamentMap.get(enrollment.tournament_id);
+        if (!tournament) return null;
+        return {
+          id: tournament.id,
+          name: tournament.name,
+          slug: tournament.slug,
+          status: tournament.status,
+          teamStatus: enrollment.status,
+          fieldMode: tournament.field_mode
+        };
+      })
+      .filter(Boolean) as AdminTeamAuditItem["tournaments"],
+    entitlements: entitlementsByTarget[team.id] ?? []
+  }));
 
   return (
     <AdminPaymentsPanel
       adminId={user.id}
       billingPlans={(billingPlansResult.data ?? []) as BillingPlanSetting[]}
       messages={messages}
-      profiles={(profilesResult.data ?? []) as AdminProfile[]}
+      profiles={profiles}
       requests={requests}
       roles={roles}
+      teamAudit={teamAudit}
     />
   );
 }

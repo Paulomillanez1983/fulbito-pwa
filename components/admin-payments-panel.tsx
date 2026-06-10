@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { FormEvent } from "react";
-import { CheckCircle2, Clock3, ExternalLink, LoaderCircle, MessageCircle, Send, XCircle } from "lucide-react";
+import type { CSSProperties, FormEvent } from "react";
+import { CheckCircle2, Clock3, ExternalLink, LoaderCircle, MessageCircle, ShieldCheck, Trophy, Users, Send, XCircle } from "lucide-react";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AccountEntitlement, AppRole, BillingPlanSetting, PaymentMessage, PaymentRequest } from "@/lib/types";
@@ -20,6 +20,31 @@ type AdminProfile = {
   avatar_url: string | null;
 };
 
+type AdminTeamAuditItem = {
+  team: {
+    id: string;
+    owner_id: string | null;
+    name: string;
+    slug: string;
+    short_name: string;
+    badge_url: string | null;
+    primary_color: string;
+    neighborhood: string | null;
+    created_at: string;
+  };
+  owner: AdminProfile | null;
+  playerCount: number;
+  tournaments: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    status: string;
+    teamStatus: string;
+    fieldMode: string;
+  }>;
+  entitlements: AccountEntitlement[];
+};
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("es-AR", {
     day: "2-digit",
@@ -27,6 +52,89 @@ function formatDate(value: string) {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function AdminTeamAudit({ teams }: { teams: AdminTeamAuditItem[] }) {
+  const activeTeams = teams.filter((item) => item.tournaments.length > 0).length;
+  const proTeams = teams.filter((item) =>
+    item.entitlements.some((entitlement) => {
+      if (entitlement.plan_code !== "team_pro") return false;
+      if (entitlement.expires_at && new Date(entitlement.expires_at).getTime() < Date.now()) return false;
+      return true;
+    })
+  ).length;
+
+  return (
+    <section className="admin-team-audit">
+      <header>
+        <span>Auditoria de clubes</span>
+        <h2>Equipos, usuarios e inscripciones</h2>
+        <p>Esta vista muestra si un usuario ya tiene club cargado, en que copa esta y si tiene Equipo Pro activo.</p>
+      </header>
+
+      <div className="admin-team-summary">
+        <article>
+          <Users size={18} />
+          <strong>{teams.length}</strong>
+          <span>Clubes cargados</span>
+        </article>
+        <article>
+          <Trophy size={18} />
+          <strong>{activeTeams}</strong>
+          <span>Con copa asociada</span>
+        </article>
+        <article>
+          <ShieldCheck size={18} />
+          <strong>{proTeams}</strong>
+          <span>Equipo Pro activo</span>
+        </article>
+      </div>
+
+      <div className="admin-team-grid">
+        {teams.length ? teams.map((item) => {
+          const hasTeamPro = item.entitlements.some((entitlement) => {
+            if (entitlement.plan_code !== "team_pro") return false;
+            if (entitlement.expires_at && new Date(entitlement.expires_at).getTime() < Date.now()) return false;
+            return true;
+          });
+          return (
+            <article className="admin-team-card" key={item.team.id}>
+              <header>
+                <span className="admin-team-badge" style={{ "--team-color": item.team.primary_color } as CSSProperties}>
+                  {item.team.badge_url ? <img alt="" src={item.team.badge_url} /> : item.team.short_name.slice(0, 3)}
+                </span>
+                <div>
+                  <strong>{item.team.name}</strong>
+                  <small>{item.team.short_name} / {item.team.neighborhood || "Barrio sin cargar"}</small>
+                </div>
+                <b className={hasTeamPro ? "is-pro" : ""}>{hasTeamPro ? "Pro" : "Free"}</b>
+              </header>
+
+              <div className="admin-team-meta">
+                <span>Dueño: <strong>{item.owner?.display_name ?? "Sin perfil visible"}</strong></span>
+                <span>Jugadores: <strong>{item.playerCount}</strong></span>
+                <span>Creado: <strong>{formatDate(item.team.created_at)}</strong></span>
+              </div>
+
+              <div className="admin-team-pill-list">
+                {item.tournaments.length ? item.tournaments.map((tournament) => (
+                  <span key={tournament.id}>
+                    {tournament.name} / {tournament.fieldMode} / {tournament.teamStatus}
+                  </span>
+                )) : <span>Sin copa asociada todavia</span>}
+              </div>
+            </article>
+          );
+        }) : (
+          <article className="admin-empty">
+            <Users size={24} />
+            <strong>No hay equipos cargados.</strong>
+            <span>Cuando un usuario cree o asocie un club, aparece en esta auditoria.</span>
+          </article>
+        )}
+      </div>
+    </section>
+  );
 }
 
 function Requester({ profile }: { profile?: AdminProfile }) {
@@ -128,7 +236,8 @@ export function AdminPaymentsPanel({
   messages: initialMessages,
   profiles,
   billingPlans,
-  roles
+  roles,
+  teamAudit
 }: {
   adminId: string;
   requests: PaymentRequest[];
@@ -136,6 +245,7 @@ export function AdminPaymentsPanel({
   profiles: AdminProfile[];
   billingPlans: BillingPlanSetting[];
   roles: AppRole[];
+  teamAudit: AdminTeamAuditItem[];
 }) {
   const [requests, setRequests] = useState(initialRequests);
   const [messages, setMessages] = useState(initialMessages);
@@ -276,6 +386,8 @@ export function AdminPaymentsPanel({
       </section>
 
       <AdminPlanPrices adminId={adminId} initialPlans={billingPlans} />
+
+      <AdminTeamAudit teams={teamAudit} />
 
       {notice ? <p className="admin-notice">{notice}</p> : null}
 

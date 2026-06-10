@@ -321,13 +321,18 @@ export function ArenaActions({
 }) {
   const [message, setMessage] = useState("");
   const [origin, setOrigin] = useState("");
+  const [pendingEnrollId, setPendingEnrollId] = useState("");
   const showTeam = mode === "all" || mode === "squad";
   const hasMatches = data.matches.length > 0;
   const showVenue = mode === "all" || mode === "venue";
   const showResult = hasMatches && (mode === "all" || mode === "result");
-  const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
+  const ownedTeams = data.user ? data.teams.filter((team) => team.owner_id === data.user?.id) : [];
+  const ownedTeamIds = ownedTeams.map((team) => team.id).join("|");
+  const defaultOwnedTeamId = selectedTeamId && ownedTeams.some((team) => team.id === selectedTeamId) ? selectedTeamId : ownedTeams[0]?.id ?? "";
+  const [selectedOwnedTeamId, setSelectedOwnedTeamId] = useState(defaultOwnedTeamId);
+  const selectedOwnedTeam = ownedTeams.find((team) => team.id === selectedOwnedTeamId) ?? ownedTeams[0] ?? null;
   const selectedManagedTeam = selectedTeamId ? data.teams.find((team) => team.id === selectedTeamId) : null;
-  const managedTeam = selectedManagedTeam ?? ownedTeam ?? null;
+  const managedTeam = selectedManagedTeam ?? selectedOwnedTeam ?? null;
   const playerTeamId = managedTeam?.id ?? "";
   const rosterRule = getRosterRule(data.activeTournament?.field_mode);
   const managedTeamPlayers = data.players.filter((player) => player.team_id === playerTeamId);
@@ -337,6 +342,18 @@ export function ArenaActions({
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
+
+  useEffect(() => {
+    if (!ownedTeams.length) {
+      setSelectedOwnedTeamId("");
+      return;
+    }
+    setSelectedOwnedTeamId((current) => {
+      if (selectedTeamId && ownedTeams.some((team) => team.id === selectedTeamId)) return selectedTeamId;
+      if (current && ownedTeams.some((team) => team.id === current)) return current;
+      return ownedTeams[0].id;
+    });
+  }, [ownedTeamIds, selectedTeamId]);
 
   function hasTeamProAccess(teamId: string) {
     const now = Date.now();
@@ -349,10 +366,10 @@ export function ArenaActions({
     });
   }
 
-  function teamInviteHref() {
-    if (!origin || !ownedTeam || !data.activeTournament?.slug) return "";
-    const joinUrl = `${origin}/?join=${encodeURIComponent(data.activeTournament.slug)}&team=${encodeURIComponent(ownedTeam.slug)}`;
-    const text = `Te invito a sumarte a ${ownedTeam.name} en ${data.activeTournament.name}. Entra a ${joinUrl}, carga tu nombre, dorsal y apodo para quedar en el plantel.`;
+  function teamInviteHref(team = selectedOwnedTeam) {
+    if (!origin || !team || !data.activeTournament?.slug) return "";
+    const joinUrl = `${origin}/?join=${encodeURIComponent(data.activeTournament.slug)}&team=${encodeURIComponent(team.slug)}`;
+    const text = `Te invito a sumarte a ${team.name} en ${data.activeTournament.name}. Entra a ${joinUrl}, carga tu nombre, dorsal y apodo para quedar en el plantel.`;
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
   }
 
@@ -408,18 +425,25 @@ export function ArenaActions({
 
   async function enrollOwnedTeam() {
     setMessage("");
-    if (!ownedTeam) return setMessage("Primero crea o elegi un equipo.");
+    const team = selectedOwnedTeam;
+    if (!team) return setMessage("Primero crea o elegi un equipo.");
     if (!data.activeTournament?.id) return setMessage("No hay copa activa para inscribir el equipo.");
-    const { supabase, userId } = await getUserId();
-    if (!userId) return setMessage("Entra con Google para continuar.");
-    const { error } = await supabase
-      .from("tournament_teams")
-      .upsert(
-        { tournament_id: data.activeTournament.id, team_id: ownedTeam.id, status: "approved" },
-        { onConflict: "tournament_id,team_id" }
-      );
-    if (!error) window.setTimeout(() => window.location.reload(), 900);
-    setMessage(error ? error.message : `${ownedTeam.name} quedo inscripto en ${data.activeTournament.name}.`);
+    setPendingEnrollId(team.id);
+    try {
+      const response = await fetch("/api/tournament-teams", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tournamentId: data.activeTournament.id, teamId: team.id })
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) return setMessage(result.error || "No se pudo inscribir el equipo.");
+      window.setTimeout(() => window.location.reload(), 900);
+      setMessage(`${team.name} quedo inscripto en ${data.activeTournament.name}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo inscribir el equipo.");
+    } finally {
+      setPendingEnrollId("");
+    }
   }
 
   async function createVenue(formData: FormData) {
@@ -514,19 +538,27 @@ export function ArenaActions({
   const actionContent = (
     <>
       <div className="action-grid">
-        {showTeam && ownedTeam ? (
+        {showTeam && selectedOwnedTeam ? (
           <article className="action-card action-card--locked">
             <ShieldPlus />
-            <h3>Equipo ya creado</h3>
-            <p>{ownedTeam.name} ya esta asociado a tu cuenta. Esta copa permite {rosterRule.starters} titulares + {rosterRule.substitutes} suplentes.</p>
+            <h3>Elegir equipo propio</h3>
+            <p>{selectedOwnedTeam.name} esta asociado a tu cuenta. Esta copa permite {rosterRule.starters} titulares + {rosterRule.substitutes} suplentes.</p>
+            {ownedTeams.length > 1 ? (
+              <select value={selectedOwnedTeam.id} onChange={(event) => setSelectedOwnedTeamId(event.target.value)}>
+                {ownedTeams.map((team) => (
+                  <option key={team.id} value={team.id}>{team.name} / {team.short_name}</option>
+                ))}
+              </select>
+            ) : null}
             <div className="team-invite-actions">
               {data.activeTournament ? (
-                <button className="inline-enroll-button" onClick={enrollOwnedTeam} type="button">
-                  Inscribir en esta copa
+                <button className="inline-enroll-button" disabled={pendingEnrollId === selectedOwnedTeam.id} onClick={enrollOwnedTeam} type="button">
+                  {pendingEnrollId === selectedOwnedTeam.id ? <LoaderCircle className="button-spinner" size={16} /> : null}
+                  {pendingEnrollId === selectedOwnedTeam.id ? "Inscribiendo" : "Inscribir en esta copa"}
                 </button>
               ) : null}
-              {teamInviteHref() ? (
-                <a className="inline-whatsapp-button" href={teamInviteHref()} rel="noreferrer" target="_blank">
+              {teamInviteHref(selectedOwnedTeam) ? (
+                <a className="inline-whatsapp-button" href={teamInviteHref(selectedOwnedTeam)} rel="noreferrer" target="_blank">
                   Invitar jugadores por WhatsApp
                 </a>
               ) : null}
@@ -534,9 +566,9 @@ export function ArenaActions({
           </article>
         ) : null}
 
-        {showTeam && !ownedTeam ? <form action={createTeam} className="action-card">
+        {showTeam ? <form action={createTeam} className={selectedOwnedTeam ? "action-card action-card--secondary" : "action-card"}>
           <ShieldPlus />
-          <h3>Crear equipo</h3>
+          <h3>{selectedOwnedTeam ? "Crear otro equipo" : "Crear equipo"}</h3>
           <p>Subi escudo, sigla y color base. La imagen se adapta al marco del club.</p>
           <input name="teamName" placeholder="Nombre del club" />
           <input name="shortName" maxLength={4} placeholder="Sigla" />

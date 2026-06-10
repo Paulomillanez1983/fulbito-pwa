@@ -34,15 +34,6 @@ export async function POST(request: NextRequest) {
   const primaryColor = String(formData.get("primaryColor") || "#eec15c").trim() || "#eec15c";
   const tournamentId = String(formData.get("tournamentId") || "").trim();
 
-  const { data: existingTeam, error: existingError } = await supabase
-    .from("teams")
-    .select("id,name")
-    .eq("owner_id", auth.user.id)
-    .limit(1)
-    .maybeSingle();
-  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 400 });
-  if (existingTeam) return NextResponse.json({ error: `Ya tenes un equipo creado: ${existingTeam.name}.` }, { status: 409 });
-
   await supabase.from("profiles").upsert({
     id: auth.user.id,
     display_name: auth.user.user_metadata?.full_name ?? auth.user.user_metadata?.name ?? auth.user.email?.split("@")[0] ?? "Jugador Fulbito",

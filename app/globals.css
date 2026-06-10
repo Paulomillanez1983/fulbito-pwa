@@ -1705,6 +1705,13 @@ th {
   font-weight: 1000;
 }
 
+.action-card--secondary {
+  border-style: dashed !important;
+  background:
+    radial-gradient(circle at 100% 0, rgba(52,201,255,.1), transparent 30%),
+    rgba(6, 10, 18, .76) !important;
+}
+
 .action-drawer {
   border: 1px solid rgba(241,199,91,.28);
   border-radius: 12px;
@@ -2503,6 +2510,10 @@ body::after {
 .team-invite-actions {
   display: grid;
   gap: 8px;
+}
+
+.team-invite-actions select {
+  width: 100%;
 }
 
 .inline-whatsapp-button {
@@ -6763,6 +6774,183 @@ body::after,
   color: #d7fbff;
 }
 
+.admin-team-audit {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(52,201,255,.18);
+  border-radius: 14px;
+  padding: 13px;
+  background:
+    radial-gradient(circle at 88% 0, rgba(52,201,255,.14), transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025)),
+    rgba(5, 10, 18, .76);
+}
+
+.admin-team-audit > header {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-team-audit > header span {
+  width: max-content;
+  border: 1px solid rgba(52,201,255,.36);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(52,201,255,.1);
+  color: #9df6ff;
+  font-size: .72rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.admin-team-audit h2,
+.admin-team-audit p {
+  margin: 0;
+}
+
+.admin-team-audit p {
+  color: var(--muted);
+}
+
+.admin-team-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.admin-team-summary article {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(255,255,255,.045);
+}
+
+.admin-team-summary svg {
+  color: var(--gold);
+}
+
+.admin-team-summary strong {
+  color: #fff8e8;
+  font-size: 1.24rem;
+}
+
+.admin-team-summary span {
+  color: var(--muted);
+  font-size: .8rem;
+}
+
+.admin-team-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-team-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 13px;
+  padding: 11px;
+  background: rgba(3, 7, 14, .66);
+}
+
+.admin-team-card > header {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-team-badge {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid color-mix(in srgb, var(--team-color, #eec15c) 72%, white 8%);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 32% 20%, rgba(255,255,255,.86), transparent 24%),
+    linear-gradient(135deg, var(--team-color, #eec15c), rgba(12,18,28,.82));
+  color: #05070b;
+  font-size: .78rem;
+  font-weight: 1000;
+  overflow: hidden;
+}
+
+.admin-team-badge img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+}
+
+.admin-team-card strong,
+.admin-team-card small {
+  display: block;
+}
+
+.admin-team-card > header div {
+  min-width: 0;
+}
+
+.admin-team-card > header strong {
+  overflow: hidden;
+  color: #fff8e8;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-team-card > header small,
+.admin-team-meta span,
+.admin-team-pill-list span {
+  color: var(--muted);
+}
+
+.admin-team-card > header b {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: #d6deea;
+  font-size: .72rem;
+  text-transform: uppercase;
+}
+
+.admin-team-card > header b.is-pro {
+  border-color: rgba(241,199,91,.36);
+  background: rgba(241,199,91,.12);
+  color: #ffe39a;
+}
+
+.admin-team-meta,
+.admin-team-pill-list {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-team-meta span {
+  font-size: .82rem;
+}
+
+.admin-team-meta strong {
+  display: inline;
+  color: #f7fbff;
+}
+
+.admin-team-pill-list {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.admin-team-pill-list span {
+  border: 1px solid rgba(52,201,255,.14);
+  border-radius: 10px;
+  padding: 8px;
+  background: rgba(52,201,255,.06);
+  font-size: .76rem;
+}
+
 .admin-notice {
   border: 1px solid rgba(52,201,255,.3);
   border-radius: 12px;
@@ -6850,7 +7038,9 @@ body::after,
 @media (max-width: 760px) {
   .payment-account,
   .payment-plan-grid,
-  .admin-stats {
+  .admin-stats,
+  .admin-team-summary,
+  .admin-team-grid {
     grid-template-columns: 1fr;
   }
 
