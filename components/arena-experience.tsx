@@ -1580,7 +1580,7 @@ function CupBracketSide({
                 return (
                   <button className="cup-slot" disabled={!team} key={`${side}-${round.label}-${slotIndex}`} onClick={() => team && onTeamOpen(team.id)} type="button">
                     {team ? <TeamCrest team={team} /> : <i />}
-                    <span>{team?.short_name ?? "Por definir"}</span>
+                    <span>{team?.short_name ?? "Pendiente"}</span>
                   </button>
                 );
               })}
