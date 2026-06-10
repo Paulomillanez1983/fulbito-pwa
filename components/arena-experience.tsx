@@ -963,13 +963,14 @@ function SplashScreen() {
 }
 
 export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?: string }) {
+  const inviteMode = Boolean(joinCode && data.activeTournament);
   const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
   const memberTeamId = data.user ? data.players.find((player) => player.profile_id === data.user?.id)?.team_id : null;
   const memberTeam = memberTeamId ? data.teams.find((team) => team.id === memberTeamId) : null;
-  const inferredTeam = ownedTeam ?? memberTeam ?? data.teams[0] ?? null;
+  const inferredTeam = ownedTeam ?? memberTeam ?? (inviteMode ? null : data.teams[0] ?? null);
 
   const [showSplash, setShowSplash] = useState(true);
-  const [active, setActive] = useState<TabId>("home");
+  const [active, setActive] = useState<TabId>(() => inviteMode && data.user ? "squad" : "home");
   const [formationMode, setFormationMode] = useState<FieldMode>(data.activeTournament?.field_mode ?? "7v7");
   const [formationPresetId, setFormationPresetId] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].id);
   const [selectedTeamId, setSelectedTeamId] = useState(inferredTeam?.id ?? "");
@@ -991,7 +992,7 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
 
   const nextMatch = useMemo(() => data.matches.find((match) => match.status !== "final") ?? data.matches[0], [data.matches]);
   const selectedMatch = data.matches.find((match) => match.id === selectedMatchId) ?? nextMatch;
-  const selectedTeam = data.teams.find((team) => team.id === selectedTeamId) ?? data.teams[0];
+  const selectedTeam = data.teams.find((team) => team.id === selectedTeamId) ?? (inviteMode && !inferredTeam ? undefined : data.teams[0]);
   const nearbyVenues = useMemo(() => {
     if (!venueLocation) return data.venues;
     return data.venues
@@ -1099,7 +1100,19 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
   function renderHome() {
     return (
       <>
-        {!hasCreatedTournament ? (
+        {inviteMode ? (
+          <section className="join-tournament-banner join-tournament-banner--priority">
+            <Trophy size={20} />
+            <div>
+              <span>Invitacion recibida</span>
+              <strong>{data.activeTournament?.name}</strong>
+              <small>Este link te lleva a la misma copa que creo el organizador.</small>
+            </div>
+            <button onClick={() => (data.user ? setActive("squad") : openLoginPanel())} type="button">Cargar equipo</button>
+          </section>
+        ) : null}
+
+        {!inviteMode && !hasCreatedTournament ? (
           <section className="console-hero-panel console-hero-panel--2026">
             <img alt="" className="hero-mark" src="/assets/icon.svg" />
             <span>Fulbito Arena 2026</span>
@@ -1113,40 +1126,42 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
           </section>
         ) : null}
 
-        {nextMatch ? (
+        {!inviteMode && nextMatch ? (
           <MatchTile match={nextMatch} featured onOpen={() => openMatch(nextMatch)} />
-        ) : data.user ? (
+        ) : !inviteMode && data.user ? (
           <EmptyState icon={<CalendarDays />} title="Tu calendario empieza vacio">
             Crea un torneo, carga tu equipo o espera una invitacion. Cuando haya fixtures reales, aparecen aca.
           </EmptyState>
         ) : null}
 
-        {joinCode && data.activeTournament ? (
-          <section className="join-tournament-banner">
-            <Trophy size={20} />
-            <div>
-              <span>Invitacion recibida</span>
-              <strong>{data.activeTournament.name}</strong>
-              <small>Este link te lleva a la misma copa que creo el organizador.</small>
-            </div>
-            <button onClick={() => setActive("squad")} type="button">Cargar equipo</button>
+        {(!inviteMode || data.user) ? (
+          <section className="mini-grid">
+            <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActive("league")} value={data.activeTournament?.name ?? "Torneo"} />
+            <MiniStat icon={<Users />} label="Equipos" onClick={() => setActive("squad")} value={data.teams.length} />
+            <MiniStat icon={<CalendarDays />} label="Partidos" onClick={() => setActive("matches")} value={data.matches.length} />
+            <MiniStat icon={<CircleDollarSign />} label="Pozo estimado" onClick={() => setActive("venues")} value={money(totalPot)} />
           </section>
         ) : null}
 
-        <section className="mini-grid">
-          <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActive("league")} value={data.activeTournament?.name ?? "Torneo"} />
-          <MiniStat icon={<Users />} label="Equipos" onClick={() => setActive("squad")} value={data.teams.length} />
-          <MiniStat icon={<CalendarDays />} label="Partidos" onClick={() => setActive("matches")} value={data.matches.length} />
-          <MiniStat icon={<CircleDollarSign />} label="Pozo estimado" onClick={() => setActive("venues")} value={money(totalPot)} />
-        </section>
-
         <section className="console-panel">
-          <ScreenHeader eyebrow={data.user ? "Tu arena" : "Crear copa"} title={data.user ? roleCatalog[activeRole].label : "Crea tu Mundial barrial"}>
-            {data.user
+          <ScreenHeader
+            eyebrow={inviteMode ? "Entrada de equipo" : data.user ? "Tu arena" : "Crear copa"}
+            title={inviteMode ? data.user ? "Carga tu club invitado" : "Entra para sumarte" : data.user ? roleCatalog[activeRole].label : "Crea tu Mundial barrial"}
+          >
+            {inviteMode
+              ? data.user
+                ? "Completa o inscribi tu equipo en esta copa. Despues podes volver al inicio para crear otra arena."
+                : "Primero entra con Google. Al volver, Fulbito te lleva directo a cargar el equipo para esta copa."
+              : data.user
               ? "Elegi como participas hoy: jugador, capitan, cancha, organizador o veedor. Cada rol abre acciones distintas."
               : "Entra con Google para armar una copa, elegir formato, invitar equipos y seguir el torneo desde el celular."}
           </ScreenHeader>
-          {data.user ? (
+          {inviteMode && data.user ? (
+            <button className="join-focus-button" onClick={() => setActive("squad")} type="button">
+              Cargar equipo en {data.activeTournament?.name}
+              <ChevronRight size={18} />
+            </button>
+          ) : data.user ? (
             <RoleConsole
               activeRole={activeRole}
               message={roleMessage}
@@ -1157,10 +1172,10 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
               user={data.user}
             />
           ) : (
-            <LoginPanel configured={data.configured} joinCode={joinCode} />
+            <LoginPanel configured={data.configured} joinCode={joinCode} tournamentName={data.activeTournament?.name} />
           )}
         </section>
-        <PaymentConsole data={data} />
+        {!inviteMode ? <PaymentConsole data={data} /> : null}
       </>
     );
   }
@@ -1248,6 +1263,7 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
             Empeza por crear tu club. Despues vas a poder cargar jugadores desde la canchita.
           </EmptyState>
           <ArenaActions data={data} mode="squad" />
+          {inviteMode ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}
         </>
       );
     }
@@ -1308,6 +1324,7 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
           ))}
         </section>
         {isTeamManager ? <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} /> : null}
+        {inviteMode && isTeamManager ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}
         {selectedPlayer ? <PlayerCardModal onClose={() => setSelectedPlayerId(null)} player={selectedPlayer} team={selectedTeam} /> : null}
       </>
     );

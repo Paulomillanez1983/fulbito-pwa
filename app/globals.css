@@ -434,6 +434,13 @@ h3 {
   padding: 18px;
 }
 
+.login-panel--invite {
+  border-color: rgba(66,230,140,.3);
+  background:
+    radial-gradient(circle at 100% 0, rgba(66,230,140,.12), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025));
+}
+
 .role-picker {
   display: flex;
   flex-wrap: wrap;
@@ -1514,6 +1521,11 @@ th {
     linear-gradient(180deg, rgba(18,34,28,.74), rgba(5,9,17,.78));
 }
 
+.join-tournament-banner--priority {
+  border-color: rgba(66,230,140,.42);
+  box-shadow: 0 16px 42px rgba(0,0,0,.28), inset 0 0 0 1px rgba(114,255,168,.08);
+}
+
 .join-tournament-banner svg {
   color: #72ffa8;
 }
@@ -1543,6 +1555,25 @@ th {
   color: #07080d;
   cursor: pointer;
   font-weight: 1000;
+}
+
+.join-focus-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid rgba(66,230,140,.32);
+  border-radius: 12px;
+  padding: 13px;
+  background:
+    radial-gradient(circle at 100% 50%, rgba(66,230,140,.16), transparent 34%),
+    rgba(5, 20, 18, .72);
+  color: #e8fff1;
+  cursor: pointer;
+  font-weight: 1000;
+  text-align: left;
 }
 
 .bracket-console article,
@@ -2425,6 +2456,33 @@ body::after {
 .action-card button:disabled {
   cursor: wait;
   opacity: .72;
+}
+
+.pro-lock-note {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(241,199,91,.22);
+  border-radius: 11px;
+  padding: 10px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(241,199,91,.12), transparent 32%),
+    rgba(3, 7, 14, .58);
+}
+
+.pro-lock-note strong,
+.pro-lock-note span {
+  display: block;
+}
+
+.pro-lock-note strong {
+  color: #ffe39a;
+  font-size: .86rem;
+}
+
+.pro-lock-note span {
+  color: var(--muted);
+  font-size: .8rem;
+  line-height: 1.35;
 }
 
 .button-spinner {

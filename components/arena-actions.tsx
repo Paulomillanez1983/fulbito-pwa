@@ -288,13 +288,25 @@ export function ArenaActions({
 }) {
   const [message, setMessage] = useState("");
   const showTeam = mode === "all" || mode === "squad";
-  const hasTeams = data.teams.length > 0;
   const hasMatches = data.matches.length > 0;
-  const showPlayer = hasTeams && (mode === "all" || mode === "squad" || mode === "slot");
   const showVenue = mode === "all" || mode === "venue";
   const showResult = hasMatches && (mode === "all" || mode === "result");
-  const playerTeamId = selectedTeamId ?? data.teams[0]?.id;
   const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
+  const selectedManagedTeam = selectedTeamId ? data.teams.find((team) => team.id === selectedTeamId) : null;
+  const managedTeam = selectedManagedTeam ?? ownedTeam ?? null;
+  const playerTeamId = managedTeam?.id ?? "";
+  const showPlayer = Boolean(managedTeam) && (mode === "all" || mode === "squad" || mode === "slot");
+
+  function hasTeamProAccess(teamId: string) {
+    const now = Date.now();
+    return data.entitlements.some((entitlement) => {
+      if (entitlement.plan_code !== "team_pro") return false;
+      if (entitlement.target_type !== "team") return false;
+      if (entitlement.target_id && entitlement.target_id !== teamId) return false;
+      if (entitlement.expires_at && new Date(entitlement.expires_at).getTime() < now) return false;
+      return true;
+    });
+  }
 
   async function getUserId() {
     const supabase = createSupabaseBrowserClient();
@@ -360,8 +372,10 @@ export function ArenaActions({
           { onConflict: "tournament_id,team_id" }
         );
       if (enrollError) return setMessage(`Equipo creado, pero no se pudo sumar a la copa: ${enrollError.message}`);
+      window.setTimeout(() => window.location.reload(), 1000);
       return setMessage(`${team.name} quedo inscripto en ${data.activeTournament.name}. Actualiza la pantalla para verlo.`);
     }
+    window.setTimeout(() => window.location.reload(), 1000);
     setMessage("Equipo creado. Actualiza la pantalla para verlo en la arena.");
   }
 
@@ -377,6 +391,7 @@ export function ArenaActions({
         { tournament_id: data.activeTournament.id, team_id: ownedTeam.id, status: "approved" },
         { onConflict: "tournament_id,team_id" }
       );
+    if (!error) window.setTimeout(() => window.location.reload(), 900);
     setMessage(error ? error.message : `${ownedTeam.name} quedo inscripto en ${data.activeTournament.name}.`);
   }
 
@@ -443,10 +458,12 @@ export function ArenaActions({
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Entra con Google para continuar.");
     let photoUrl: string | null = null;
-    try {
-      photoUrl = await uploadArenaMedia(supabase, "player-photos", userId, formData.get("playerPhoto"));
-    } catch (error) {
-      return setMessage(error instanceof Error ? error.message : "No se pudo subir la foto del jugador.");
+    if (hasTeamProAccess(teamId)) {
+      try {
+        photoUrl = await uploadArenaMedia(supabase, "player-photos", userId, formData.get("playerPhoto"));
+      } catch (error) {
+        return setMessage(error instanceof Error ? error.message : "No se pudo subir la foto del jugador.");
+      }
     }
     const { error } = await supabase.from("team_members").insert({
       team_id: teamId,
@@ -457,6 +474,7 @@ export function ArenaActions({
       position: String(formData.get("position") || "").trim() || null,
       photo_url: photoUrl
     });
+    if (!error) window.setTimeout(() => window.location.reload(), 800);
     setMessage(error ? error.message : "Jugador agregado al plantel.");
   }
 
@@ -511,17 +529,22 @@ export function ArenaActions({
         {showPlayer ? <form action={createPlayer} className={mode === "slot" ? "action-card action-card--slot" : "action-card"}>
           <UserPlus />
           <h3>{mode === "slot" ? `Cargar ${slotDraft?.label ?? "posicion"}` : "Agregar jugador"}</h3>
-          <p>{mode === "slot" ? "Completa el puesto desde el mapa de formacion." : "Nombre, apodo, dorsal, posicion y foto para el plantel."}</p>
+          <p>{mode === "slot" ? "Completa el puesto desde el mapa de formacion." : hasTeamProAccess(playerTeamId) ? "Nombre, apodo, dorsal, posicion y foto para el plantel." : "Carga el plantel gratis con nombre, apodo, dorsal y posicion. Las fotos se activan con Equipo Pro."}</p>
           <select name="playerTeamId" defaultValue={playerTeamId}>
-            {data.teams.map((team) => (
-              <option key={team.id} value={team.id}>{team.name}</option>
-            ))}
+            {managedTeam ? <option value={managedTeam.id}>{managedTeam.name}</option> : null}
           </select>
           <input name="playerName" placeholder="Nombre y apellido" />
           <input name="alias" placeholder="Apodo" />
           <input name="jerseyNumber" inputMode="numeric" placeholder="Dorsal" defaultValue={slotDraft?.jersey} />
           <input name="position" placeholder="Posicion" defaultValue={slotDraft?.position} />
-          <MediaField accept="image/png,image/jpeg,image/webp" helper="Foto cuadrada. Se recorta al rostro." label="Foto del jugador" name="playerPhoto" variant="avatar" />
+          {hasTeamProAccess(playerTeamId) ? (
+            <MediaField accept="image/png,image/jpeg,image/webp" helper="Foto cuadrada. Se recorta al rostro." label="Foto del jugador" name="playerPhoto" variant="avatar" />
+          ) : (
+            <div className="pro-lock-note">
+              <strong>Fotos bloqueadas en modo gratis</strong>
+              <span>Activa Equipo Pro para subir rostros, generar cartas y compartir fichas premium.</span>
+            </div>
+          )}
           <SubmitButton idle={mode === "slot" ? "Guardar en posicion" : "Guardar jugador"} pending="Guardando jugador" />
         </form> : null}
 

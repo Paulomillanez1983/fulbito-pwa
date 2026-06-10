@@ -649,10 +649,14 @@ function CreatorPaymentCard({
   );
 }
 
-export function PaymentConsole({ data }: { data: ArenaData }) {
+export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes?: PaymentPlan["code"][] }) {
   const [requests, setRequests] = useState(data.paymentRequests);
-  const plans = useMemo(() => mergePaymentPlans(data.billingPlans), [data.billingPlans]);
+  const plans = useMemo(() => {
+    const merged = mergePaymentPlans(data.billingPlans);
+    return planCodes?.length ? merged.filter((plan) => planCodes.includes(plan.code)) : merged;
+  }, [data.billingPlans, planCodes]);
   const hasApprovedPro = data.entitlements.length > 0 || requests.some((request) => request.status === "approved");
+  const teamOnly = planCodes?.length === 1 && planCodes[0] === "team_pro";
 
   const pendingRequestByPlan = useMemo(() => {
     return requests.reduce<Partial<Record<PaymentPlan["code"], PaymentRequest>>>((groups, request) => {
@@ -662,8 +666,9 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
     }, {});
   }, [requests]);
   const approvedTournamentRequests = useMemo(() => {
+    if (planCodes && !planCodes.includes("tournament_pro")) return [];
     return requests.filter((request) => request.status === "approved" && request.target_type === "tournament");
-  }, [requests]);
+  }, [planCodes, requests]);
 
   function onCreated(request: PaymentRequest) {
     setRequests((current) => [request, ...current]);
@@ -675,10 +680,12 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
   return (
     <section className="console-panel payment-console" id="pro">
       <div className="payment-console__head">
-        <span>Crear copa</span>
-        <h2>Arma tu Mundial barrial</h2>
+        <span>{teamOnly ? "Equipo Pro" : "Crear copa"}</span>
+        <h2>{teamOnly ? "Activa identidad premium" : "Arma tu Mundial barrial"}</h2>
         <p>
-          Crea la copa, elegi formato, invita equipos y deja que cada club cargue su plantel. El equipo basico es gratis; lo premium activa fotos, cartas y estadisticas.
+          {teamOnly
+            ? "El equipo gratis puede inscribirse con escudo y plantel. Equipo Pro habilita fotos de jugadores, cartas estilo juego y estadisticas premium."
+            : "Crea la copa, elegi formato, invita equipos y deja que cada club cargue su plantel. El equipo basico es gratis; lo premium activa fotos, cartas y estadisticas."}
         </p>
       </div>
 
