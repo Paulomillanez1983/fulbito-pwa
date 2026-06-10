@@ -2198,6 +2198,90 @@ body::after {
   gap: 12px;
 }
 
+.cup-tier-selector {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  overflow-x: auto;
+}
+
+.cup-tier-selector button {
+  display: grid;
+  gap: 2px;
+  min-height: 56px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 13px;
+  padding: 8px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.065), rgba(255,255,255,.02)),
+    rgba(4, 9, 16, .72);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.cup-tier-selector button span,
+.cup-tier-selector button strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cup-tier-selector button span {
+  color: var(--gold);
+  font-size: .64rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.cup-tier-selector button strong {
+  font-size: .82rem;
+  font-weight: 1000;
+}
+
+.cup-tier-selector button.is-active {
+  border-color: rgba(241,199,91,.52);
+  background:
+    radial-gradient(circle at 20% 0, rgba(241,199,91,.24), transparent 40%),
+    linear-gradient(135deg, rgba(241,199,91,.16), rgba(52,201,255,.08)),
+    rgba(5, 10, 18, .82);
+  box-shadow: inset 0 -2px 0 rgba(241,199,91,.54), 0 0 20px rgba(241,199,91,.08);
+}
+
+.cup-tier-summary {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(52,201,255,.18);
+  border-radius: 14px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(52,201,255,.12), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02)),
+    rgba(5, 10, 18, .72);
+}
+
+.cup-tier-summary span,
+.cup-tier-summary strong,
+.cup-tier-summary p {
+  display: block;
+}
+
+.cup-tier-summary span {
+  color: var(--gold);
+  font-size: .68rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.cup-tier-summary strong {
+  font-size: 1.05rem;
+}
+
+.cup-tier-summary p {
+  margin: 0;
+  color: var(--muted);
+}
+
 .competition-cup-bracket__field {
   position: relative;
   display: grid;
@@ -2373,37 +2457,42 @@ body::after {
 
 .cup-trophy__halo {
   position: absolute;
-  width: 120px;
+  width: 136px;
   aspect-ratio: 1;
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(241,199,91,.28), transparent 68%);
+  background:
+    radial-gradient(circle, rgba(255,255,255,.2), transparent 24%),
+    radial-gradient(circle, rgba(241,199,91,.3), transparent 68%);
   filter: blur(2px);
 }
 
-.cup-trophy__icon {
+.cup-trophy__model {
   position: relative;
   display: grid;
   place-items: center;
-  width: 96px;
-  aspect-ratio: .78;
-  border: 1px solid rgba(241,199,91,.46);
-  border-radius: 30px;
-  background:
-    radial-gradient(circle at 30% 20%, rgba(255,255,255,.36), transparent 20%),
-    linear-gradient(145deg, #fff0a8, #d39a2a 52%, #7b4c10);
-  color: #07101a;
-  box-shadow:
-    inset 0 0 18px rgba(255,255,255,.24),
-    0 0 34px rgba(241,199,91,.36),
-    0 24px 48px rgba(0,0,0,.46);
+  width: 116px;
+  min-height: 156px;
   animation: fulbito-trophy-rotate 7s ease-in-out infinite;
   transform-style: preserve-3d;
 }
 
-.cup-trophy__icon svg {
-  width: 58px;
-  height: 58px;
-  stroke-width: 2.2;
+.fulbito-fan-cup {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.fulbito-fan-cup--regional {
+  filter: drop-shadow(0 0 14px rgba(52, 201, 255, .24));
+}
+
+.fulbito-fan-cup--provincial {
+  filter: drop-shadow(0 0 16px rgba(134, 255, 103, .18));
+}
+
+.fulbito-fan-cup--world {
+  filter: drop-shadow(0 0 20px rgba(241, 199, 91, .3));
 }
 
 .cup-trophy > span {
@@ -7266,14 +7355,9 @@ body::after,
     width: 84px;
   }
 
-  .cup-trophy__icon {
-    width: 68px;
-    border-radius: 22px;
-  }
-
-  .cup-trophy__icon svg {
-    width: 42px;
-    height: 42px;
+  .cup-trophy__model {
+    width: 76px;
+    min-height: 104px;
   }
 
   .cup-trophy > span {

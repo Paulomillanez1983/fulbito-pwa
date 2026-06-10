@@ -44,6 +44,7 @@ import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 type LeagueView = "classification" | "bracket";
+type CupTier = "local" | "regional" | "provincial" | "world";
 
 const tabs: Array<{ id: TabId; label: string; icon: typeof Gamepad2 }> = [
   { id: "home", label: "Inicio", icon: Gamepad2 },
@@ -60,6 +61,48 @@ const formatLabels = {
   world_cup: "Mundial barrial",
   knockout: "Copa eliminatoria"
 };
+
+const cupTierCatalog: Array<{
+  id: CupTier;
+  label: string;
+  eyebrow: string;
+  trophyLabel: string;
+  title: string;
+  description: string;
+}> = [
+  {
+    id: "local",
+    label: "Copa del Hincha",
+    eyebrow: "Cancha",
+    trophyLabel: "Copa del Hincha",
+    title: "Campeon de cancha",
+    description: "El campeon local queda listo para recibir invitacion regional si acepta seguir compitiendo."
+  },
+  {
+    id: "regional",
+    label: "Regional 50 km",
+    eyebrow: "Workgroup",
+    trophyLabel: "Regional",
+    title: "Campeones cercanos",
+    description: "Reune campeones de canchas dentro de 50 km, con ida y vuelta para mover ambas sedes."
+  },
+  {
+    id: "provincial",
+    label: "Provincial",
+    eyebrow: "Ascenso",
+    trophyLabel: "Provincial",
+    title: "Campeones regionales",
+    description: "Los ganadores regionales pueden entrar a una copa provincial con historial permanente."
+  },
+  {
+    id: "world",
+    label: "Fulbito Cup",
+    eyebrow: "Maximo logro",
+    trophyLabel: "Fulbito Cup",
+    title: "Copa Fulbito nacional",
+    description: "La competencia mayor: campeones provinciales compiten por el titulo anual de Fulbito."
+  }
+];
 
 const fulbitoLiveChannelUrl = "https://www.youtube.com/@FulbitoLIVE?sub_confirmation=1";
 const youtubeFollowStorageKey = "fulbito-youtube-followed";
@@ -1360,6 +1403,80 @@ function getCupSlotTeam(teams: ArenaTeam[], side: "left" | "right", roundIndex: 
   return teams[(slotIndex * 2 + base + roundIndex) % teams.length] ?? null;
 }
 
+function FulbitoFanCup({ tier }: { tier: CupTier }) {
+  return (
+    <svg className={`fulbito-fan-cup fulbito-fan-cup--${tier}`} viewBox="0 0 220 300" role="img" aria-label="Copa Fulbito">
+      <defs>
+        <linearGradient id="cup-silver" x1="35" x2="184" y1="15" y2="214" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset=".22" stopColor="#d8e5ee" />
+          <stop offset=".48" stopColor="#8799a8" />
+          <stop offset=".72" stopColor="#f8fbff" />
+          <stop offset="1" stopColor="#667481" />
+        </linearGradient>
+        <linearGradient id="cup-gold-edge" x1="48" x2="177" y1="34" y2="247" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#fff3a5" />
+          <stop offset=".46" stopColor="#d39c2b" />
+          <stop offset="1" stopColor="#7c4c0f" />
+        </linearGradient>
+        <linearGradient id="cup-shadow" x1="30" x2="184" y1="12" y2="268" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#102233" stopOpacity=".08" />
+          <stop offset=".72" stopColor="#06101b" stopOpacity=".42" />
+          <stop offset="1" stopColor="#02050a" stopOpacity=".72" />
+        </linearGradient>
+        <radialGradient id="cup-glow" cx="44%" cy="20%" r="68%">
+          <stop offset="0" stopColor="#ffffff" stopOpacity=".88" />
+          <stop offset=".24" stopColor="#ffffff" stopOpacity=".22" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+        <filter id="cup-depth" x="-30%" y="-30%" width="160%" height="170%">
+          <feDropShadow dx="0" dy="18" stdDeviation="14" floodColor="#000000" floodOpacity=".46" />
+          <feDropShadow dx="0" dy="0" stdDeviation="7" floodColor="#f1c75b" floodOpacity=".28" />
+        </filter>
+      </defs>
+      <g filter="url(#cup-depth)">
+        <ellipse cx="110" cy="270" rx="64" ry="14" fill="#02060c" opacity=".42" />
+        <path d="M64 246h92l12 22H52l12-22Z" fill="url(#cup-gold-edge)" />
+        <path d="M73 219h74l9 30H64l9-30Z" fill="url(#cup-silver)" />
+        <path d="M91 174h38l9 50H82l9-50Z" fill="url(#cup-gold-edge)" />
+        <path d="M45 40h130c-2 58-14 105-37 134-17 21-40 21-57 0C58 145 47 98 45 40Z" fill="url(#cup-silver)" />
+        <path d="M45 40h130c-4 22-31 35-65 35S49 62 45 40Z" fill="#f5fbff" opacity=".7" />
+        <path d="M52 50c8 66 26 119 58 139 32-20 50-73 58-139" fill="none" stroke="url(#cup-shadow)" strokeWidth="13" opacity=".58" />
+        <path d="M52 39c-33 10-44 47-32 76 8 19 24 31 48 39l7-22c-18-5-29-13-34-26-7-18 0-36 18-44l-7-23Z" fill="url(#cup-silver)" />
+        <path d="M168 39c33 10 44 47 32 76-8 19-24 31-48 39l-7-22c18-5 29-13 34-26 7-18 0-36-18-44l7-23Z" fill="url(#cup-silver)" />
+        <path d="M34 59c-14 13-16 34-8 50 6 12 17 19 33 25" fill="none" stroke="#fff" strokeOpacity=".42" strokeWidth="4" />
+        <path d="M186 59c14 13 16 34 8 50-6 12-17 19-33 25" fill="none" stroke="#fff" strokeOpacity=".42" strokeWidth="4" />
+        <path d="M74 50c7 52 22 94 43 127" fill="none" stroke="#ffffff" strokeOpacity=".42" strokeWidth="5" strokeLinecap="round" />
+        <path d="M137 50c-3 43-12 80-28 111" fill="none" stroke="#ffffff" strokeOpacity=".14" strokeWidth="18" strokeLinecap="round" />
+        <ellipse cx="92" cy="58" rx="45" ry="78" fill="url(#cup-glow)" opacity=".7" />
+        <circle cx="110" cy="118" r="31" fill="#07101a" opacity=".86" />
+        <path d="M94 122h32M110 101v42M98 107l24 24M122 107l-24 24" stroke="#f1c75b" strokeWidth="5" strokeLinecap="round" />
+        <path d="M74 220h72" stroke="#ffffff" strokeOpacity=".45" strokeWidth="3" />
+        <path d="M58 248h104" stroke="#ffffff" strokeOpacity=".34" strokeWidth="3" />
+      </g>
+    </svg>
+  );
+}
+
+function CupTierSelector({
+  active,
+  onChange
+}: {
+  active: CupTier;
+  onChange: (tier: CupTier) => void;
+}) {
+  return (
+    <section className="cup-tier-selector" aria-label="Camino competitivo Fulbito">
+      {cupTierCatalog.map((tier) => (
+        <button className={active === tier.id ? "is-active" : ""} key={tier.id} onClick={() => onChange(tier.id)} type="button">
+          <span>{tier.eyebrow}</span>
+          <strong>{tier.label}</strong>
+        </button>
+      ))}
+    </section>
+  );
+}
+
 function CupBracketSide({
   side,
   rounds,
@@ -1406,11 +1523,13 @@ function ChampionCard({
   champion,
   players,
   isChampion,
+  tier,
   onTeamOpen
 }: {
   champion?: ArenaTeam | null;
   players: ArenaPlayer[];
   isChampion: boolean;
+  tier: (typeof cupTierCatalog)[number];
   onTeamOpen: (teamId: string) => void;
 }) {
   const championPlayers = champion ? players.filter((player) => player.team_id === champion.id) : [];
@@ -1418,9 +1537,9 @@ function ChampionCard({
     <button className="champion-card" disabled={!champion} onClick={() => champion && onTeamOpen(champion.id)} type="button">
       <TeamCrest team={champion} size="large" />
       <div>
-        <span>{isChampion ? "Campeon de la copa" : "Candidato actual"}</span>
+        <span>{isChampion ? tier.title : `${tier.title} por definir`}</span>
         <strong>{champion?.name ?? "Campeon por definir"}</strong>
-        <p>{champion ? `${champion.neighborhood ?? "Barrio"} / ${championPlayers.length} jugadores cargados` : "Cuando termine la final, el campeon queda historico aca."}</p>
+        <p>{champion ? `${champion.neighborhood ?? "Barrio"} / ${championPlayers.length} jugadores cargados` : tier.description}</p>
         <div className="champion-card__roster">
           {championPlayers.slice(0, 7).map((player) => (
             <span key={player.id} title={player.display_name}>
@@ -1448,28 +1567,36 @@ function CompetitionBracket({
   tournament?: ArenaTournament | null;
   onTeamOpen: (teamId: string) => void;
 }) {
+  const [cupTier, setCupTier] = useState<CupTier>("local");
   const seededTeams = teams.length ? teams : [];
   const champion = seededTeams[0] ?? null;
   const isChampion = tournament?.status === "completed" || tournament?.status === "finished" || tournament?.status === "closed";
+  const activeTier = cupTierCatalog.find((tier) => tier.id === cupTier) ?? cupTierCatalog[0];
   return (
     <section className="competition-bracket">
       <header>
         <span>Eliminatorias</span>
         <strong>Camino a la final</strong>
       </header>
+      <CupTierSelector active={cupTier} onChange={setCupTier} />
+      <article className="cup-tier-summary">
+        <span>{activeTier.eyebrow}</span>
+        <strong>{activeTier.title}</strong>
+        <p>{activeTier.description}</p>
+      </article>
       <div className="competition-cup-bracket">
         <div className="competition-cup-bracket__field">
           <CupBracketSide onTeamOpen={onTeamOpen} rounds={rounds} side="left" teams={seededTeams} />
           <div className="cup-trophy" aria-label="Copa Fulbito">
             <div className="cup-trophy__halo" />
-            <div className="cup-trophy__icon">
-              <Trophy />
+            <div className="cup-trophy__model">
+              <FulbitoFanCup tier={cupTier} />
             </div>
-            <span>Fulbito Cup</span>
+            <span>{activeTier.trophyLabel}</span>
           </div>
           <CupBracketSide onTeamOpen={onTeamOpen} rounds={rounds} side="right" teams={seededTeams} />
         </div>
-        <ChampionCard champion={champion} isChampion={isChampion} onTeamOpen={onTeamOpen} players={players} />
+        <ChampionCard champion={champion} isChampion={isChampion} onTeamOpen={onTeamOpen} players={players} tier={activeTier} />
       </div>
     </section>
   );
