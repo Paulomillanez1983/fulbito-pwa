@@ -20,7 +20,7 @@ export type MatchStatus =
 
 export type LiveStreamMode = "external_link" | "official_auto" | "official_manual";
 
-export type LiveStreamType = "match" | "final" | "training" | "press" | "other";
+export type LiveStreamType = "match" | "final" | "draw" | "training" | "press" | "other";
 
 export type LiveStreamLifecycleStatus = "scheduled" | "ready" | "testing" | "live" | "complete" | "cancelled" | "failed";
 
@@ -95,7 +95,46 @@ export type ArenaTournament = {
   registration_fee: number;
   max_teams: number | null;
   starts_on: string | null;
+  ends_on?: string | null;
+  playable_weekdays?: number[];
+  playable_start_time?: string | null;
+  playable_end_time?: string | null;
+  schedule_notes?: string | null;
   venue_id: string | null;
+};
+
+export type ArenaTournamentDraw = {
+  id: string;
+  tournament_id: string;
+  created_by: string | null;
+  mode: "demo" | "official";
+  status: "completed" | "cancelled";
+  seed: string;
+  duration_seconds: number;
+  teams_snapshot: Array<{
+    id: string;
+    name: string;
+    shortName: string;
+    badgeUrl: string | null;
+  }>;
+  groups: Array<{
+    code: string;
+    teams: Array<{
+      id: string;
+      name: string;
+      shortName: string;
+      badgeUrl: string | null;
+    }>;
+  }>;
+  bracket: Array<{
+    round: string;
+    label: string;
+    home: string;
+    away: string;
+  }>;
+  youtube_watch_url: string | null;
+  created_at: string;
+  completed_at: string;
 };
 
 export type ArenaTournamentTeam = {
@@ -263,6 +302,7 @@ export type ArenaData = {
   user: SessionUser | null;
   activeTournament: ArenaTournament | null;
   tournaments: ArenaTournament[];
+  tournamentDraws: ArenaTournamentDraw[];
   tournamentTeams: ArenaTournamentTeam[];
   venues: ArenaVenue[];
   teams: ArenaTeam[];

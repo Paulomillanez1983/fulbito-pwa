@@ -36,10 +36,11 @@ import { InstallAppButton } from "@/components/install-app-button";
 import { LoginPanel } from "@/components/login-panel";
 import { PaymentConsole } from "@/components/payment-console";
 import { VenueMap } from "@/components/venue-map";
+import { buildTournamentDraw, type DrawResult } from "@/lib/draw";
 import { roleCatalog } from "@/lib/demo";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaVenue, FieldMode, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
+import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaVenue, FieldMode, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 
@@ -58,6 +59,8 @@ const formatLabels = {
   world_cup: "Mundial barrial",
   knockout: "Copa eliminatoria"
 };
+
+const fulbitoLiveChannelUrl = "https://www.youtube.com/@FulbitoLIVE?sub_confirmation=1";
 
 const positionLabels: Record<string, string> = {
   ARQ: "Arquero",
@@ -422,20 +425,80 @@ function MiniStat({
 }
 
 function DrawLiveTeaser({
+  data,
   tournament,
-  teamCount,
   onOpenTournaments,
   onOpenMatches
 }: {
+  data: ArenaData;
   tournament: ArenaTournament | null;
-  teamCount: number;
   onOpenTournaments: () => void;
   onOpenMatches: () => void;
 }) {
+  const [demoDraw, setDemoDraw] = useState<DrawResult | null>(null);
+  const [officialDraw, setOfficialDraw] = useState<ArenaTournamentDraw | null>(null);
+  const [stage, setStage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [youtubeWatchUrl, setYoutubeWatchUrl] = useState("");
   if (!tournament) return null;
-  const maxTeams = tournament.max_teams ?? Math.max(8, teamCount);
+  const activeDrawTournament = tournament;
+  const tournamentTeamIds = new Set(
+    data.tournamentTeams
+      .filter((row) => row.tournament_id === activeDrawTournament.id && row.status !== "rejected")
+      .map((row) => row.team_id)
+  );
+  const enrolledTeams = data.teams.filter((team) => tournamentTeamIds.has(team.id));
+  const teamCount = enrolledTeams.length;
+  const maxTeams = activeDrawTournament.max_teams ?? Math.max(8, teamCount);
   const isReady = teamCount >= maxTeams;
   const groupLabels = ["A", "B", "C", "D"].slice(0, Math.max(2, Math.min(4, Math.ceil(maxTeams / 4))));
+  const savedDraw = officialDraw ?? data.tournamentDraws.find((draw) => draw.tournament_id === activeDrawTournament.id && draw.mode === "official") ?? null;
+  const canManage = Boolean(data.user && data.user.id === activeDrawTournament.organizer_id);
+  const visibleGroups = savedDraw?.groups ?? demoDraw?.groups ?? [];
+  const visibleBracket = savedDraw?.bracket ?? demoDraw?.bracket ?? [];
+
+  function runDemoDraw() {
+    if (enrolledTeams.length < 2) {
+      setMessage("El demo necesita al menos 2 equipos inscriptos.");
+      return;
+    }
+    const seed = `demo-${activeDrawTournament.id}-${Date.now()}`;
+    const result = buildTournamentDraw({
+      teams: enrolledTeams,
+      format: activeDrawTournament.format,
+      maxTeams,
+      seed
+    });
+    setDemoDraw(result);
+    setStage("Bolillero en marcha");
+    setMessage("Demo rapido: no guarda resultado y se puede repetir para revisar la experiencia visual.");
+    window.setTimeout(() => setStage("Saliendo bolillas"), 1600);
+    window.setTimeout(() => setStage(activeDrawTournament.format === "knockout" ? "Llave generada" : "Grupos generados"), 3400);
+  }
+
+  async function createOfficialDraw() {
+    if (!canManage || savedDraw) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/tournaments/${activeDrawTournament.id}/draw`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ youtubeWatchUrl })
+      });
+      const result = await response.json() as { draw?: ArenaTournamentDraw; reason?: string; error?: string };
+      if (!response.ok || !result.draw) throw new Error(result.error || "No se pudo guardar el sorteo oficial.");
+      setOfficialDraw(result.draw);
+      setDemoDraw(null);
+      setStage("Sorteo oficial guardado");
+      setMessage(result.reason || "Sorteo oficial guardado.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo iniciar el sorteo oficial.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <section className="draw-live-teaser">
@@ -446,16 +509,67 @@ function DrawLiveTeaser({
       </div>
       <div>
         <span>Sorteo Fulbito Live</span>
-        <strong>{isReady ? "Bolillero listo para fixture" : `${teamCount}/${maxTeams} equipos en el bolillero`}</strong>
+        <strong>{savedDraw ? "Sorteo oficial auditado" : isReady ? "Bolillero listo para fixture" : `${teamCount}/${maxTeams} equipos en el bolillero`}</strong>
         <p>
-          Cuando se complete el cupo, el organizador puede hacer un sorteo de 2 a 3 minutos:
-          grupos A, B, C, D, bolillas por equipo y fixture auditado para compartir por YouTube.
+          Demo libre para probar. Oficial: una sola ejecucion, 2 a 3 minutos de show visual,
+          grupos o llave segun formato y resultado guardado para compartir por YouTube.
         </p>
+        {stage ? <small className="draw-live-teaser__stage">{stage}</small> : null}
       </div>
       <div className="draw-live-teaser__actions">
         <button onClick={onOpenTournaments} type="button">Ver equipos</button>
-        <button onClick={onOpenMatches} type="button">{isReady ? "Preparar Live" : "Ver Fulbito Live"}</button>
+        <button onClick={runDemoDraw} type="button">Demo sorteo</button>
+        <a href={fulbitoLiveChannelUrl} rel="noreferrer" target="_blank">Seguir Fulbito TV</a>
+        <button onClick={onOpenMatches} type="button">Ver Fulbito Live</button>
       </div>
+      {canManage && !savedDraw ? (
+        <div className="draw-official-console">
+          <input
+            onChange={(event) => setYoutubeWatchUrl(event.target.value)}
+            placeholder="Link YouTube del sorteo, opcional"
+            value={youtubeWatchUrl}
+          />
+          <button disabled={!isReady || busy} onClick={createOfficialDraw} type="button">
+            {busy ? "Guardando" : isReady ? "Iniciar sorteo oficial" : "Oficial al completar cupo"}
+          </button>
+        </div>
+      ) : null}
+      {savedDraw?.youtube_watch_url ? (
+        <a className="draw-youtube-link" href={savedDraw.youtube_watch_url} rel="noreferrer" target="_blank">Ver sorteo en YouTube</a>
+      ) : null}
+      {visibleGroups.length || visibleBracket.length ? (
+        <div className="draw-result-preview">
+          {visibleGroups.map((group) => (
+            <article key={group.code}>
+              <strong>Grupo {group.code}</strong>
+              <span>{group.teams.map((team) => team.shortName).join(" / ") || "Pendiente"}</span>
+            </article>
+          ))}
+          {visibleBracket.slice(0, 4).map((slot) => (
+            <article key={`${slot.round}-${slot.label}`}>
+              <strong>{slot.round}</strong>
+              <span>{slot.home} vs {slot.away}</span>
+            </article>
+          ))}
+        </div>
+      ) : null}
+      {message ? <p className="draw-live-teaser__message">{message}</p> : null}
+    </section>
+  );
+}
+
+function YouTubeFollowStrip() {
+  return (
+    <section className="youtube-follow-strip">
+      <RadioTower size={18} />
+      <div>
+        <strong>Fulbito TV en YouTube</strong>
+        <span>Sorteos, vivos, finales y repeticiones quedan en el canal oficial.</span>
+      </div>
+      <a href={fulbitoLiveChannelUrl} rel="noreferrer" target="_blank">
+        Seguir
+        <ExternalLink size={15} />
+      </a>
     </section>
   );
 }
@@ -1470,11 +1584,13 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           </section>
         ) : null}
 
+        {!inviteMode ? <YouTubeFollowStrip /> : null}
+
         {!inviteMode && data.user ? (
           <DrawLiveTeaser
+            data={data}
             onOpenMatches={() => setActive("matches")}
             onOpenTournaments={openMyTournaments}
-            teamCount={data.activeTournament ? data.tournamentTeams.filter((row) => row.tournament_id === data.activeTournament?.id).length : data.teams.length}
             tournament={data.activeTournament}
           />
         ) : null}

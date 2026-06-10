@@ -372,7 +372,7 @@ function AdminLivePanel({
           can_use_official_auto: true,
           max_streams_per_day: 3,
           max_streams_per_week: 12,
-          allowed_stream_types: ["match", "final"],
+          allowed_stream_types: ["match", "final", "draw"],
           status: "active",
           enabled_by_user_id: adminId
         }, { onConflict: "user_id,tournament_id" })

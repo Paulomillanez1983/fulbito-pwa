@@ -21,6 +21,20 @@ const tournamentFormatLabels: Record<TournamentFormat, string> = {
   knockout: "Eliminacion directa"
 };
 
+const weekdayOptions = [
+  { value: 1, label: "Lun" },
+  { value: 2, label: "Mar" },
+  { value: 3, label: "Mie" },
+  { value: 4, label: "Jue" },
+  { value: 5, label: "Vie" },
+  { value: 6, label: "Sab" },
+  { value: 0, label: "Dom" }
+];
+
+function shortTime(value?: string | null) {
+  return value ? value.slice(0, 5) : "";
+}
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -194,6 +208,22 @@ function ProofField({
         type="file"
       />
     </label>
+  );
+}
+
+function WeekdayPicker({ defaultValues = [6], disabled = false }: { defaultValues?: number[]; disabled?: boolean }) {
+  return (
+    <fieldset className="weekday-picker">
+      <legend>Dias del torneo</legend>
+      <div>
+        {weekdayOptions.map((day) => (
+          <label key={day.value}>
+            <input defaultChecked={defaultValues.includes(day.value)} disabled={disabled} name="playableWeekdays" type="checkbox" value={day.value} />
+            <span>{day.label}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 
@@ -454,6 +484,12 @@ function TournamentProForm({
           status: "registration",
           field_mode: fieldMode,
           max_teams: Number.isFinite(maxTeams) ? maxTeams : 8,
+          starts_on: String(form.get("startsOn") || "") || null,
+          ends_on: String(form.get("endsOn") || "") || null,
+          playable_weekdays: form.getAll("playableWeekdays").map((value) => Number(value)).filter((value) => Number.isFinite(value)),
+          playable_start_time: String(form.get("playableStartTime") || "") || null,
+          playable_end_time: String(form.get("playableEndTime") || "") || null,
+          schedule_notes: String(form.get("scheduleNotes") || "").trim() || null,
           registration_fee: 0,
           rules: `Copa creada en Fulbito Arena. Formato: ${tournamentFormatLabels[tournamentFormat]}. Los equipos pueden sumarse gratis o activar identidad premium.`
         })
@@ -501,6 +537,28 @@ function TournamentProForm({
           <option value="11v11">11v11</option>
         </select>
       </div>
+      <div className="creator-inline">
+        <label>
+          <span>Empieza</span>
+          <input name="startsOn" type="date" />
+        </label>
+        <label>
+          <span>Finaliza</span>
+          <input name="endsOn" type="date" />
+        </label>
+      </div>
+      <WeekdayPicker />
+      <div className="creator-inline">
+        <label>
+          <span>Desde</span>
+          <input defaultValue="18:00" name="playableStartTime" type="time" />
+        </label>
+        <label>
+          <span>Hasta</span>
+          <input defaultValue="23:00" name="playableEndTime" type="time" />
+        </label>
+      </div>
+      <input name="scheduleNotes" placeholder="Nota de agenda: solo sabados, lluvia, feriados, sede" />
       <input name="payerNote" placeholder="Alias o comentario de la transferencia" />
       <InlinePaymentAccount amount={plan.amount} />
       <ProofField disabled={pending || sent} onReady={setProofReady} ready={proofReady} sent={sent} />
@@ -734,6 +792,73 @@ function CreatorPaymentCard({
   );
 }
 
+function TournamentScheduleForm({ tournament, canEdit }: { tournament: ArenaTournament; canEdit: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState("");
+  const defaultWeekdays = tournament.playable_weekdays?.length ? tournament.playable_weekdays : [6];
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canEdit) return;
+    setPending(true);
+    setMessage("");
+    const form = new FormData(event.currentTarget);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("tournaments")
+        .update({
+          starts_on: String(form.get("startsOn") || "") || null,
+          ends_on: String(form.get("endsOn") || "") || null,
+          playable_weekdays: form.getAll("playableWeekdays").map((value) => Number(value)).filter((value) => Number.isFinite(value)),
+          playable_start_time: String(form.get("playableStartTime") || "") || null,
+          playable_end_time: String(form.get("playableEndTime") || "") || null,
+          schedule_notes: String(form.get("scheduleNotes") || "").trim() || null
+        })
+        .eq("id", tournament.id);
+      if (error) throw error;
+      setMessage("Agenda actualizada. El fixture futuro puede usar estos parametros.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo guardar la agenda.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <details className="tournament-schedule-form" open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary>Agenda y horarios</summary>
+      <form onSubmit={submit}>
+        <div className="creator-inline">
+          <label>
+            <span>Empieza</span>
+            <input defaultValue={tournament.starts_on ?? ""} disabled={!canEdit || pending} name="startsOn" type="date" />
+          </label>
+          <label>
+            <span>Finaliza</span>
+            <input defaultValue={tournament.ends_on ?? ""} disabled={!canEdit || pending} name="endsOn" type="date" />
+          </label>
+        </div>
+        <WeekdayPicker defaultValues={defaultWeekdays} disabled={!canEdit || pending} />
+        <div className="creator-inline">
+          <label>
+            <span>Desde</span>
+            <input defaultValue={shortTime(tournament.playable_start_time) || "18:00"} disabled={!canEdit || pending} name="playableStartTime" type="time" />
+          </label>
+          <label>
+            <span>Hasta</span>
+            <input defaultValue={shortTime(tournament.playable_end_time) || "23:00"} disabled={!canEdit || pending} name="playableEndTime" type="time" />
+          </label>
+        </div>
+        <input defaultValue={tournament.schedule_notes ?? ""} disabled={!canEdit || pending} name="scheduleNotes" placeholder="Notas: lluvia, feriados, cancha, excepciones" />
+        {canEdit ? <button disabled={pending} type="submit">{pending ? "Guardando" : "Guardar agenda"}</button> : <small>Solo el organizador puede editar esta agenda.</small>}
+        {message ? <small>{message}</small> : null}
+      </form>
+    </details>
+  );
+}
+
 function MyTournamentsPanel({
   activeEntitlements,
   data,
@@ -797,6 +922,7 @@ function MyTournamentsPanel({
                 </b>
               </div>
               {entitlement ? <TournamentInviteLink tournament={tournament} /> : null}
+              <TournamentScheduleForm canEdit={data.user?.id === tournament.organizer_id} tournament={tournament} />
             </article>
           ))}
           <button className="my-tournaments-new" onClick={onCreateTournament} type="button">

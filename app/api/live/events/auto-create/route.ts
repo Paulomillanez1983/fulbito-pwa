@@ -18,7 +18,7 @@ type LiveCreateBody = {
 };
 
 const validModes: LiveStreamMode[] = ["external_link", "official_auto", "official_manual"];
-const validStreamTypes: LiveStreamType[] = ["match", "final", "training", "press", "other"];
+const validStreamTypes: LiveStreamType[] = ["match", "final", "draw", "training", "press", "other"];
 const validVisibilities: LiveStreamVisibility[] = ["public", "unlisted", "private"];
 
 function officialMockUrl(channelUrl?: string | null) {

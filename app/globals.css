@@ -2140,11 +2140,15 @@ body::after {
 .draw-live-teaser__actions {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
-.draw-live-teaser__actions button {
+.draw-live-teaser__actions button,
+.draw-live-teaser__actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 40px;
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 11px;
@@ -2152,12 +2156,138 @@ body::after {
   color: var(--ink);
   font-weight: 900;
   cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+}
+
+.draw-live-teaser__actions a {
+  border-color: rgba(255,49,49,.35);
+  background: rgba(255,49,49,.14);
+  color: #ffd9d9;
 }
 
 .draw-live-teaser__actions button:last-child {
   border-color: rgba(52,201,255,.32);
   background: rgba(52,201,255,.12);
   color: #c8f6ff;
+}
+
+.draw-live-teaser__stage,
+.draw-live-teaser__message {
+  display: block;
+  margin-top: 7px;
+  color: #b9ffd9;
+  font-weight: 850;
+}
+
+.draw-official-console,
+.draw-result-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 8px;
+}
+
+.draw-official-console {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.draw-official-console input,
+.draw-official-console button {
+  min-height: 42px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 11px;
+  padding: 0 12px;
+}
+
+.draw-official-console input {
+  background: rgba(2,6,12,.7);
+  color: var(--ink);
+}
+
+.draw-official-console button {
+  background: linear-gradient(135deg, #ffe077, #b87510);
+  color: #080b10;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.draw-official-console button:disabled {
+  opacity: .62;
+  cursor: not-allowed;
+}
+
+.draw-youtube-link {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 1px solid rgba(255,49,49,.28);
+  border-radius: 11px;
+  background: rgba(255,49,49,.12);
+  color: #ffd9d9;
+  font-weight: 950;
+  text-decoration: none;
+}
+
+.draw-result-preview {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.draw-result-preview article {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 11px;
+  padding: 9px;
+  background: rgba(2,6,12,.48);
+}
+
+.draw-result-preview strong,
+.draw-result-preview span {
+  display: block;
+}
+
+.draw-result-preview span {
+  color: var(--muted);
+}
+
+.youtube-follow-strip {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255,49,49,.22);
+  border-radius: 14px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 0 0, rgba(255,49,49,.16), transparent 32%),
+    linear-gradient(180deg, rgba(20,26,36,.86), rgba(5,9,17,.9));
+}
+
+.youtube-follow-strip > svg {
+  color: #ff6b6b;
+}
+
+.youtube-follow-strip strong,
+.youtube-follow-strip span {
+  display: block;
+}
+
+.youtube-follow-strip span {
+  color: var(--muted);
+}
+
+.youtube-follow-strip a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255,49,49,.15);
+  color: #fff2f2;
+  font-weight: 950;
+  text-decoration: none;
 }
 
 @keyframes draw-pot-spin {
@@ -6204,6 +6334,123 @@ body::after,
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 9px;
+}
+
+.tournament-schedule-form {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  background: rgba(255,255,255,.035);
+}
+
+.tournament-schedule-form summary {
+  min-height: 42px;
+  padding: 11px;
+  color: var(--gold);
+  cursor: pointer;
+  font-weight: 950;
+}
+
+.tournament-schedule-form form {
+  display: grid;
+  gap: 9px;
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding: 10px;
+}
+
+.tournament-schedule-form button[type="submit"] {
+  min-height: 42px;
+  border: 0;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #ffe077, #b87510);
+  color: #090c12;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.creator-inline label {
+  display: grid;
+  gap: 5px;
+}
+
+.creator-inline label span,
+.weekday-picker legend {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 850;
+}
+
+.weekday-picker {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.weekday-picker > div {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.weekday-picker label {
+  position: relative;
+  display: grid;
+}
+
+.weekday-picker input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.weekday-picker span {
+  display: grid;
+  place-items: center;
+  min-height: 34px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 9px;
+  background: rgba(255,255,255,.045);
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+.weekday-picker input:checked + span {
+  border-color: rgba(241,199,91,.48);
+  background: rgba(241,199,91,.15);
+  color: var(--ink);
+}
+
+@media (max-width: 520px) {
+  .draw-live-teaser {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .draw-live-teaser__pot {
+    width: 66px;
+  }
+
+  .draw-live-teaser__actions,
+  .draw-result-preview,
+  .draw-official-console {
+    grid-template-columns: 1fr;
+  }
+
+  .youtube-follow-strip {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .youtube-follow-strip a {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  .weekday-picker > div {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 .my-tournaments-new {

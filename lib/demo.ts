@@ -232,6 +232,7 @@ export const demoArenaData: ArenaData = {
   user: null,
   activeTournament,
   tournaments: [activeTournament],
+  tournamentDraws: [],
   tournamentTeams: teams.map((team) => ({ tournament_id: activeTournament.id, team_id: team.id, status: "approved" })),
   venues,
   teams,
