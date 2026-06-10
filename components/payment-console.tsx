@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { CheckCircle2, Clipboard, Clock3, Crown, LoaderCircle, MessageCircle, Send, Sparkles, Upload, XCircle } from "lucide-react";
-import { LoginPanel } from "@/components/login-panel";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount, paymentStatusMeta } from "@/lib/payments";
 import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -120,11 +119,32 @@ async function createPaymentRequest({
 }
 
 function InlinePaymentAccount({ amount }: { amount: number }) {
+  const [copied, setCopied] = useState("");
+
+  async function copyValue(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(`${label} copiado`);
+      window.setTimeout(() => setCopied(""), 1600);
+    } catch {
+      setCopied("No se pudo copiar");
+    }
+  }
+
   return (
     <div className="inline-payment-account">
       <span>Transferi {formatPaymentMoney(amount)} y adjunta el comprobante</span>
-      <b>{paymentAccount.alias}</b>
-      <small>CVU {paymentAccount.cvu}</small>
+      <button onClick={() => copyValue(paymentAccount.alias, "Alias")} type="button">
+        <span>Alias</span>
+        <b>{paymentAccount.alias}</b>
+        <Clipboard size={15} />
+      </button>
+      <button onClick={() => copyValue(paymentAccount.cvu, "CVU")} type="button">
+        <span>CVU</span>
+        <b>{paymentAccount.cvu}</b>
+        <Clipboard size={15} />
+      </button>
+      {copied ? <small>{copied}</small> : null}
     </div>
   );
 }
@@ -642,16 +662,22 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
     <section className="console-panel payment-console" id="pro">
       <div className="payment-console__head">
         <span>Onboarding Fulbito Pro</span>
-        <h2>{data.user ? "Crea, paga y envia comprobante" : "Primero entra con Google"}</h2>
+        <h2>{data.user ? "Crea, paga y envia comprobante" : "Pagos Pro despues del login"}</h2>
         <p>
           {data.user
             ? "Elegis que queres crear, copias el alias/CVU, pagas por fuera y subis el comprobante. Fulbito no cobra alquileres ni plata de canchas."
-            : "Despues del login aparecen el alias, CVU, creacion de equipo, torneo, sponsor y cancha destacada."}
+            : "Usa el unico acceso con Google de la pantalla. Despues aparecen el alias, CVU, creacion de equipo, torneo, sponsor y cancha destacada."}
         </p>
       </div>
 
       {!data.user ? (
-        <LoginPanel configured={data.configured} />
+        <div className="payment-login-hint">
+          <Crown size={20} />
+          <div>
+            <strong>Un solo ingreso</strong>
+            <span>Entra desde el bloque de identidad o el boton superior. Este panel se habilita cuando tu cuenta queda conectada.</span>
+          </div>
+        </div>
       ) : (
         <>
           <div className="payment-account">
