@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { CheckCircle2, Clipboard, Clock3, Crown, LoaderCircle, MessageCircle, Send, Sparkles, Upload, XCircle } from "lucide-react";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
@@ -87,6 +87,17 @@ async function createPaymentRequest({
   proofFile: FormDataEntryValue | null;
 }) {
   const supabase = createSupabaseBrowserClient();
+  const { data: existingRequest, error: existingError } = await supabase
+    .from("payment_requests")
+    .select("id")
+    .eq("requester_id", userId)
+    .eq("plan_code", plan.code)
+    .eq("status", "pending_review")
+    .limit(1)
+    .maybeSingle();
+  if (existingError) throw existingError;
+  if (existingRequest) throw new Error("Ya tenes un comprobante pendiente para este plan. Espera la revision del admin.");
+
   const proof = await uploadProof(userId, proofFile);
   const { data: request, error: requestError } = await supabase
     .from("payment_requests")
@@ -103,7 +114,10 @@ async function createPaymentRequest({
     })
     .select()
     .single();
-  if (requestError) throw requestError;
+  if (requestError) {
+    await supabase.storage.from("payment-proofs").remove([proof.proofPath]);
+    throw requestError;
+  }
 
   const { data: message, error: messageError } = await supabase
     .from("payment_messages")
@@ -150,13 +164,24 @@ function InlinePaymentAccount({ amount }: { amount: number }) {
   );
 }
 
-function ProofField({ ready, onReady }: { ready: boolean; onReady: (ready: boolean) => void }) {
+function ProofField({
+  ready,
+  sent,
+  disabled,
+  onReady
+}: {
+  ready: boolean;
+  sent?: boolean;
+  disabled?: boolean;
+  onReady: (ready: boolean) => void;
+}) {
   return (
-    <label className="proof-upload">
+    <label className={`proof-upload ${sent ? "is-sent" : ""} ${disabled ? "is-disabled" : ""}`}>
       <Upload size={17} />
-      <span>{ready ? "Comprobante adjunto" : "Adjuntar comprobante"}</span>
+      <span>{sent ? "Comprobante enviado" : ready ? "Comprobante adjunto" : "Adjuntar comprobante"}</span>
       <input
         accept="image/png,image/jpeg,image/webp,application/pdf"
+        disabled={disabled || sent}
         name="proofFile"
         onChange={(event) => {
           const file = event.target.files?.[0];
@@ -168,31 +193,42 @@ function ProofField({ ready, onReady }: { ready: boolean; onReady: (ready: boole
   );
 }
 
-function SubmitButton({ pending, idle, disabled }: { pending: boolean; idle: string; disabled: boolean }) {
+function SubmitButton({ pending, idle, disabled, sent }: { pending: boolean; idle: string; disabled: boolean; sent: boolean }) {
   return (
-    <SlideSubmitButton disabled={disabled} idle={idle} pendingLabel="Enviando" submitting={pending} />
+    <SlideSubmitButton complete={sent} disabled={disabled} idle={idle} pendingLabel="Enviando" submitting={pending} />
   );
+}
+
+function isRequestPending(request?: PaymentRequest) {
+  return request?.status === "pending_review";
 }
 
 function TeamProForm({
   plan,
   data,
+  existingRequest,
   onCreated
 }: {
   plan: PaymentPlan;
   data: ArenaData;
+  existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
   const [mode, setMode] = useState(data.teams.length ? "existing" : "new");
   const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
+  const [sent, setSent] = useState(isRequestPending(existingRequest));
+  const submitLockedRef = useRef(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    if (sent || submitLockedRef.current) return setMessage("Comprobante ya enviado. Espera la revision del admin.");
     if (!data.user) return setMessage("Primero entra con Google.");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    submitLockedRef.current = true;
     setPending(true);
     try {
       const supabase = createSupabaseBrowserClient();
@@ -231,10 +267,12 @@ function TeamProForm({
         proofFile: form.get("proofFile")
       });
       onCreated(created.request, created.message);
-      event.currentTarget.reset();
+      formElement.reset();
       setProofReady(false);
+      setSent(true);
       setMessage("Equipo y comprobante enviados. El admin activa Pro cuando valide el pago.");
     } catch (error) {
+      submitLockedRef.current = false;
       setMessage(error instanceof Error ? error.message : "No se pudo crear el equipo Pro.");
     } finally {
       setPending(false);
@@ -262,9 +300,9 @@ function TeamProForm({
       )}
       <input name="payerNote" placeholder="Nota: alias desde donde pagaste" />
       <InlinePaymentAccount amount={plan.amount} />
-      <ProofField onReady={setProofReady} ready={proofReady} />
-      <SubmitButton disabled={!proofReady} idle="Crear equipo" pending={pending} />
-      {!proofReady ? <small>El boton se habilita cuando adjuntas el comprobante.</small> : null}
+      <ProofField disabled={pending || sent} onReady={setProofReady} ready={proofReady} sent={sent} />
+      <SubmitButton disabled={!proofReady || sent} idle="Crear equipo" pending={pending} sent={sent} />
+      {!proofReady && !sent ? <small>El boton se habilita cuando adjuntas el comprobante.</small> : null}
       {message ? <small>{message}</small> : null}
     </form>
   );
@@ -273,25 +311,32 @@ function TeamProForm({
 function TournamentProForm({
   plan,
   data,
+  existingRequest,
   onCreated
 }: {
   plan: PaymentPlan;
   data: ArenaData;
+  existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
   const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
+  const [sent, setSent] = useState(isRequestPending(existingRequest));
+  const submitLockedRef = useRef(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setInviteUrl("");
+    if (sent || submitLockedRef.current) return setMessage("Comprobante ya enviado. Espera la revision del admin.");
     if (!data.user) return setMessage("Primero entra con Google.");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const name = String(form.get("tournamentName") || "").trim();
     if (!name) return setMessage("El torneo necesita nombre.");
+    submitLockedRef.current = true;
     setPending(true);
     try {
       const supabase = createSupabaseBrowserClient();
@@ -330,10 +375,12 @@ function TournamentProForm({
       const invite = `Te invito a inscribir tu equipo en ${tournament.name} en Fulbito Arena. Entrá a ${origin} y cargá tu club, plantel y formación.`;
       const whatsappInvite = `Te invito a inscribir tu equipo en ${tournament.name} en Fulbito Arena. Entra a ${origin} y carga tu club, plantel y formacion.`;
       setInviteUrl(`https://wa.me/?text=${encodeURIComponent(whatsappInvite)}`);
-      event.currentTarget.reset();
+      formElement.reset();
       setProofReady(false);
+      setSent(true);
       setMessage("Torneo creado. Envia la invitacion por WhatsApp y espera la aprobacion Pro.");
     } catch (error) {
+      submitLockedRef.current = false;
       setMessage(error instanceof Error ? error.message : "No se pudo crear el torneo.");
     } finally {
       setPending(false);
@@ -353,9 +400,9 @@ function TournamentProForm({
       </div>
       <input name="payerNote" placeholder="Nota: alias, organizador o barrio" />
       <InlinePaymentAccount amount={plan.amount} />
-      <ProofField onReady={setProofReady} ready={proofReady} />
-      <SubmitButton disabled={!proofReady} idle="Crear torneo" pending={pending} />
-      {!proofReady ? <small>El boton se habilita cuando adjuntas el comprobante.</small> : null}
+      <ProofField disabled={pending || sent} onReady={setProofReady} ready={proofReady} sent={sent} />
+      <SubmitButton disabled={!proofReady || sent} idle="Crear torneo" pending={pending} sent={sent} />
+      {!proofReady && !sent ? <small>El boton se habilita cuando adjuntas el comprobante.</small> : null}
       {inviteUrl ? <a className="whatsapp-invite" href={inviteUrl} rel="noreferrer" target="_blank">Enviar invitacion por WhatsApp</a> : null}
       {message ? <small>{message}</small> : null}
     </form>
@@ -365,23 +412,30 @@ function TournamentProForm({
 function SponsorForm({
   plan,
   data,
+  existingRequest,
   onCreated
 }: {
   plan: PaymentPlan;
   data: ArenaData;
+  existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
   const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
+  const [sent, setSent] = useState(isRequestPending(existingRequest));
+  const submitLockedRef = useRef(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    if (sent || submitLockedRef.current) return setMessage("Comprobante ya enviado. Espera la revision del admin.");
     if (!data.user) return setMessage("Primero entra con Google.");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const sponsorName = String(form.get("sponsorName") || "").trim();
     if (!sponsorName) return setMessage("Carga el nombre del sponsor.");
+    submitLockedRef.current = true;
     setPending(true);
     try {
       const note = String(form.get("payerNote") || "").trim() || `Sponsor: ${sponsorName}`;
@@ -395,10 +449,12 @@ function SponsorForm({
         proofFile: form.get("proofFile")
       });
       onCreated(created.request, created.message);
-      event.currentTarget.reset();
+      formElement.reset();
       setProofReady(false);
+      setSent(true);
       setMessage("Sponsor enviado para aprobacion.");
     } catch (error) {
+      submitLockedRef.current = false;
       setMessage(error instanceof Error ? error.message : "No se pudo enviar el sponsor.");
     } finally {
       setPending(false);
@@ -410,9 +466,9 @@ function SponsorForm({
       <input name="sponsorName" placeholder="Nombre del sponsor" />
       <input name="payerNote" placeholder="Donde queres aparecer: fecha, final, MVP" />
       <InlinePaymentAccount amount={plan.amount} />
-      <ProofField onReady={setProofReady} ready={proofReady} />
-      <SubmitButton disabled={!proofReady} idle="Crear sponsor" pending={pending} />
-      {!proofReady ? <small>El boton se habilita cuando adjuntas el comprobante.</small> : null}
+      <ProofField disabled={pending || sent} onReady={setProofReady} ready={proofReady} sent={sent} />
+      <SubmitButton disabled={!proofReady || sent} idle="Crear sponsor" pending={pending} sent={sent} />
+      {!proofReady && !sent ? <small>El boton se habilita cuando adjuntas el comprobante.</small> : null}
       {message ? <small>{message}</small> : null}
     </form>
   );
@@ -421,22 +477,29 @@ function SponsorForm({
 function FeaturedVenueForm({
   plan,
   data,
+  existingRequest,
   onCreated
 }: {
   plan: PaymentPlan;
   data: ArenaData;
+  existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
   const [mode, setMode] = useState(data.venues.length ? "existing" : "new");
   const [pending, setPending] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
+  const [sent, setSent] = useState(isRequestPending(existingRequest));
+  const submitLockedRef = useRef(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
+    if (sent || submitLockedRef.current) return setMessage("Comprobante ya enviado. Espera la revision del admin.");
     if (!data.user) return setMessage("Primero entra con Google.");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    submitLockedRef.current = true;
     setPending(true);
     try {
       const supabase = createSupabaseBrowserClient();
@@ -477,10 +540,12 @@ function FeaturedVenueForm({
         proofFile: form.get("proofFile")
       });
       onCreated(created.request, created.message);
-      event.currentTarget.reset();
+      formElement.reset();
       setProofReady(false);
+      setSent(true);
       setMessage("Cancha enviada para destacar. El admin valida el pago.");
     } catch (error) {
+      submitLockedRef.current = false;
       setMessage(error instanceof Error ? error.message : "No se pudo enviar la cancha.");
     } finally {
       setPending(false);
@@ -513,9 +578,9 @@ function FeaturedVenueForm({
       )}
       <input name="payerNote" placeholder="Nota: horarios, telefono o zona" />
       <InlinePaymentAccount amount={plan.amount} />
-      <ProofField onReady={setProofReady} ready={proofReady} />
-      <SubmitButton disabled={!proofReady} idle="Crear cancha destacada" pending={pending} />
-      {!proofReady ? <small>El boton se habilita cuando adjuntas el comprobante.</small> : null}
+      <ProofField disabled={pending || sent} onReady={setProofReady} ready={proofReady} sent={sent} />
+      <SubmitButton disabled={!proofReady || sent} idle="Crear cancha destacada" pending={pending} sent={sent} />
+      {!proofReady && !sent ? <small>El boton se habilita cuando adjuntas el comprobante.</small> : null}
       {message ? <small>{message}</small> : null}
     </form>
   );
@@ -524,10 +589,12 @@ function FeaturedVenueForm({
 function CreatorPaymentCard({
   plan,
   data,
+  existingRequest,
   onCreated
 }: {
   plan: PaymentPlan;
   data: ArenaData;
+  existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
   return (
@@ -539,10 +606,10 @@ function CreatorPaymentCard({
       <h3>{plan.title}</h3>
       <strong>{formatPaymentMoney(plan.amount)}</strong>
       <p>{plan.description}</p>
-      {plan.code === "team_pro" ? <TeamProForm data={data} onCreated={onCreated} plan={plan} /> : null}
-      {plan.code === "tournament_pro" ? <TournamentProForm data={data} onCreated={onCreated} plan={plan} /> : null}
-      {plan.code === "sponsor" ? <SponsorForm data={data} onCreated={onCreated} plan={plan} /> : null}
-      {plan.code === "featured_venue" ? <FeaturedVenueForm data={data} onCreated={onCreated} plan={plan} /> : null}
+      {plan.code === "team_pro" ? <TeamProForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
+      {plan.code === "tournament_pro" ? <TournamentProForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
+      {plan.code === "sponsor" ? <SponsorForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
+      {plan.code === "featured_venue" ? <FeaturedVenueForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
     </article>
   );
 }
@@ -566,7 +633,8 @@ function PaymentThread({
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setNotice("");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const body = String(form.get("body") || "").trim();
     if (!body) return;
     setPending(true);
@@ -583,7 +651,7 @@ function PaymentThread({
         .single();
       if (error) throw error;
       onMessage(data as PaymentMessage);
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo enviar el mensaje.");
     } finally {
@@ -638,6 +706,14 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
       return groups;
     }, {});
   }, [messages]);
+
+  const pendingRequestByPlan = useMemo(() => {
+    return requests.reduce<Partial<Record<PaymentPlan["code"], PaymentRequest>>>((groups, request) => {
+      if (request.status !== "pending_review") return groups;
+      groups[request.plan_code] = groups[request.plan_code] ?? request;
+      return groups;
+    }, {});
+  }, [requests]);
 
   function onCreated(request: PaymentRequest, message?: PaymentMessage) {
     setRequests((current) => [request, ...current]);
@@ -709,7 +785,15 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
           ) : null}
 
           <div className="payment-plan-grid creator-grid">
-            {plans.map((plan) => <CreatorPaymentCard data={data} key={plan.code} onCreated={onCreated} plan={plan} />)}
+            {plans.map((plan) => (
+              <CreatorPaymentCard
+                data={data}
+                existingRequest={pendingRequestByPlan[plan.code]}
+                key={plan.code}
+                onCreated={onCreated}
+                plan={plan}
+              />
+            ))}
           </div>
 
           <section className="payment-inbox">
