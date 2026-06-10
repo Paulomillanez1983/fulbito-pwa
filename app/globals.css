@@ -3780,7 +3780,7 @@ body::after {
   }
 }
 
-/* Stadium field and venue onboarding refinement */
+/* Stadium field and venue creation refinement */
 .game-app-shell::before {
   content: "";
   position: fixed;

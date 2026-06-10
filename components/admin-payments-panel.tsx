@@ -100,7 +100,7 @@ function AdminPlanPrices({
       <header>
         <span>Precios Pro</span>
         <h2>Modificar valores</h2>
-        <p>Estos importes se reflejan en el onboarding de usuarios sin tocar codigo.</p>
+        <p>Estos importes se reflejan en la pantalla de creacion sin tocar codigo.</p>
       </header>
       <div>
         {plans.map((plan) => (
@@ -346,7 +346,7 @@ export function AdminPaymentsPanel({
           <article className="admin-empty">
             <Clock3 size={24} />
             <strong>No hay comprobantes todavia.</strong>
-            <span>Cuando un usuario envie un pago desde Fulbito Pro, aparece aca.</span>
+            <span>Cuando un usuario envie un comprobante premium, aparece aca.</span>
           </article>
         )}
       </section>

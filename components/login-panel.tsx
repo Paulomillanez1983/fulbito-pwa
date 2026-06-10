@@ -39,10 +39,10 @@ export function LoginPanel({ configured }: { configured: boolean }) {
   return (
     <section className="login-panel" id="login">
       <div>
-        <p className="eyebrow">Google Login + roles</p>
-        <h2>Entrar a Fulbito Arena</h2>
+        <p className="eyebrow">Tu copa empieza aca</p>
+        <h2>Crear torneo o sumarte a uno</h2>
         <p>
-          Elegi tu rol principal. Despues podras sumar mas roles si sos capitan, duenio de cancha u organizador.
+          Elegi como vas a participar. Despues podes crear un mundial barrial, registrar tu equipo o entrar como jugador.
         </p>
       </div>
 
@@ -69,7 +69,7 @@ export function LoginPanel({ configured }: { configured: boolean }) {
 
       <button className="google-button" disabled={disabled} onClick={signInWithGoogle} type="button">
         <span>G</span>
-        Continuar con Google
+        Entrar con Google
       </button>
       {!configured ? (
         <p className="login-warning">Supabase todavia no esta configurado en el entorno. La UI queda en modo demo.</p>

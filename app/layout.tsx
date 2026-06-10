@@ -9,7 +9,7 @@ const siteUrl = "https://fulbito-pwa.vercel.app";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: "Fulbito Arena | Torneos barriales con experiencia de juego",
-  description: "PWA premium para torneos barriales con Google Login, roles, canchas, equipos, fixture, tabla y resultados validados.",
+  description: "PWA premium para crear mundiales barriales con acceso Google, roles, canchas, equipos, fixture, tabla y resultados validados.",
   applicationName: "Fulbito Arena",
   manifest: "/manifest.webmanifest",
   openGraph: {
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Fulbito Arena | El barrio entra en modo torneo",
-    description: "PWA con Google Login, roles, canchas, equipos, fixture, tabla y resultados validados.",
+    description: "PWA para crear mundiales barriales con acceso Google, roles, canchas, equipos, fixture, tabla y resultados validados.",
     images: ["/og-image.jpg"]
   },
   icons: {

@@ -7,13 +7,25 @@ import { SlideSubmitButton } from "@/components/slide-submit-button";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount, paymentStatusMeta } from "@/lib/payments";
 import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { ArenaData, FieldMode, PaymentMessage, PaymentRequest } from "@/lib/types";
+import type { ArenaData, FieldMode, PaymentMessage, PaymentRequest, TournamentFormat } from "@/lib/types";
 
 const statusIcons: Record<PaymentRequest["status"], typeof Clock3> = {
   pending_review: Clock3,
   approved: CheckCircle2,
   rejected: XCircle,
   cancelled: XCircle
+};
+
+const tournamentFormatOptions: Array<{ value: TournamentFormat; label: string; note: string }> = [
+  { value: "world_cup", label: "Grupos + eliminatorias", note: "Ideal para Mundial barrial" },
+  { value: "knockout", label: "Eliminacion directa", note: "Llave rapida hasta la final" },
+  { value: "league", label: "Todos contra todos", note: "Tabla larga por puntos" }
+];
+
+const tournamentFormatLabels: Record<TournamentFormat, string> = {
+  league: "Todos contra todos",
+  world_cup: "Grupos + eliminatorias",
+  knockout: "Eliminacion directa"
 };
 
 function slugify(value: string) {
@@ -225,7 +237,7 @@ function TeamProForm({
     event.preventDefault();
     setMessage("");
     if (sent || submitLockedRef.current) return setMessage("Comprobante ya enviado. Espera la revision del admin.");
-    if (!data.user) return setMessage("Primero entra con Google.");
+    if (!data.user) return setMessage("Entra con Google para continuar.");
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     submitLockedRef.current = true;
@@ -270,7 +282,7 @@ function TeamProForm({
       formElement.reset();
       setProofReady(false);
       setSent(true);
-      setMessage("Equipo y comprobante enviados. El admin activa Pro cuando valide el pago.");
+      setMessage("Equipo premium enviado. Fulbito lo activa cuando se valide el comprobante.");
     } catch (error) {
       submitLockedRef.current = false;
       setMessage(error instanceof Error ? error.message : "No se pudo crear el equipo Pro.");
@@ -331,7 +343,7 @@ function TournamentProForm({
     setMessage("");
     setInviteUrl("");
     if (sent || submitLockedRef.current) return setMessage("Comprobante ya enviado. Espera la revision del admin.");
-    if (!data.user) return setMessage("Primero entra con Google.");
+    if (!data.user) return setMessage("Entra con Google para continuar.");
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const name = String(form.get("tournamentName") || "").trim();
@@ -341,6 +353,7 @@ function TournamentProForm({
     try {
       const supabase = createSupabaseBrowserClient();
       const fieldMode = String(form.get("fieldMode") || "7v7") as FieldMode;
+      const tournamentFormat = String(form.get("tournamentFormat") || "world_cup") as TournamentFormat;
       const maxTeams = Number(form.get("maxTeams") || 8);
       const { data: tournament, error } = await supabase
         .from("tournaments")
@@ -348,24 +361,24 @@ function TournamentProForm({
           organizer_id: data.user.id,
           name,
           slug: `${slugify(name)}-${Date.now().toString(36)}`,
-          format: "world_cup",
+          format: tournamentFormat,
           status: "registration",
           field_mode: fieldMode,
           max_teams: Number.isFinite(maxTeams) ? maxTeams : 8,
           registration_fee: 0,
-          rules: "Creado desde el onboarding Fulbito Pro."
+          rules: `Copa creada en Fulbito Arena. Formato: ${tournamentFormatLabels[tournamentFormat]}. Los equipos pueden sumarse gratis o activar identidad premium.`
         })
         .select("id,name,slug")
         .single();
       if (error) throw error;
 
-      const note = String(form.get("payerNote") || "").trim() || `Torneo: ${name}. Equipos: ${maxTeams}. Modo: ${fieldMode}.`;
+      const note = String(form.get("payerNote") || "").trim() || `Torneo: ${name}. Equipos: ${maxTeams}. Futbol: ${fieldMode}. Formato: ${tournamentFormatLabels[tournamentFormat]}.`;
       const created = await createPaymentRequest({
         userId: data.user.id,
         plan,
         targetType: "tournament",
         targetId: tournament.id,
-        title: `Torneo Pro - ${tournament.name}`,
+        title: `Mundial barrial - ${tournament.name}`,
         note,
         proofFile: form.get("proofFile")
       });
@@ -373,12 +386,12 @@ function TournamentProForm({
 
       const origin = window.location.origin;
       const invite = `Te invito a inscribir tu equipo en ${tournament.name} en Fulbito Arena. Entrá a ${origin} y cargá tu club, plantel y formación.`;
-      const whatsappInvite = `Te invito a inscribir tu equipo en ${tournament.name} en Fulbito Arena. Entra a ${origin} y carga tu club, plantel y formacion.`;
+      const whatsappInvite = `Te invito a jugar ${tournament.name} en Fulbito Arena. Entra a ${origin}, crea o elegi tu equipo y carga el plantel para sumarte a la copa.`;
       setInviteUrl(`https://wa.me/?text=${encodeURIComponent(whatsappInvite)}`);
       formElement.reset();
       setProofReady(false);
       setSent(true);
-      setMessage("Torneo creado. Envia la invitacion por WhatsApp y espera la aprobacion Pro.");
+      setMessage("Copa creada. Envia la invitacion a los equipos y espera la activacion premium.");
     } catch (error) {
       submitLockedRef.current = false;
       setMessage(error instanceof Error ? error.message : "No se pudo crear el torneo.");
@@ -389,7 +402,12 @@ function TournamentProForm({
 
   return (
     <form className="creator-form" onSubmit={submit}>
-      <input name="tournamentName" placeholder="Nombre del torneo" />
+      <input name="tournamentName" placeholder="Nombre de la copa" />
+      <select name="tournamentFormat" defaultValue="world_cup">
+        {tournamentFormatOptions.map((option) => (
+          <option key={option.value} value={option.value}>{option.label}</option>
+        ))}
+      </select>
       <div className="creator-inline">
         <input name="maxTeams" inputMode="numeric" placeholder="Cantidad de equipos" />
         <select name="fieldMode" defaultValue="7v7">
@@ -398,12 +416,12 @@ function TournamentProForm({
           <option value="11v11">11v11</option>
         </select>
       </div>
-      <input name="payerNote" placeholder="Nota: alias, organizador o barrio" />
+      <input name="payerNote" placeholder="Alias o comentario de la transferencia" />
       <InlinePaymentAccount amount={plan.amount} />
       <ProofField disabled={pending || sent} onReady={setProofReady} ready={proofReady} sent={sent} />
-      <SubmitButton disabled={!proofReady || sent} idle="Crear torneo" pending={pending} sent={sent} />
-      {!proofReady && !sent ? <small>El boton se habilita cuando adjuntas el comprobante.</small> : null}
-      {inviteUrl ? <a className="whatsapp-invite" href={inviteUrl} rel="noreferrer" target="_blank">Enviar invitacion por WhatsApp</a> : null}
+      <SubmitButton disabled={!proofReady || sent} idle="Crear mundial" pending={pending} sent={sent} />
+      {!proofReady && !sent ? <small>Adjunta el comprobante para crear la copa.</small> : null}
+      {inviteUrl ? <a className="whatsapp-invite" href={inviteUrl} rel="noreferrer" target="_blank">Invitar equipos por WhatsApp</a> : null}
       {message ? <small>{message}</small> : null}
     </form>
   );
@@ -430,7 +448,7 @@ function SponsorForm({
     event.preventDefault();
     setMessage("");
     if (sent || submitLockedRef.current) return setMessage("Comprobante ya enviado. Espera la revision del admin.");
-    if (!data.user) return setMessage("Primero entra con Google.");
+    if (!data.user) return setMessage("Entra con Google para continuar.");
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     const sponsorName = String(form.get("sponsorName") || "").trim();
@@ -496,7 +514,7 @@ function FeaturedVenueForm({
     event.preventDefault();
     setMessage("");
     if (sent || submitLockedRef.current) return setMessage("Comprobante ya enviado. Espera la revision del admin.");
-    if (!data.user) return setMessage("Primero entra con Google.");
+    if (!data.user) return setMessage("Entra con Google para continuar.");
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     submitLockedRef.current = true;
@@ -543,7 +561,7 @@ function FeaturedVenueForm({
       formElement.reset();
       setProofReady(false);
       setSent(true);
-      setMessage("Cancha enviada para destacar. El admin valida el pago.");
+      setMessage("Cancha enviada para destacar. Fulbito valida el comprobante.");
     } catch (error) {
       submitLockedRef.current = false;
       setMessage(error instanceof Error ? error.message : "No se pudo enviar la cancha.");
@@ -734,88 +752,77 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
     }
   }
 
+  if (!data.user) return null;
+  const user = data.user;
+
   return (
     <section className="console-panel payment-console" id="pro">
       <div className="payment-console__head">
-        <span>Onboarding Fulbito Pro</span>
-        <h2>{data.user ? "Crea, paga y envia comprobante" : "Pagos Pro despues del login"}</h2>
+        <span>Crear copa</span>
+        <h2>Arma tu Mundial barrial</h2>
         <p>
-          {data.user
-            ? "Elegis que queres crear, copias el alias/CVU, pagas por fuera y subis el comprobante. Fulbito no cobra alquileres ni plata de canchas."
-            : "Usa el unico acceso con Google de la pantalla. Despues aparecen el alias, CVU, creacion de equipo, torneo, sponsor y cancha destacada."}
+          Crea la copa, elegi formato, invita equipos y deja que cada club cargue su plantel. El equipo basico es gratis; lo premium activa fotos, cartas y estadisticas.
         </p>
       </div>
 
-      {!data.user ? (
-        <div className="payment-login-hint">
+      <div className="payment-account">
+        <article>
           <Crown size={20} />
           <div>
-            <strong>Un solo ingreso</strong>
-            <span>Entra desde el bloque de identidad o el boton superior. Este panel se habilita cuando tu cuenta queda conectada.</span>
+            <strong>Transferencia Fulbito</strong>
+            <span>Copia alias o CVU, paga y adjunta el comprobante.</span>
           </div>
+        </article>
+        <button onClick={() => copyValue(paymentAccount.alias, "Alias")} type="button">
+          <span>Alias</span>
+          <strong>{paymentAccount.alias}</strong>
+          <Clipboard size={16} />
+        </button>
+        <button onClick={() => copyValue(paymentAccount.cvu, "CVU")} type="button">
+          <span>CVU</span>
+          <strong>{paymentAccount.cvu}</strong>
+          <Clipboard size={16} />
+        </button>
+        {copied ? <small>{copied}</small> : null}
+      </div>
+
+      {hasApprovedPro ? (
+        <div className="pro-active-banner">
+          <CheckCircle2 size={20} />
+          <span>Tenes funciones premium activas en esta cuenta.</span>
         </div>
-      ) : (
-        <>
-          <div className="payment-account">
-            <article>
-              <Crown size={20} />
-              <div>
-                <strong>Cuenta de cobro Fulbito</strong>
-                <span>Usar solo para servicios digitales de la app.</span>
-              </div>
-            </article>
-            <button onClick={() => copyValue(paymentAccount.alias, "Alias")} type="button">
-              <span>Alias</span>
-              <strong>{paymentAccount.alias}</strong>
-              <Clipboard size={16} />
-            </button>
-            <button onClick={() => copyValue(paymentAccount.cvu, "CVU")} type="button">
-              <span>CVU</span>
-              <strong>{paymentAccount.cvu}</strong>
-              <Clipboard size={16} />
-            </button>
-            {copied ? <small>{copied}</small> : null}
+      ) : null}
+
+      <div className="payment-plan-grid creator-grid">
+        {plans.map((plan) => (
+          <CreatorPaymentCard
+            data={data}
+            existingRequest={pendingRequestByPlan[plan.code]}
+            key={plan.code}
+            onCreated={onCreated}
+            plan={plan}
+          />
+        ))}
+      </div>
+
+      <section className="payment-inbox">
+        <header>
+          <MessageCircle size={18} />
+          <div>
+            <strong>Mensajes de activacion</strong>
+            <span>Seguimiento de comprobantes, copas, equipos y sponsors.</span>
           </div>
-
-          {hasApprovedPro ? (
-            <div className="pro-active-banner">
-              <CheckCircle2 size={20} />
-              <span>Tenes beneficios Pro activos en esta cuenta.</span>
-            </div>
-          ) : null}
-
-          <div className="payment-plan-grid creator-grid">
-            {plans.map((plan) => (
-              <CreatorPaymentCard
-                data={data}
-                existingRequest={pendingRequestByPlan[plan.code]}
-                key={plan.code}
-                onCreated={onCreated}
-                plan={plan}
-              />
-            ))}
-          </div>
-
-          <section className="payment-inbox">
-            <header>
-              <MessageCircle size={18} />
-              <div>
-                <strong>Chat con administracion</strong>
-                <span>Seguimiento de comprobantes y activaciones.</span>
-              </div>
-            </header>
-            {requests.length ? requests.map((request) => (
-              <PaymentThread
-                key={request.id}
-                messages={messagesByRequest[request.id] ?? []}
-                onMessage={onMessage}
-                request={request}
-                userId={data.user!.id}
-              />
-            )) : <p className="empty-payment-state">Todavia no enviaste comprobantes.</p>}
-          </section>
-        </>
-      )}
+        </header>
+        {requests.length ? requests.map((request) => (
+          <PaymentThread
+            key={request.id}
+            messages={messagesByRequest[request.id] ?? []}
+            onMessage={onMessage}
+            request={request}
+            userId={user.id}
+          />
+        )) : <p className="empty-payment-state">Todavia no enviaste comprobantes.</p>}
+      </section>
     </section>
   );
 }

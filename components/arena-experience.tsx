@@ -907,6 +907,13 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
     }, 60);
   }
 
+  function openTournamentStarter() {
+    setActive("home");
+    window.setTimeout(() => {
+      document.getElementById(data.user ? "pro" : "login")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 60);
+  }
+
   const openTeam = useCallback((teamId: string) => {
     setSelectedTeamId(teamId);
     setActive("squad");
@@ -947,6 +954,7 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
           <p>Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur.</p>
           <div className="hero-actions">
             <InstallAppButton variant="hero" />
+            <button onClick={openTournamentStarter} type="button">Crear mundial</button>
             <button onClick={() => setActive("matches")} type="button">Ver fecha</button>
           </div>
         </section>
@@ -967,8 +975,10 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
         </section>
 
         <section className="console-panel">
-          <ScreenHeader eyebrow="Identidad" title={data.user ? roleCatalog[activeRole].label : "Entrar rapido"}>
-            {data.user ? "Tu Gmail puede tener varios roles: jugador, capitan, cancha, organizador o veedor." : "Google Login con rol inicial para jugador, capitan, cancha, organizador o veedor."}
+          <ScreenHeader eyebrow={data.user ? "Tu arena" : "Crear copa"} title={data.user ? roleCatalog[activeRole].label : "Crea tu Mundial barrial"}>
+            {data.user
+              ? "Elegi como participas hoy: jugador, capitan, cancha, organizador o veedor. Cada rol abre acciones distintas."
+              : "Entra con Google para armar una copa, elegir formato, invitar equipos y seguir el torneo desde el celular."}
           </ScreenHeader>
           {data.user ? (
             <RoleConsole

@@ -20,20 +20,20 @@ export const paymentAccount = {
 export const paymentPlans: PaymentPlan[] = [
   {
     code: "team_pro",
-    title: "Equipo Pro",
+    title: "Equipo premium",
     amount: 5000,
     targetType: "team",
     kicker: "Identidad del club",
-    description: "Fotos, escudo premium, cartas estilo juego y estadisticas del plantel.",
+    description: "El equipo basico es gratis. Activa fotos, escudo premium, cartas estilo juego y estadisticas del plantel.",
     features: ["Fotos de jugadores", "Cartas FIFA style", "MVP y ranking"]
   },
   {
     code: "tournament_pro",
-    title: "Torneo Pro",
+    title: "Crear Mundial barrial",
     amount: 15000,
     targetType: "tournament",
     kicker: "Camino a la copa",
-    description: "Fixture avanzado, grupos, eliminatorias visuales y portada compartible.",
+    description: "Crea una copa con grupos, eliminatorias o todos contra todos. Despues invita equipos por WhatsApp.",
     features: ["Fixture premium", "Llave eliminatoria", "Portada social"]
   },
   {

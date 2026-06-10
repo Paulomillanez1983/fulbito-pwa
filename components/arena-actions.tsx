@@ -326,7 +326,7 @@ export function ArenaActions({
     const name = String(formData.get("teamName") || "").trim();
     if (!name) return setMessage("El equipo necesita nombre.");
     const { supabase, userId } = await getUserId();
-    if (!userId) return setMessage("Primero entra con Google.");
+    if (!userId) return setMessage("Entra con Google para continuar.");
     const { data: existingTeam, error: existingTeamError } = await supabase
       .from("teams")
       .select("id,name")
@@ -366,7 +366,7 @@ export function ArenaActions({
       return setMessage("Selecciona la ubicacion de la cancha con el boton o el mapa.");
     }
     const { supabase, userId } = await getUserId();
-    if (!userId) return setMessage("Primero entra con Google.");
+    if (!userId) return setMessage("Entra con Google para continuar.");
     let coverUrl: string | null = null;
     try {
       coverUrl = await uploadArenaMedia(supabase, "venue-photos", userId, formData.get("venuePhoto"));
@@ -396,7 +396,7 @@ export function ArenaActions({
     setMessage("");
     const matchId = String(formData.get("matchId") || "");
     const { supabase, userId } = await getUserId();
-    if (!userId) return setMessage("Primero entra con Google.");
+    if (!userId) return setMessage("Entra con Google para continuar.");
     const role = data.user?.roles[0] ?? "captain";
     const { error } = await supabase.from("match_result_submissions").insert({
       match_id: matchId,
@@ -415,7 +415,7 @@ export function ArenaActions({
     const teamId = String(formData.get("playerTeamId") || "");
     if (!displayName || !teamId) return setMessage("El jugador necesita nombre y equipo.");
     const { supabase, userId } = await getUserId();
-    if (!userId) return setMessage("Primero entra con Google.");
+    if (!userId) return setMessage("Entra con Google para continuar.");
     let photoUrl: string | null = null;
     try {
       photoUrl = await uploadArenaMedia(supabase, "player-photos", userId, formData.get("playerPhoto"));
