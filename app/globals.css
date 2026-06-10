@@ -2222,8 +2222,13 @@ body::after {
   text-align: left;
 }
 
+.cup-tier-selector button:disabled {
+  cursor: not-allowed;
+}
+
 .cup-tier-selector button span,
-.cup-tier-selector button strong {
+.cup-tier-selector button strong,
+.cup-tier-selector button small {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -2242,6 +2247,13 @@ body::after {
   line-height: 1.08;
 }
 
+.cup-tier-selector button small {
+  color: rgba(223, 232, 243, .62);
+  font-size: .62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .cup-tier-selector button.is-active {
   border-color: rgba(241,199,91,.52);
   background:
@@ -2249,6 +2261,10 @@ body::after {
     linear-gradient(135deg, rgba(241,199,91,.16), rgba(52,201,255,.08)),
     rgba(5, 10, 18, .82);
   box-shadow: inset 0 -2px 0 rgba(241,199,91,.54), 0 0 20px rgba(241,199,91,.08);
+}
+
+.cup-tier-selector button.is-locked {
+  opacity: .58;
 }
 
 .cup-tier-summary {
@@ -2438,6 +2454,9 @@ body::after {
   height: 32px;
   border: 1px dashed rgba(255,255,255,.16);
   border-radius: 9px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.06), transparent),
+    rgba(255,255,255,.025);
 }
 
 .cup-slot span {
@@ -2531,6 +2550,24 @@ body::after {
 
 .champion-card:disabled {
   cursor: default;
+}
+
+.champion-card__empty-crest {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 82px;
+  border: 1px dashed rgba(241,199,91,.32);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(241,199,91,.14), transparent 58%),
+    rgba(5, 10, 18, .72);
+  color: var(--gold);
+}
+
+.champion-card__empty-crest svg {
+  width: 34px;
+  height: 34px;
 }
 
 .champion-card > div {
