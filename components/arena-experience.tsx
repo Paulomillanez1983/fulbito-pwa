@@ -568,7 +568,7 @@ function DrawLiveTeaser({
         <div className="draw-official-console">
           <input
             onChange={(event) => setYoutubeWatchUrl(event.target.value)}
-            placeholder="Link YouTube del sorteo, opcional"
+            placeholder="Pegá el vivo de YouTube del sorteo si ya lo creaste"
             value={youtubeWatchUrl}
           />
           <button disabled={!isReady || busy} onClick={createOfficialDraw} type="button">
@@ -621,17 +621,30 @@ function YouTubeFollowStrip() {
 }
 
 function ArenaAdBoards() {
+  const leftSponsors = [
+    <><YouTubeLogo size={14} /> Segui Fulbito TV</>,
+    "TikTok @FulbitoArena",
+    "Coca-Cola demo",
+    "Mercado Pago demo",
+    "Sponsor local",
+    "Fulbito Live"
+  ];
+  const rightSponsors = [
+    "Mercado Libre demo",
+    <><YouTubeLogo size={14} /> Sorteos en vivo</>,
+    "Tu marca aca",
+    "Finales por YouTube",
+    "Fulbito Arena",
+    "Publicidad barrial"
+  ];
+
   return (
     <div aria-hidden="true" className="arena-ad-boards">
       <div className="arena-ad-boards__lane arena-ad-boards__lane--left">
-        <span><YouTubeLogo size={14} /> Segui Fulbito TV</span>
-        <span>TikTok @FulbitoArena</span>
-        <span>Sponsor local</span>
+        {[...leftSponsors, ...leftSponsors].map((item, index) => <span key={`left-${index}`}>{item}</span>)}
       </div>
       <div className="arena-ad-boards__lane arena-ad-boards__lane--right">
-        <span>Fulbito Arena</span>
-        <span><YouTubeLogo size={14} /> Sorteos en vivo</span>
-        <span>Tu marca aca</span>
+        {[...rightSponsors, ...rightSponsors].map((item, index) => <span key={`right-${index}`}>{item}</span>)}
       </div>
     </div>
   );

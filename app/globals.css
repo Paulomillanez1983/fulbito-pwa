@@ -2140,7 +2140,7 @@ body::after {
 .draw-live-teaser__actions {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 8px;
 }
 
@@ -2297,34 +2297,36 @@ body::after {
   pointer-events: none;
   position: fixed;
   left: 50%;
-  bottom: 98px;
+  bottom: 106px;
   z-index: 1;
-  width: min(1120px, 100vw);
+  width: min(1220px, 112vw);
   transform: translateX(-50%);
-  opacity: .78;
+  opacity: .96;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
 }
 
 .arena-ad-boards__lane {
   position: absolute;
   display: flex;
-  gap: 10px;
-  width: 46%;
-  overflow: hidden;
-  transform: perspective(720px) rotateX(58deg);
-  filter: drop-shadow(0 8px 24px rgba(0,0,0,.42));
+  gap: 8px;
+  width: 150%;
+  overflow: visible;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.5));
+  will-change: transform;
 }
 
 .arena-ad-boards__lane--left {
-  left: -4%;
-  bottom: 64px;
-  transform: perspective(720px) rotateX(58deg) rotateZ(2deg);
+  left: -8%;
+  bottom: 68px;
+  animation: arena-board-scroll-left 18s linear infinite;
 }
 
 .arena-ad-boards__lane--right {
-  right: -4%;
-  bottom: 64px;
-  justify-content: flex-end;
-  transform: perspective(720px) rotateX(58deg) rotateZ(-2deg);
+  right: -8%;
+  bottom: 34px;
+  justify-content: flex-start;
+  animation: arena-board-scroll-right 22s linear infinite;
 }
 
 .arena-ad-boards span {
@@ -2332,18 +2334,21 @@ body::after {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-width: 148px;
-  min-height: 28px;
-  border: 1px solid rgba(241,199,91,.4);
+  flex: 0 0 auto;
+  min-width: 172px;
+  min-height: 34px;
+  border: 1px solid rgba(241,199,91,.62);
   border-radius: 4px;
-  padding: 0 10px;
+  padding: 0 12px;
   background:
-    linear-gradient(90deg, rgba(255,255,255,.1), rgba(255,255,255,.02)),
-    rgba(3,8,15,.84);
+    linear-gradient(90deg, rgba(255,255,255,.16), rgba(255,255,255,.04)),
+    rgba(2,7,14,.94);
   color: #ffe799;
-  font-size: .64rem;
+  font-size: .72rem;
   font-weight: 1000;
-  letter-spacing: .02em;
+  letter-spacing: .03em;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 10px rgba(255,231,153,.18);
   text-transform: uppercase;
   white-space: nowrap;
   animation: arena-board-glow 3.8s ease-in-out infinite alternate;
@@ -2372,6 +2377,24 @@ body::after {
   }
   to {
     box-shadow: inset 0 0 18px rgba(241,199,91,.12), 0 0 18px rgba(52,201,255,.1);
+  }
+}
+
+@keyframes arena-board-scroll-left {
+  from {
+    transform: translateX(0) perspective(680px) rotateX(44deg) rotateZ(.6deg);
+  }
+  to {
+    transform: translateX(-38%) perspective(680px) rotateX(44deg) rotateZ(.6deg);
+  }
+}
+
+@keyframes arena-board-scroll-right {
+  from {
+    transform: translateX(-38%) perspective(680px) rotateX(44deg) rotateZ(-.6deg);
+  }
+  to {
+    transform: translateX(0) perspective(680px) rotateX(44deg) rotateZ(-.6deg);
   }
 }
 
@@ -6511,30 +6534,31 @@ body::after,
 
 @media (max-width: 520px) {
   .arena-ad-boards {
-    bottom: 82px;
-    opacity: .62;
+    bottom: 88px;
+    width: 120vw;
+    opacity: .9;
   }
 
   .arena-ad-boards__lane {
-    width: 58%;
+    width: 168%;
     gap: 6px;
   }
 
   .arena-ad-boards__lane--left {
-    left: -18%;
-    bottom: 38px;
+    left: -24%;
+    bottom: 42px;
   }
 
   .arena-ad-boards__lane--right {
-    right: -18%;
-    bottom: 38px;
+    right: -24%;
+    bottom: 18px;
   }
 
   .arena-ad-boards span {
-    min-width: 112px;
-    min-height: 22px;
-    padding: 0 7px;
-    font-size: .52rem;
+    min-width: 136px;
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: .62rem;
   }
 
   .draw-live-teaser {
