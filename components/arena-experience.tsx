@@ -6,6 +6,7 @@ import {
   Activity,
   ArrowRight,
   BadgeCheck,
+  BellRing,
   CalendarDays,
   ChevronRight,
   CircleDollarSign,
@@ -33,7 +34,7 @@ import { PaymentConsole } from "@/components/payment-console";
 import { VenueMap } from "@/components/venue-map";
 import { roleCatalog } from "@/lib/demo";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaVenue, FieldMode } from "@/lib/types";
+import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaVenue, FieldMode, PaymentRequest } from "@/lib/types";
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 
@@ -415,18 +416,102 @@ function MiniStat({
   );
 }
 
+function playApprovalWhistle() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audio = new AudioContextClass();
+    const now = audio.currentTime;
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.62);
+    gain.connect(audio.destination);
+
+    const whistle = audio.createOscillator();
+    whistle.type = "sine";
+    whistle.frequency.setValueAtTime(1240, now);
+    whistle.frequency.linearRampToValueAtTime(1640, now + 0.18);
+    whistle.frequency.linearRampToValueAtTime(1360, now + 0.42);
+    whistle.connect(gain);
+    whistle.start(now);
+    whistle.stop(now + 0.62);
+    window.setTimeout(() => void audio.close(), 900);
+  } catch {
+    // Browser audio permissions may block automatic notification sound.
+  }
+}
+
+function statusLabel(status: PaymentRequest["status"]) {
+  if (status === "approved") return "Aprobado";
+  if (status === "rejected") return "Revisar";
+  if (status === "cancelled") return "Cancelado";
+  return "Pendiente";
+}
+
+function tournamentInviteCode(activeTournament: ArenaTournament | null, request: PaymentRequest) {
+  if (request.target_type !== "tournament") return "";
+  if (activeTournament?.id === request.target_id) return activeTournament.slug;
+  return request.target_id ?? "";
+}
+
 function UserMenu({
   user,
   configured,
   team,
+  activeTournament,
+  paymentRequests,
   onLogin
 }: {
   user: ArenaData["user"];
   configured: boolean;
   team?: ArenaTeam | null;
+  activeTournament: ArenaTournament | null;
+  paymentRequests: PaymentRequest[];
   onLogin: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [origin, setOrigin] = useState("");
+  const [menuRequests, setMenuRequests] = useState(paymentRequests);
+  const approvedCount = menuRequests.filter((request) => request.status === "approved").length;
+  const pendingCount = menuRequests.filter((request) => request.status === "pending_review").length;
+  const latestRequests = menuRequests.slice(0, 6);
+  const approvedTournamentRequests = menuRequests.filter((request) => request.status === "approved" && request.target_type === "tournament");
+
+  useEffect(() => {
+    if (!user) return;
+    setOrigin(window.location.origin);
+    const storageKey = `fulbito-approved-count-${user.id}`;
+    const previous = Number(window.localStorage.getItem(storageKey) || approvedCount);
+    if (approvedCount > previous) playApprovalWhistle();
+    window.localStorage.setItem(storageKey, String(approvedCount));
+  }, [approvedCount, user]);
+
+  useEffect(() => {
+    setMenuRequests(paymentRequests);
+  }, [paymentRequests]);
+
+  useEffect(() => {
+    if (!user) return;
+    let mounted = true;
+
+    async function refreshRequests() {
+      const supabase = createSupabaseBrowserClient();
+      const { data: nextRequests } = await supabase
+        .from("payment_requests")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(12);
+      if (mounted && nextRequests) setMenuRequests(nextRequests as PaymentRequest[]);
+    }
+
+    const interval = window.setInterval(refreshRequests, 30000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, [user]);
 
   async function logout() {
     const supabase = createSupabaseBrowserClient();
@@ -443,11 +528,67 @@ function UserMenu({
     );
   }
 
+  function inviteHref(request: PaymentRequest) {
+    const code = tournamentInviteCode(activeTournament, request);
+    if (!code || !origin) return "";
+    const joinUrl = `${origin}/?join=${encodeURIComponent(code)}`;
+    const text = `Te invito a jugar ${request.title.replace(/^Mundial barrial - /, "")} en Fulbito Arena. Entra a ${joinUrl}, crea o elegi tu equipo y carga el plantel para sumarte a la copa.`;
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  }
+
   return (
-    <div className="top-user-menu">
-      <button aria-expanded={open} aria-label="Abrir menu de cuenta" className="top-user-avatar" onClick={() => setOpen((current) => !current)} type="button">
+    <div className="top-user-menu top-user-menu--with-notifications">
+      <button
+        aria-expanded={notificationsOpen}
+        aria-label="Abrir notificaciones"
+        className={`top-notification-button ${approvedCount ? "is-approved" : pendingCount ? "is-pending" : ""}`}
+        onClick={() => {
+          setNotificationsOpen((current) => !current);
+          setOpen(false);
+        }}
+        type="button"
+      >
+        <BellRing size={17} />
+        {approvedCount + pendingCount > 0 ? <span>{approvedCount + pendingCount}</span> : null}
+      </button>
+      <button
+        aria-expanded={open}
+        aria-label="Abrir menu de cuenta"
+        className="top-user-avatar"
+        onClick={() => {
+          setOpen((current) => !current);
+          setNotificationsOpen(false);
+        }}
+        type="button"
+      >
         {user.avatarUrl ? <img alt={`Cuenta de ${user.name ?? "Google"}`} src={user.avatarUrl} /> : <span>{user.name?.[0] ?? "F"}</span>}
       </button>
+      {notificationsOpen ? (
+        <div className="top-notification-popover">
+          <header>
+            <strong>Notificaciones</strong>
+            <small>{approvedCount ? "Hay beneficios aprobados." : pendingCount ? "Tenes comprobantes en revision." : "Sin novedades."}</small>
+          </header>
+          {latestRequests.length ? (
+            <div className="notification-list">
+              {latestRequests.map((request) => {
+                const invite = request.status === "approved" ? inviteHref(request) : "";
+                return (
+                  <article className={`notification-item notification-item--${request.status}`} key={request.id}>
+                    <span>{statusLabel(request.status)}</span>
+                    <strong>{request.title}</strong>
+                    <small>{request.status === "approved" ? "Listo para usar." : request.status === "pending_review" ? "Fulbito revisa el comprobante." : "Requiere revision."}</small>
+                    {invite ? <a href={invite} rel="noreferrer" target="_blank">Invitar equipos</a> : null}
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <p>Todavia no hay comprobantes ni activaciones.</p>
+          )}
+          {approvedTournamentRequests.length ? <small className="notification-hint">Cada invitacion lleva a los equipos a esta misma copa.</small> : null}
+        </div>
+      ) : null}
       {open ? (
         <div className="top-user-popover">
           <div>
@@ -811,7 +952,7 @@ function SplashScreen() {
   );
 }
 
-export function ArenaExperience({ data }: { data: ArenaData }) {
+export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?: string }) {
   const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
   const memberTeamId = data.user ? data.players.find((player) => player.profile_id === data.user?.id)?.team_id : null;
   const memberTeam = memberTeamId ? data.teams.find((team) => team.id === memberTeamId) : null;
@@ -967,6 +1108,18 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
           </EmptyState>
         ) : null}
 
+        {joinCode && data.activeTournament ? (
+          <section className="join-tournament-banner">
+            <Trophy size={20} />
+            <div>
+              <span>Invitacion recibida</span>
+              <strong>{data.activeTournament.name}</strong>
+              <small>Este link te lleva a la misma copa que creo el organizador.</small>
+            </div>
+            <button onClick={() => setActive("squad")} type="button">Cargar equipo</button>
+          </section>
+        ) : null}
+
         <section className="mini-grid">
           <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActive("league")} value={data.activeTournament?.name ?? "Torneo"} />
           <MiniStat icon={<Users />} label="Equipos" onClick={() => setActive("squad")} value={data.teams.length} />
@@ -991,7 +1144,7 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
               user={data.user}
             />
           ) : (
-            <LoginPanel configured={data.configured} />
+            <LoginPanel configured={data.configured} joinCode={joinCode} />
           )}
         </section>
         <PaymentConsole data={data} />
@@ -1215,7 +1368,14 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
             </span>
           </button>
         ) : null}
-        <UserMenu configured={data.configured} onLogin={openLoginPanel} team={myTeam} user={data.user} />
+        <UserMenu
+          activeTournament={data.activeTournament}
+          configured={data.configured}
+          onLogin={openLoginPanel}
+          paymentRequests={data.paymentRequests}
+          team={myTeam}
+          user={data.user}
+        />
       </header>
 
       <main className="game-screen" key={active}>

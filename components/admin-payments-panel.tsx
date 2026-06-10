@@ -230,8 +230,8 @@ export function AdminPaymentsPanel({
       }
 
       replaceRequest(data as PaymentRequest);
-      await sendAdminMessage(request.id, status === "approved" ? "Pago aprobado. Beneficio Pro activado." : `Pago rechazado: ${note || "necesitamos revisar el comprobante."}`);
-      setNotice(status === "approved" ? "Pago aprobado y Pro activado." : "Pago rechazado y usuario notificado.");
+      await sendAdminMessage(request.id, status === "approved" ? "Comprobante aprobado. Tu beneficio premium ya esta activo." : `Comprobante rechazado: ${note || "necesitamos revisar el archivo."}`);
+      setNotice(status === "approved" ? "Comprobante aprobado y beneficio activado." : "Comprobante rechazado y usuario notificado.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo revisar la solicitud.");
     } finally {

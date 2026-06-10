@@ -8,6 +8,8 @@ type TournamentTeamRow = {
   team_id: string;
 };
 
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 function emptyUserArenaData(user: SessionUser | null): ArenaData {
   return {
     source: "supabase",
@@ -26,7 +28,7 @@ function emptyUserArenaData(user: SessionUser | null): ArenaData {
   };
 }
 
-export async function getArenaData(): Promise<ArenaData> {
+export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Promise<ArenaData> {
   const env = getSupabaseEnv();
   const supabase = await createSupabaseServerClient();
   if (!env.configured || !supabase) {
@@ -34,6 +36,7 @@ export async function getArenaData(): Promise<ArenaData> {
   }
 
   let sessionUser: SessionUser | null = null;
+  const normalizedJoinCode = joinCode?.trim().slice(0, 140) || "";
 
   try {
     const { data: userData } = await supabase.auth.getUser();
@@ -49,14 +52,19 @@ export async function getArenaData(): Promise<ArenaData> {
       : null;
 
     const emptyResult = Promise.resolve({ data: [] });
+    const tournamentQuery = normalizedJoinCode
+      ? uuidPattern.test(normalizedJoinCode)
+        ? supabase.from("tournaments").select("*").eq("id", normalizedJoinCode).limit(1)
+        : supabase.from("tournaments").select("*").eq("slug", normalizedJoinCode).limit(1)
+      : supabase.from("tournaments").select("*").order("created_at", { ascending: false }).limit(user ? 50 : 1);
     const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, matchesResult, tournamentTeamsResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult] = await Promise.all([
       user ? supabase.from("user_roles").select("role").eq("user_id", user.id) : Promise.resolve({ data: [] }),
-      supabase.from("tournaments").select("*").order("created_at", { ascending: false }).limit(user ? 50 : 1),
+      tournamentQuery,
       supabase.from("venues").select("*").order("created_at", { ascending: true }),
       supabase.from("teams").select("*").order("created_at", { ascending: true }),
       supabase.from("team_members").select("*").order("team_id", { ascending: true }).order("jersey_number", { ascending: true, nullsFirst: false }),
       supabase.from("matches").select("*").order("scheduled_at", { ascending: true }),
-      user ? supabase.from("tournament_teams").select("tournament_id,team_id") : emptyResult,
+      user || normalizedJoinCode ? supabase.from("tournament_teams").select("tournament_id,team_id") : emptyResult,
       user ? supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(12) : emptyResult,
       user ? supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(80) : emptyResult,
       user ? supabase.from("account_entitlements").select("*").eq("owner_id", user.id).order("created_at", { ascending: false }) : emptyResult,
@@ -69,13 +77,31 @@ export async function getArenaData(): Promise<ArenaData> {
     const rawPlayers = (playersResult.data ?? []) as ArenaPlayer[];
     const rawMatches = (matchesResult.data ?? []) as ArenaMatch[];
     const tournamentTeams = (tournamentTeamsResult.data ?? []) as TournamentTeamRow[];
-    let activeTournament = (rawTournaments[0] ?? null) as ArenaTournament | null;
+    const invitedTournament = normalizedJoinCode ? (rawTournaments[0] ?? null) as ArenaTournament | null : null;
+    let activeTournament = (invitedTournament ?? rawTournaments[0] ?? null) as ArenaTournament | null;
     let venues = rawVenues;
     let teams = rawTeams;
     let players = rawPlayers;
     let matchRows = rawMatches;
     let roles = ((rolesResult.data ?? []).map((item) => item.role) as AppRole[]) || ["player"];
     if (!roles.length) roles = ["player"];
+
+    if (invitedTournament && !user) {
+      const invitedTeamIds = new Set(
+        tournamentTeams
+          .filter((row) => row.tournament_id === invitedTournament.id)
+          .map((row) => row.team_id)
+      );
+      teams = invitedTeamIds.size ? rawTeams.filter((team) => invitedTeamIds.has(team.id)) : [];
+      players = invitedTeamIds.size ? rawPlayers.filter((player) => invitedTeamIds.has(player.team_id)) : [];
+      matchRows = rawMatches.filter((match) => match.tournament_id === invitedTournament.id);
+      const venueIds = new Set<string>();
+      if (invitedTournament.venue_id) venueIds.add(invitedTournament.venue_id);
+      matchRows.forEach((match) => {
+        if (match.venue_id) venueIds.add(match.venue_id);
+      });
+      venues = venueIds.size ? rawVenues.filter((venue) => venueIds.has(venue.id) || Boolean(venue.owner_id)) : rawVenues.filter((venue) => Boolean(venue.owner_id));
+    }
 
     if (user) {
       sessionUser = sessionUser ? { ...sessionUser, roles } : null;
@@ -88,6 +114,7 @@ export async function getArenaData(): Promise<ArenaData> {
       });
 
       const relatedTournamentIds = new Set<string>();
+      if (invitedTournament) relatedTournamentIds.add(invitedTournament.id);
       rawTournaments.forEach((tournament) => {
         if (tournament.organizer_id === user.id) relatedTournamentIds.add(tournament.id);
       });
@@ -120,7 +147,7 @@ export async function getArenaData(): Promise<ArenaData> {
       });
 
       venues = rawVenues.filter((venue) => Boolean(venue.owner_id) || relatedVenueIds.has(venue.id));
-      activeTournament = rawTournaments.find((tournament) => relatedTournamentIds.has(tournament.id)) ?? null;
+      activeTournament = invitedTournament ?? rawTournaments.find((tournament) => relatedTournamentIds.has(tournament.id)) ?? null;
     }
 
     const matches = attachMatchRelations(matchRows, teams, venues);

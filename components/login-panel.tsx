@@ -9,17 +9,17 @@ import type { AppRole } from "@/lib/types";
 
 const loginRoles: AppRole[] = ["player", "captain", "venue_owner", "organizer", "referee"];
 
-export function LoginPanel({ configured }: { configured: boolean }) {
+export function LoginPanel({ configured, joinCode }: { configured: boolean; joinCode?: string }) {
   const [role, setRole] = useState<AppRole>("player");
   const selected = roleCatalog[role];
   const disabled = !configured;
 
   const redirectTo = useMemo(() => {
     const url = new URL("/auth/callback", getSiteUrl());
-    url.searchParams.set("next", "/");
+    url.searchParams.set("next", joinCode ? `/?join=${encodeURIComponent(joinCode)}` : "/");
     url.searchParams.set("role", role);
     return url.toString();
-  }, [role]);
+  }, [joinCode, role]);
 
   async function signInWithGoogle() {
     const supabase = createSupabaseBrowserClient();

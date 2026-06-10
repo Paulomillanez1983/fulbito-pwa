@@ -1501,6 +1501,50 @@ th {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.join-tournament-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(66,230,140,.28);
+  border-radius: 13px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(66,230,140,.16), transparent 34%),
+    linear-gradient(180deg, rgba(18,34,28,.74), rgba(5,9,17,.78));
+}
+
+.join-tournament-banner svg {
+  color: #72ffa8;
+}
+
+.join-tournament-banner span,
+.join-tournament-banner strong,
+.join-tournament-banner small {
+  display: block;
+}
+
+.join-tournament-banner span {
+  color: #9dffbf;
+  font-size: .68rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.join-tournament-banner small {
+  color: var(--muted);
+}
+
+.join-tournament-banner button {
+  border: 1px solid rgba(241,199,91,.34);
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: linear-gradient(135deg, #ffe38a, #c47717);
+  color: #07080d;
+  cursor: pointer;
+  font-weight: 1000;
+}
+
 .bracket-console article,
 .flow-compact article {
   display: grid;
@@ -1601,6 +1645,18 @@ th {
   border: 1px solid rgba(255,255,255,.13);
   border-radius: 12px;
   background: rgba(8, 12, 22, .88);
+}
+
+.inline-enroll-button {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid rgba(66,230,140,.34);
+  border-radius: 11px;
+  background: linear-gradient(135deg, rgba(66,230,140,.22), rgba(52,201,255,.1));
+  color: #dcffe9;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 1000;
 }
 
 .action-drawer {
@@ -4054,6 +4110,56 @@ body::after {
   justify-self: end;
 }
 
+.top-user-menu--with-notifications {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-notification-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 40% 18%, rgba(255,255,255,.16), transparent 34%),
+    rgba(5, 10, 18, .9);
+  color: #dbe7f8;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0,0,0,.34);
+}
+
+.top-notification-button.is-pending {
+  border-color: rgba(241,199,91,.48);
+  color: #ffe39a;
+}
+
+.top-notification-button.is-approved {
+  border-color: rgba(66,230,140,.58);
+  color: #9dffbf;
+  box-shadow: 0 0 26px rgba(66,230,140,.18), 0 10px 28px rgba(0,0,0,.34);
+}
+
+.top-notification-button > span {
+  position: absolute;
+  right: -4px;
+  top: -5px;
+  display: grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px;
+  padding: 0 5px;
+  background: linear-gradient(135deg, #ffe38a, #c47717);
+  color: #06080c;
+  font-size: .66rem;
+  font-weight: 1000;
+}
+
 .top-user-avatar {
   display: grid;
   place-items: center;
@@ -4079,7 +4185,8 @@ body::after {
   object-fit: cover;
 }
 
-.top-user-popover {
+.top-user-popover,
+.top-notification-popover {
   position: absolute;
   right: 0;
   top: calc(100% + 10px);
@@ -4095,6 +4202,86 @@ body::after {
     rgba(5, 8, 16, .98);
   box-shadow: 0 24px 80px rgba(0,0,0,.64);
   backdrop-filter: blur(16px);
+}
+
+.top-notification-popover {
+  gap: 12px;
+}
+
+.top-notification-popover header,
+.notification-item,
+.approved-invite-panel header,
+.approved-invite-panel article {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  background: rgba(255,255,255,.055);
+}
+
+.top-notification-popover header,
+.approved-invite-panel header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px;
+}
+
+.top-notification-popover strong,
+.top-notification-popover small,
+.top-notification-popover p,
+.notification-item span,
+.notification-item a {
+  display: block;
+}
+
+.top-notification-popover small,
+.top-notification-popover p,
+.notification-item small,
+.notification-hint {
+  margin: 0;
+  color: var(--muted);
+}
+
+.notification-list {
+  display: grid;
+  gap: 8px;
+}
+
+.notification-item {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+}
+
+.notification-item span {
+  width: max-content;
+  border-radius: 999px;
+  padding: 3px 7px;
+  background: rgba(241,199,91,.12);
+  color: #ffe39a;
+  font-size: .65rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.notification-item--approved span {
+  background: rgba(66,230,140,.12);
+  color: #9dffbf;
+}
+
+.notification-item--rejected span {
+  background: rgba(255,91,91,.13);
+  color: #ffb5b5;
+}
+
+.notification-item a {
+  width: max-content;
+  max-width: 100%;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, #ffe38a, #c47717);
+  color: #07080d;
+  font-weight: 1000;
+  text-decoration: none;
 }
 
 .top-user-popover > div {
@@ -5383,6 +5570,44 @@ body::after,
   border-radius: 50%;
   background: var(--cyan);
   box-shadow: 0 0 12px rgba(52,201,255,.5);
+}
+
+.approved-invite-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(66,230,140,.28);
+  border-radius: 14px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(66,230,140,.16), transparent 34%),
+    linear-gradient(180deg, rgba(16,34,28,.72), rgba(5,10,18,.78));
+}
+
+.approved-invite-panel header {
+  border-color: rgba(66,230,140,.24);
+}
+
+.approved-invite-panel header svg {
+  color: #72ffa8;
+}
+
+.approved-invite-panel strong,
+.approved-invite-panel span,
+.approved-invite-panel small {
+  display: block;
+}
+
+.approved-invite-panel span,
+.approved-invite-panel small {
+  color: var(--muted);
+}
+
+.approved-invite-panel article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
 }
 
 .plan-payment-form,

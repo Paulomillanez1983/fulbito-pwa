@@ -350,8 +350,34 @@ export function ArenaActions({
       primary_color: String(formData.get("primaryColor") || "#eec15c"),
       badge_url: badgeUrl
     };
-    const { error } = await supabase.from("teams").insert(payload);
-    setMessage(error ? error.message : "Equipo creado. Actualiza la pantalla para verlo en la arena.");
+    const { data: team, error } = await supabase.from("teams").insert(payload).select("id,name").single();
+    if (error) return setMessage(error.message);
+    if (data.activeTournament?.id) {
+      const { error: enrollError } = await supabase
+        .from("tournament_teams")
+        .upsert(
+          { tournament_id: data.activeTournament.id, team_id: team.id, status: "approved" },
+          { onConflict: "tournament_id,team_id" }
+        );
+      if (enrollError) return setMessage(`Equipo creado, pero no se pudo sumar a la copa: ${enrollError.message}`);
+      return setMessage(`${team.name} quedo inscripto en ${data.activeTournament.name}. Actualiza la pantalla para verlo.`);
+    }
+    setMessage("Equipo creado. Actualiza la pantalla para verlo en la arena.");
+  }
+
+  async function enrollOwnedTeam() {
+    setMessage("");
+    if (!ownedTeam) return setMessage("Primero crea o elegi un equipo.");
+    if (!data.activeTournament?.id) return setMessage("No hay copa activa para inscribir el equipo.");
+    const { supabase, userId } = await getUserId();
+    if (!userId) return setMessage("Entra con Google para continuar.");
+    const { error } = await supabase
+      .from("tournament_teams")
+      .upsert(
+        { tournament_id: data.activeTournament.id, team_id: ownedTeam.id, status: "approved" },
+        { onConflict: "tournament_id,team_id" }
+      );
+    setMessage(error ? error.message : `${ownedTeam.name} quedo inscripto en ${data.activeTournament.name}.`);
   }
 
   async function createVenue(formData: FormData) {
@@ -444,6 +470,11 @@ export function ArenaActions({
             <ShieldPlus />
             <h3>Equipo ya creado</h3>
             <p>{ownedTeam.name} ya esta asociado a tu cuenta. Desde esta pantalla podes cargar jugadores y completar la formacion.</p>
+            {data.activeTournament ? (
+              <button className="inline-enroll-button" onClick={enrollOwnedTeam} type="button">
+                Inscribir en esta copa
+              </button>
+            ) : null}
           </article>
         ) : null}
 

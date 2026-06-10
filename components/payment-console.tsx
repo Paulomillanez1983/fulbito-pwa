@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { CheckCircle2, Clipboard, Clock3, Crown, LoaderCircle, MessageCircle, Send, Sparkles, Upload, XCircle } from "lucide-react";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
@@ -215,6 +215,28 @@ function isRequestPending(request?: PaymentRequest) {
   return request?.status === "pending_review";
 }
 
+function tournamentInviteCode(activeTournament: ArenaData["activeTournament"], request: PaymentRequest) {
+  if (request.target_type !== "tournament") return "";
+  if (activeTournament?.id === request.target_id) return activeTournament.slug;
+  return request.target_id ?? "";
+}
+
+function TournamentInviteLink({ request, activeTournament }: { request: PaymentRequest; activeTournament: ArenaData["activeTournament"] }) {
+  const [href, setHref] = useState("");
+
+  useEffect(() => {
+    const code = tournamentInviteCode(activeTournament, request);
+    if (!code) return;
+    const joinUrl = `${window.location.origin}/?join=${encodeURIComponent(code)}`;
+    const tournamentName = request.title.replace(/^Mundial barrial - /, "");
+    const text = `Te invito a jugar ${tournamentName} en Fulbito Arena. Entra a ${joinUrl}, crea o elegi tu equipo y carga el plantel para sumarte a la copa.`;
+    setHref(`https://wa.me/?text=${encodeURIComponent(text)}`);
+  }, [activeTournament, request]);
+
+  if (!href) return null;
+  return <a className="whatsapp-invite" href={href} rel="noreferrer" target="_blank">Invitar equipos por WhatsApp</a>;
+}
+
 function TeamProForm({
   plan,
   data,
@@ -334,14 +356,12 @@ function TournamentProForm({
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
-  const [inviteUrl, setInviteUrl] = useState("");
   const [sent, setSent] = useState(isRequestPending(existingRequest));
   const submitLockedRef = useRef(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
-    setInviteUrl("");
     if (sent || submitLockedRef.current) return setMessage("Comprobante ya enviado. Espera la revision del admin.");
     if (!data.user) return setMessage("Entra con Google para continuar.");
     const formElement = event.currentTarget;
@@ -384,14 +404,10 @@ function TournamentProForm({
       });
       onCreated(created.request, created.message);
 
-      const origin = window.location.origin;
-      const invite = `Te invito a inscribir tu equipo en ${tournament.name} en Fulbito Arena. Entrá a ${origin} y cargá tu club, plantel y formación.`;
-      const whatsappInvite = `Te invito a jugar ${tournament.name} en Fulbito Arena. Entra a ${origin}, crea o elegi tu equipo y carga el plantel para sumarte a la copa.`;
-      setInviteUrl(`https://wa.me/?text=${encodeURIComponent(whatsappInvite)}`);
       formElement.reset();
       setProofReady(false);
       setSent(true);
-      setMessage("Copa creada. Envia la invitacion a los equipos y espera la activacion premium.");
+      setMessage("Copa creada. Fulbito revisa el comprobante. Cuando quede aprobada se habilita la invitacion por WhatsApp.");
     } catch (error) {
       submitLockedRef.current = false;
       setMessage(error instanceof Error ? error.message : "No se pudo crear el torneo.");
@@ -421,7 +437,6 @@ function TournamentProForm({
       <ProofField disabled={pending || sent} onReady={setProofReady} ready={proofReady} sent={sent} />
       <SubmitButton disabled={!proofReady || sent} idle="Crear mundial" pending={pending} sent={sent} />
       {!proofReady && !sent ? <small>Adjunta el comprobante para crear la copa.</small> : null}
-      {inviteUrl ? <a className="whatsapp-invite" href={inviteUrl} rel="noreferrer" target="_blank">Invitar equipos por WhatsApp</a> : null}
       {message ? <small>{message}</small> : null}
     </form>
   );
@@ -732,6 +747,9 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
       return groups;
     }, {});
   }, [requests]);
+  const approvedTournamentRequests = useMemo(() => {
+    return requests.filter((request) => request.status === "approved" && request.target_type === "tournament");
+  }, [requests]);
 
   function onCreated(request: PaymentRequest, message?: PaymentMessage) {
     setRequests((current) => [request, ...current]);
@@ -804,6 +822,27 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
           />
         ))}
       </div>
+
+      {approvedTournamentRequests.length ? (
+        <section className="approved-invite-panel">
+          <header>
+            <CheckCircle2 size={18} />
+            <div>
+              <strong>Tu copa esta habilitada</strong>
+              <span>Ahora podes compartir la entrada del torneo. Todos los equipos llegan al mismo mundial.</span>
+            </div>
+          </header>
+          {approvedTournamentRequests.map((request) => (
+            <article key={request.id}>
+              <div>
+                <strong>{request.title.replace(/^Mundial barrial - /, "")}</strong>
+                <small>Link unico de invitacion</small>
+              </div>
+              <TournamentInviteLink activeTournament={data.activeTournament} request={request} />
+            </article>
+          ))}
+        </section>
+      ) : null}
 
       <section className="payment-inbox">
         <header>
