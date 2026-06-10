@@ -385,43 +385,22 @@ export function ArenaActions({
     setMessage("");
     const name = String(formData.get("teamName") || "").trim();
     if (!name) return setMessage("El equipo necesita nombre.");
-    const { supabase, userId } = await getUserId();
-    if (!userId) return setMessage("Entra con Google para continuar.");
-    const { data: existingTeam, error: existingTeamError } = await supabase
-      .from("teams")
-      .select("id,name")
-      .eq("owner_id", userId)
-      .limit(1)
-      .maybeSingle();
-    if (existingTeamError) return setMessage(existingTeamError.message);
-    if (existingTeam) return setMessage(`Ya tenes un equipo creado: ${existingTeam.name}.`);
-    let badgeUrl: string | null = null;
     try {
-      badgeUrl = await uploadArenaMedia(supabase, "team-badges", userId, formData.get("badgeFile"));
+      const badgeFile = formData.get("badgeFile");
+      if (badgeFile instanceof File && badgeFile.size > 0) {
+        formData.set("badgeFile", await optimizeImageFile(badgeFile, "team-badges"));
+      }
     } catch (error) {
-      return setMessage(error instanceof Error ? error.message : "No se pudo subir el escudo.");
+      return setMessage(error instanceof Error ? error.message : "No se pudo optimizar el escudo.");
     }
-    const payload = {
-      owner_id: userId,
-      name,
-      slug: `${slugify(name)}-${Date.now().toString(36)}`,
-      short_name: String(formData.get("shortName") || name.slice(0, 3)).trim().slice(0, 4).toUpperCase(),
-      neighborhood: String(formData.get("neighborhood") || "").trim(),
-      primary_color: String(formData.get("primaryColor") || "#eec15c"),
-      badge_url: badgeUrl
-    };
-    const { data: team, error } = await supabase.from("teams").insert(payload).select("id,name").single();
-    if (error) return setMessage(error.message);
+    if (data.activeTournament?.id) formData.set("tournamentId", data.activeTournament.id);
+    const response = await fetch("/api/teams", { method: "POST", body: formData });
+    const result = (await response.json()) as { team?: { id: string; name: string }; error?: string; warning?: string };
+    if (!response.ok || !result.team) return setMessage(result.error || "No se pudo crear el equipo.");
+    const team = result.team;
     if (data.activeTournament?.id) {
-      const { error: enrollError } = await supabase
-        .from("tournament_teams")
-        .upsert(
-          { tournament_id: data.activeTournament.id, team_id: team.id, status: "approved" },
-          { onConflict: "tournament_id,team_id" }
-        );
-      if (enrollError) return setMessage(`Equipo creado, pero no se pudo sumar a la copa: ${enrollError.message}`);
       window.setTimeout(() => window.location.reload(), 1000);
-      return setMessage(`${team.name} quedo inscripto en ${data.activeTournament.name}. Actualiza la pantalla para verlo.`);
+      return setMessage(result.warning || `${team.name} quedo inscripto en ${data.activeTournament.name}. Actualiza la pantalla para verlo.`);
     }
     window.setTimeout(() => window.location.reload(), 1000);
     setMessage("Equipo creado. Actualiza la pantalla para verlo en la arena.");
