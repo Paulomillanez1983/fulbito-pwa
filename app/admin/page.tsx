@@ -2,7 +2,7 @@ import { AdminPaymentsPanel } from "@/components/admin-payments-panel";
 import { LoginPanel } from "@/components/login-panel";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AccountEntitlement, AppRole, BillingPlanSetting, FieldMode, PaymentMessage, PaymentRequest, UserBlock } from "@/lib/types";
+import type { AccountEntitlement, AppRole, BillingPlanSetting, FieldMode, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, UserBlock } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +26,7 @@ type AdminTeamRow = {
 
 type AdminTournamentRow = {
   id: string;
+  organizer_id: string | null;
   name: string;
   slug: string;
   status: string;
@@ -105,16 +106,19 @@ export default async function AdminPage() {
     );
   }
 
-  const [requestsResult, messagesResult, billingPlansResult, teamsResult, teamMembersResult, tournamentTeamsResult, tournamentsAuditResult, entitlementsAuditResult, userBlocksResult] = await Promise.all([
+  const [requestsResult, messagesResult, billingPlansResult, teamsResult, teamMembersResult, tournamentTeamsResult, tournamentsAuditResult, entitlementsAuditResult, userBlocksResult, liveChannelsResult, livePermissionsResult, liveEventsResult] = await Promise.all([
     supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(80),
     supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(300),
     supabase.from("billing_plan_settings").select("*").order("sort_order", { ascending: true }),
     supabase.from("teams").select("id,owner_id,name,slug,short_name,badge_url,primary_color,neighborhood,created_at").order("created_at", { ascending: false }).limit(160),
     supabase.from("team_members").select("id,team_id").limit(3000),
     supabase.from("tournament_teams").select("tournament_id,team_id,status,created_at").order("created_at", { ascending: false }).limit(600),
-    supabase.from("tournaments").select("id,name,slug,status,field_mode").order("created_at", { ascending: false }).limit(160),
+    supabase.from("tournaments").select("id,organizer_id,name,slug,status,field_mode").order("created_at", { ascending: false }).limit(160),
     supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }).limit(400),
-    supabase.from("user_blocks").select("*").order("created_at", { ascending: false }).limit(500)
+    supabase.from("user_blocks").select("*").order("created_at", { ascending: false }).limit(500),
+    supabase.from("live_stream_channels").select("*").order("created_at", { ascending: true }),
+    supabase.from("live_stream_permissions").select("*").order("created_at", { ascending: false }).limit(400),
+    supabase.from("live_stream_events").select("*").order("created_at", { ascending: false }).limit(300)
   ]);
 
   const requests = (requestsResult.data ?? []) as PaymentRequest[];
@@ -125,11 +129,18 @@ export default async function AdminPage() {
   const tournaments = (tournamentsAuditResult.data ?? []) as AdminTournamentRow[];
   const entitlements = (entitlementsAuditResult.data ?? []) as AccountEntitlement[];
   const userBlocks = (userBlocksResult.data ?? []) as UserBlock[];
+  const liveChannels = (liveChannelsResult.data ?? []) as LiveStreamChannel[];
+  const livePermissions = (livePermissionsResult.data ?? []) as LiveStreamPermission[];
+  const liveEvents = (liveEventsResult.data ?? []) as LiveStreamEvent[];
   const profileIds = Array.from(new Set([
     ...requests.map((item) => item.requester_id),
     ...messages.map((item) => item.sender_id),
     ...teamRows.map((item) => item.owner_id).filter(Boolean),
-    ...userBlocks.map((item) => item.blocked_user_id)
+    ...userBlocks.map((item) => item.blocked_user_id),
+    ...tournaments.map((item) => item.organizer_id).filter(Boolean),
+    ...livePermissions.map((item) => item.user_id),
+    ...livePermissions.map((item) => item.enabled_by_user_id).filter(Boolean),
+    ...liveEvents.map((item) => item.created_by_user_id).filter(Boolean)
   ] as string[]));
   const profilesResult = profileIds.length
     ? await supabase.from("profiles").select("id,display_name,avatar_url").in("id", profileIds)
@@ -177,11 +188,15 @@ export default async function AdminPage() {
     <AdminPaymentsPanel
       adminId={user.id}
       billingPlans={(billingPlansResult.data ?? []) as BillingPlanSetting[]}
+      liveChannels={liveChannels}
+      liveEvents={liveEvents}
+      livePermissions={livePermissions}
       messages={messages}
       profiles={profiles}
       requests={requests}
       roles={roles}
       teamAudit={teamAudit}
+      tournaments={tournaments}
       userBlocks={userBlocks}
     />
   );

@@ -18,6 +18,18 @@ export type MatchStatus =
   | "postponed"
   | "cancelled";
 
+export type LiveStreamMode = "external_link" | "official_auto" | "official_manual";
+
+export type LiveStreamType = "match" | "final" | "training" | "press" | "other";
+
+export type LiveStreamLifecycleStatus = "scheduled" | "ready" | "testing" | "live" | "complete" | "cancelled" | "failed";
+
+export type LiveStreamVisibility = "public" | "unlisted" | "private";
+
+export type LiveStreamPermissionStatus = "active" | "suspended" | "expired";
+
+export type LiveStreamChannelStatus = "active" | "busy" | "disabled";
+
 export type ArenaVenue = {
   id: string;
   owner_id?: string | null;
@@ -104,6 +116,71 @@ export type ArenaMatch = {
   venue?: ArenaVenue | null;
 };
 
+export type LiveStreamChannel = {
+  id: string;
+  name: string;
+  handle: string;
+  provider: string;
+  channel_url: string | null;
+  is_official: boolean;
+  supports_auto_mock: boolean;
+  status: LiveStreamChannelStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LiveStreamPermission = {
+  id: string;
+  user_id: string;
+  tournament_id: string | null;
+  can_use_external_link: boolean;
+  can_use_official_auto: boolean;
+  max_streams_per_day: number;
+  max_streams_per_week: number;
+  allowed_stream_types: LiveStreamType[];
+  allowed_channel_ids: string[];
+  status: LiveStreamPermissionStatus;
+  enabled_by_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LiveStreamEvent = {
+  id: string;
+  tournament_id: string;
+  match_id: string | null;
+  created_by_user_id: string | null;
+  channel_id: string | null;
+  mode: LiveStreamMode;
+  stream_type: LiveStreamType;
+  title: string;
+  description: string | null;
+  youtube_watch_url: string | null;
+  youtube_embed_url: string | null;
+  youtube_broadcast_id: string | null;
+  youtube_stream_id: string | null;
+  lifecycle_status: LiveStreamLifecycleStatus;
+  visibility: LiveStreamVisibility;
+  sponsor_name: string | null;
+  sponsor_url: string | null;
+  manual_view_count: number;
+  manual_peak_viewers: number;
+  manual_notes: string | null;
+  scheduled_start_at: string | null;
+  actual_started_at: string | null;
+  actual_ended_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AppFeatureFlag = {
+  key: string;
+  enabled: boolean;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type SessionUser = {
   id: string;
   email?: string;
@@ -187,4 +264,8 @@ export type ArenaData = {
   paymentMessages: PaymentMessage[];
   entitlements: AccountEntitlement[];
   billingPlans: BillingPlanSetting[];
+  liveChannels: LiveStreamChannel[];
+  livePermissions: LiveStreamPermission[];
+  liveEvents: LiveStreamEvent[];
+  featureFlags: AppFeatureFlag[];
 };

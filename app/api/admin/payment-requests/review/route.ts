@@ -68,6 +68,23 @@ export async function POST(request: NextRequest) {
       onConflict: "owner_id,plan_code,target_type,target_id"
     });
     if (entitlementError) return NextResponse.json({ error: entitlementError.message }, { status: 400 });
+
+    if (existing.plan_code === "tournament_pro" && existing.target_type === "tournament" && existing.target_id) {
+      const { error: livePermissionError } = await supabase
+        .from("live_stream_permissions")
+        .upsert({
+          user_id: existing.requester_id,
+          tournament_id: existing.target_id,
+          can_use_external_link: true,
+          can_use_official_auto: true,
+          max_streams_per_day: 3,
+          max_streams_per_week: 12,
+          allowed_stream_types: ["match", "final"],
+          status: "active",
+          enabled_by_user_id: userId
+        }, { onConflict: "user_id,tournament_id" });
+      if (livePermissionError) return NextResponse.json({ error: livePermissionError.message }, { status: 400 });
+    }
   }
 
   const messageBody = status === "approved"

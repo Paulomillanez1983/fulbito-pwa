@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { Ban, CheckCircle2, Clock3, ExternalLink, LoaderCircle, MessageCircle, ShieldCheck, Trophy, Users, Send, XCircle } from "lucide-react";
+import { Ban, CheckCircle2, Clock3, ExternalLink, LoaderCircle, MessageCircle, RadioTower, ShieldCheck, Trophy, Users, Send, Video, XCircle } from "lucide-react";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AccountEntitlement, AppRole, BillingPlanSetting, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
+import type { AccountEntitlement, AppRole, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
 
 const statusIcons: Record<PaymentRequest["status"], typeof Clock3> = {
   pending_review: Clock3,
@@ -45,6 +45,15 @@ type AdminTeamAuditItem = {
     fieldMode: string;
   }>;
   entitlements: AccountEntitlement[];
+};
+
+type AdminLiveTournament = {
+  id: string;
+  organizer_id: string | null;
+  name: string;
+  slug: string;
+  status: string;
+  field_mode: string;
 };
 
 function formatDate(value: string) {
@@ -233,14 +242,322 @@ function AdminPlanPrices({
   );
 }
 
+function liveStatusLabel(status: LiveStreamLifecycleStatus) {
+  const labels: Record<LiveStreamLifecycleStatus, string> = {
+    scheduled: "Programado",
+    ready: "Listo",
+    testing: "Prueba",
+    live: "En vivo",
+    complete: "Finalizado",
+    cancelled: "Revocado",
+    failed: "Fallido"
+  };
+  return labels[status];
+}
+
+function AdminLivePanel({
+  adminId,
+  channels: initialChannels,
+  events: initialEvents,
+  permissions: initialPermissions,
+  profiles,
+  tournaments
+}: {
+  adminId: string;
+  channels: LiveStreamChannel[];
+  events: LiveStreamEvent[];
+  permissions: LiveStreamPermission[];
+  profiles: AdminProfile[];
+  tournaments: AdminLiveTournament[];
+}) {
+  const [events, setEvents] = useState(initialEvents);
+  const [permissions, setPermissions] = useState(initialPermissions);
+  const [busyId, setBusyId] = useState("");
+  const [notice, setNotice] = useState("");
+  const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles]);
+  const permissionByTournament = useMemo(() => {
+    return permissions.reduce<Record<string, LiveStreamPermission>>((groups, permission) => {
+      if (permission.tournament_id) groups[permission.tournament_id] = permission;
+      return groups;
+    }, {});
+  }, [permissions]);
+  const visibleEvents = events.slice(0, 24);
+  const activeEvents = events.filter((event) => ["ready", "testing", "live", "scheduled"].includes(event.lifecycle_status));
+  const liveNow = events.filter((event) => event.lifecycle_status === "live" || event.lifecycle_status === "testing");
+
+  async function setEventStatus(event: LiveStreamEvent, status: LiveStreamLifecycleStatus) {
+    setNotice("");
+    setBusyId(`${event.id}-${status}`);
+    const patch: Partial<LiveStreamEvent> = { lifecycle_status: status };
+    if (status === "live") patch.actual_started_at = new Date().toISOString();
+    if (status === "complete") patch.actual_ended_at = new Date().toISOString();
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("live_stream_events")
+        .update(patch)
+        .eq("id", event.id)
+        .select()
+        .single();
+      if (error) throw error;
+      await supabase.from("live_stream_audit_logs").insert({
+        actor_user_id: adminId,
+        live_stream_event_id: event.id,
+        action: `admin_set_${status}`,
+        metadata: { previousStatus: event.lifecycle_status }
+      });
+      const next = data as LiveStreamEvent;
+      setEvents((current) => current.map((item) => item.id === next.id ? next : item));
+      setNotice(`Transmision marcada como ${liveStatusLabel(status)}.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo actualizar el vivo.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function updateEventMetrics(event: FormEvent<HTMLFormElement>, liveEvent: LiveStreamEvent) {
+    event.preventDefault();
+    setNotice("");
+    setBusyId(`metrics-${liveEvent.id}`);
+    const form = new FormData(event.currentTarget);
+    const manualViewCount = Math.max(0, Math.round(Number(form.get("manualViewCount") || 0)));
+    const manualPeakViewers = Math.max(0, Math.round(Number(form.get("manualPeakViewers") || 0)));
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("live_stream_events")
+        .update({
+          sponsor_name: String(form.get("sponsorName") || "").trim() || null,
+          sponsor_url: String(form.get("sponsorUrl") || "").trim() || null,
+          manual_view_count: manualViewCount,
+          manual_peak_viewers: manualPeakViewers,
+          manual_notes: String(form.get("manualNotes") || "").trim() || null
+        })
+        .eq("id", liveEvent.id)
+        .select()
+        .single();
+      if (error) throw error;
+      await supabase.from("live_stream_audit_logs").insert({
+        actor_user_id: adminId,
+        live_stream_event_id: liveEvent.id,
+        action: "admin_update_metrics",
+        metadata: { manualViewCount, manualPeakViewers }
+      });
+      const next = data as LiveStreamEvent;
+      setEvents((current) => current.map((item) => item.id === next.id ? next : item));
+      setNotice("Sponsor y metricas guardados.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudieron guardar las metricas.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function enableTournamentLive(tournament: AdminLiveTournament) {
+    setNotice("");
+    if (!tournament.organizer_id) {
+      setNotice("Este torneo no tiene organizador asignado.");
+      return;
+    }
+    setBusyId(`enable-${tournament.id}`);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("live_stream_permissions")
+        .upsert({
+          user_id: tournament.organizer_id,
+          tournament_id: tournament.id,
+          can_use_external_link: true,
+          can_use_official_auto: true,
+          max_streams_per_day: 3,
+          max_streams_per_week: 12,
+          allowed_stream_types: ["match", "final"],
+          status: "active",
+          enabled_by_user_id: adminId
+        }, { onConflict: "user_id,tournament_id" })
+        .select()
+        .single();
+      if (error) throw error;
+      const next = data as LiveStreamPermission;
+      setPermissions((current) => {
+        const exists = current.some((item) => item.id === next.id);
+        return exists ? current.map((item) => item.id === next.id ? next : item) : [next, ...current];
+      });
+      setNotice("Fulbito Live habilitado para este torneo.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo habilitar Fulbito Live.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function updatePermission(event: FormEvent<HTMLFormElement>, permission: LiveStreamPermission) {
+    event.preventDefault();
+    setNotice("");
+    setBusyId(`permission-${permission.id}`);
+    const form = new FormData(event.currentTarget);
+    const maxStreamsPerDay = Math.max(0, Math.round(Number(form.get("maxStreamsPerDay") || permission.max_streams_per_day)));
+    const maxStreamsPerWeek = Math.max(0, Math.round(Number(form.get("maxStreamsPerWeek") || permission.max_streams_per_week)));
+    const status = String(form.get("status") || permission.status);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("live_stream_permissions")
+        .update({
+          max_streams_per_day: maxStreamsPerDay,
+          max_streams_per_week: maxStreamsPerWeek,
+          status
+        })
+        .eq("id", permission.id)
+        .select()
+        .single();
+      if (error) throw error;
+      const next = data as LiveStreamPermission;
+      setPermissions((current) => current.map((item) => item.id === next.id ? next : item));
+      setNotice("Limites de Fulbito Live actualizados.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo guardar el permiso.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  return (
+    <section className="admin-live-panel">
+      <header>
+        <span>Fulbito Live</span>
+        <h2>Links, permisos y auditoria</h2>
+        <p>Fulbito no aloja video: solo guarda metadatos, YouTube/external links, permisos, sponsor y estado.</p>
+      </header>
+
+      <div className="admin-live-summary">
+        <article><RadioTower size={18} /><strong>{liveNow.length}</strong><span>En vivo/prueba</span></article>
+        <article><Video size={18} /><strong>{activeEvents.length}</strong><span>Activos o programados</span></article>
+        <article><ShieldCheck size={18} /><strong>{permissions.filter((item) => item.status === "active").length}</strong><span>Permisos activos</span></article>
+      </div>
+
+      <div className="admin-live-channels">
+        {initialChannels.map((channel) => (
+          <article key={channel.id}>
+            <strong>{channel.name}</strong>
+            <span>{channel.handle} / {channel.status}</span>
+            {channel.channel_url ? <a href={channel.channel_url} rel="noreferrer" target="_blank">Abrir canal</a> : null}
+          </article>
+        ))}
+      </div>
+
+      <section className="admin-live-block">
+        <h3>Habilitar torneos</h3>
+        <div className="admin-live-tournament-list">
+          {tournaments.slice(0, 18).map((tournament) => {
+            const permission = permissionByTournament[tournament.id];
+            const organizer = tournament.organizer_id ? profileMap.get(tournament.organizer_id) : null;
+            return (
+              <article key={tournament.id}>
+                <div>
+                  <strong>{tournament.name}</strong>
+                  <span>{tournament.field_mode} / {tournament.status} / {organizer?.display_name ?? "Sin organizador visible"}</span>
+                </div>
+                <b className={permission?.status === "active" ? "is-active" : ""}>{permission?.status ?? "sin live"}</b>
+                <button disabled={busyId === `enable-${tournament.id}`} onClick={() => enableTournamentLive(tournament)} type="button">
+                  {busyId === `enable-${tournament.id}` ? <LoaderCircle className="button-spinner" size={15} /> : null}
+                  {permission ? "Rehabilitar" : "Habilitar Live"}
+                </button>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="admin-live-block">
+        <h3>Vivos y links</h3>
+        <div className="admin-live-event-list">
+          {visibleEvents.length ? visibleEvents.map((event) => {
+            const channel = initialChannels.find((item) => item.id === event.channel_id);
+            return (
+              <article key={event.id}>
+                <div>
+                  <span>{event.mode.replaceAll("_", " ").toUpperCase()}</span>
+                  <strong>{event.title}</strong>
+                  <small>{channel?.name ?? "Link externo"} / {liveStatusLabel(event.lifecycle_status)} / {formatDate(event.created_at)}</small>
+                  {event.sponsor_name ? <small>Sponsor: {event.sponsor_name}</small> : null}
+                </div>
+                <div className="admin-live-event-actions">
+                  {event.youtube_watch_url ? <a href={event.youtube_watch_url} rel="noreferrer" target="_blank"><ExternalLink size={15} />Ver link</a> : null}
+                  <button disabled={Boolean(busyId)} onClick={() => setEventStatus(event, "live")} type="button">En vivo</button>
+                  <button disabled={Boolean(busyId)} onClick={() => setEventStatus(event, "complete")} type="button">Completar</button>
+                  <button disabled={Boolean(busyId)} onClick={() => setEventStatus(event, "cancelled")} type="button">Revocar</button>
+                </div>
+                <form className="admin-live-metrics-form" onSubmit={(formEvent) => updateEventMetrics(formEvent, event)}>
+                  <input defaultValue={event.sponsor_name ?? ""} name="sponsorName" placeholder="Sponsor" />
+                  <input defaultValue={event.sponsor_url ?? ""} name="sponsorUrl" placeholder="URL sponsor" />
+                  <input defaultValue={event.manual_view_count} inputMode="numeric" name="manualViewCount" placeholder="Views" />
+                  <input defaultValue={event.manual_peak_viewers} inputMode="numeric" name="manualPeakViewers" placeholder="Pico" />
+                  <input defaultValue={event.manual_notes ?? ""} name="manualNotes" placeholder="Notas" />
+                  <button disabled={busyId === `metrics-${event.id}`} type="submit">
+                    {busyId === `metrics-${event.id}` ? <LoaderCircle className="button-spinner" size={15} /> : null}
+                    Guardar metricas
+                  </button>
+                </form>
+              </article>
+            );
+          }) : (
+            <article className="admin-empty">
+              <RadioTower size={24} />
+              <strong>No hay transmisiones creadas.</strong>
+              <span>Cuando un organizador habilitado cree un vivo, aparece aca.</span>
+            </article>
+          )}
+        </div>
+      </section>
+
+      <section className="admin-live-block">
+        <h3>Cupos y sanciones Live</h3>
+        <div className="admin-live-permission-list">
+          {permissions.slice(0, 18).map((permission) => {
+            const tournament = tournaments.find((item) => item.id === permission.tournament_id);
+            const owner = profileMap.get(permission.user_id);
+            return (
+              <form key={permission.id} onSubmit={(event) => updatePermission(event, permission)}>
+                <div>
+                  <strong>{tournament?.name ?? "Torneo"}</strong>
+                  <span>{owner?.display_name ?? "Usuario"} / external {permission.can_use_external_link ? "si" : "no"} / oficial {permission.can_use_official_auto ? "si" : "no"}</span>
+                </div>
+                <input defaultValue={permission.max_streams_per_day} inputMode="numeric" name="maxStreamsPerDay" aria-label="Maximo por dia" />
+                <input defaultValue={permission.max_streams_per_week} inputMode="numeric" name="maxStreamsPerWeek" aria-label="Maximo por semana" />
+                <select defaultValue={permission.status} name="status">
+                  <option value="active">Activo</option>
+                  <option value="suspended">Suspendido</option>
+                  <option value="expired">Vencido</option>
+                </select>
+                <button disabled={busyId === `permission-${permission.id}`} type="submit">
+                  {busyId === `permission-${permission.id}` ? <LoaderCircle className="button-spinner" size={15} /> : null}
+                  Guardar
+                </button>
+              </form>
+            );
+          })}
+        </div>
+      </section>
+
+      {notice ? <p className="admin-notice">{notice}</p> : null}
+    </section>
+  );
+}
+
 export function AdminPaymentsPanel({
   adminId,
   requests: initialRequests,
   messages: initialMessages,
   profiles,
   billingPlans,
+  liveChannels,
+  liveEvents,
+  livePermissions,
   roles,
   teamAudit,
+  tournaments,
   userBlocks
 }: {
   adminId: string;
@@ -248,8 +565,12 @@ export function AdminPaymentsPanel({
   messages: PaymentMessage[];
   profiles: AdminProfile[];
   billingPlans: BillingPlanSetting[];
+  liveChannels: LiveStreamChannel[];
+  liveEvents: LiveStreamEvent[];
+  livePermissions: LiveStreamPermission[];
   roles: AppRole[];
   teamAudit: AdminTeamAuditItem[];
+  tournaments: AdminLiveTournament[];
   userBlocks: UserBlock[];
 }) {
   const [requests, setRequests] = useState(initialRequests);
@@ -440,6 +761,15 @@ export function AdminPaymentsPanel({
       </section>
 
       <AdminPlanPrices adminId={adminId} initialPlans={billingPlans} />
+
+      <AdminLivePanel
+        adminId={adminId}
+        channels={liveChannels}
+        events={liveEvents}
+        permissions={livePermissions}
+        profiles={profiles}
+        tournaments={tournaments}
+      />
 
       <AdminTeamAudit teams={teamAudit} />
 

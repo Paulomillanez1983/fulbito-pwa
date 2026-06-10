@@ -1,7 +1,7 @@
 import { attachMatchRelations, computeStandings, demoArenaData } from "@/lib/demo";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AccountEntitlement, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaVenue, BillingPlanSetting, PaymentMessage, PaymentRequest, SessionUser } from "@/lib/types";
+import type { AccountEntitlement, AppFeatureFlag, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaVenue, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, SessionUser } from "@/lib/types";
 
 type TournamentTeamRow = {
   tournament_id: string;
@@ -24,7 +24,11 @@ function emptyUserArenaData(user: SessionUser | null): ArenaData {
     paymentRequests: [],
     paymentMessages: [],
     entitlements: [],
-    billingPlans: []
+    billingPlans: [],
+    liveChannels: [],
+    livePermissions: [],
+    liveEvents: [],
+    featureFlags: []
   };
 }
 
@@ -57,7 +61,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
         ? supabase.from("tournaments").select("*").eq("id", normalizedJoinCode).limit(1)
         : supabase.from("tournaments").select("*").eq("slug", normalizedJoinCode).limit(1)
       : supabase.from("tournaments").select("*").order("created_at", { ascending: false }).limit(user ? 50 : 1);
-    const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, matchesResult, tournamentTeamsResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult] = await Promise.all([
+    const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, matchesResult, tournamentTeamsResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult, liveChannelsResult, livePermissionsResult, liveEventsResult, featureFlagsResult] = await Promise.all([
       user ? supabase.from("user_roles").select("role").eq("user_id", user.id) : Promise.resolve({ data: [] }),
       tournamentQuery,
       supabase.from("venues").select("*").order("created_at", { ascending: true }),
@@ -68,7 +72,11 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
       user ? supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(12) : emptyResult,
       user ? supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(80) : emptyResult,
       user ? supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }) : emptyResult,
-      supabase.from("billing_plan_settings").select("*").eq("is_active", true).order("sort_order", { ascending: true })
+      supabase.from("billing_plan_settings").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
+      supabase.from("live_stream_channels").select("*").order("created_at", { ascending: true }),
+      user ? supabase.from("live_stream_permissions").select("*").order("created_at", { ascending: false }) : emptyResult,
+      supabase.from("live_stream_events").select("*").order("scheduled_start_at", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
+      supabase.from("app_feature_flags").select("*")
     ]);
 
     const rawTournaments = (tournamentsResult.data ?? []) as ArenaTournament[];
@@ -76,6 +84,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
     const rawTeams = (teamsResult.data ?? []) as ArenaTeam[];
     const rawPlayers = (playersResult.data ?? []) as ArenaPlayer[];
     const rawMatches = (matchesResult.data ?? []) as ArenaMatch[];
+    const rawLiveEvents = (liveEventsResult.data ?? []) as LiveStreamEvent[];
     const tournamentTeams = (tournamentTeamsResult.data ?? []) as TournamentTeamRow[];
     const invitedTournament = normalizedJoinCode ? (rawTournaments[0] ?? null) as ArenaTournament | null : null;
     let activeTournament = (invitedTournament ?? rawTournaments[0] ?? null) as ArenaTournament | null;
@@ -83,6 +92,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
     let teams = rawTeams;
     let players = rawPlayers;
     let matchRows = rawMatches;
+    let liveEvents = rawLiveEvents;
     let roles = ((rolesResult.data ?? []).map((item) => item.role) as AppRole[]) || ["player"];
     if (!roles.length) roles = ["player"];
 
@@ -95,6 +105,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
       teams = invitedTeamIds.size ? rawTeams.filter((team) => invitedTeamIds.has(team.id)) : [];
       players = invitedTeamIds.size ? rawPlayers.filter((player) => invitedTeamIds.has(player.team_id)) : [];
       matchRows = rawMatches.filter((match) => match.tournament_id === invitedTournament.id);
+      liveEvents = rawLiveEvents.filter((event) => event.tournament_id === invitedTournament.id);
       const venueIds = new Set<string>();
       if (invitedTournament.venue_id) venueIds.add(invitedTournament.venue_id);
       matchRows.forEach((match) => {
@@ -137,6 +148,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
         );
         return belongsToTournament || belongsToTeam;
       });
+      liveEvents = rawLiveEvents.filter((event) => relatedTournamentIds.has(event.tournament_id));
 
       const relatedVenueIds = new Set<string>();
       matchRows.forEach((match) => {
@@ -165,7 +177,11 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
       paymentRequests: (paymentRequestsResult.data ?? []) as PaymentRequest[],
       paymentMessages: (paymentMessagesResult.data ?? []) as PaymentMessage[],
       entitlements: (entitlementsResult.data ?? []) as AccountEntitlement[],
-      billingPlans: (billingPlansResult.data ?? []) as BillingPlanSetting[]
+      billingPlans: (billingPlansResult.data ?? []) as BillingPlanSetting[],
+      liveChannels: (liveChannelsResult.data ?? []) as LiveStreamChannel[],
+      livePermissions: (livePermissionsResult.data ?? []) as LiveStreamPermission[],
+      liveEvents,
+      featureFlags: (featureFlagsResult.data ?? []) as AppFeatureFlag[]
     };
   } catch (error) {
     console.error("Fulbito Arena data fallback", error);

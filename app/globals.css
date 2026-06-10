@@ -2295,6 +2295,147 @@ body::after {
   cursor: pointer;
 }
 
+.match-tile__meta b.is-live {
+  border-color: rgba(255, 62, 85, .44);
+  background: rgba(255, 62, 85, .16);
+  color: #ffd5db;
+  box-shadow: 0 0 22px rgba(255, 62, 85, .22);
+}
+
+.live-match-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(52,201,255,.18);
+  border-radius: 14px;
+  padding: 13px;
+  background:
+    radial-gradient(circle at 92% 12%, rgba(52,201,255,.18), transparent 32%),
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.025)),
+    rgba(5, 10, 18, .84);
+  box-shadow: 0 22px 60px rgba(0,0,0,.32);
+}
+
+.live-match-panel.is-live {
+  border-color: rgba(255, 62, 85, .34);
+  background:
+    radial-gradient(circle at 92% 12%, rgba(255,62,85,.2), transparent 32%),
+    linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.025)),
+    rgba(5, 10, 18, .88);
+}
+
+.live-match-panel > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.live-match-panel > header svg {
+  color: var(--cyan);
+}
+
+.live-match-panel > header span,
+.live-match-card span {
+  color: var(--gold);
+  font-size: .72rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.live-match-panel > header strong,
+.live-match-panel > header small,
+.live-match-card strong,
+.live-match-card small {
+  display: block;
+}
+
+.live-match-panel > header small,
+.live-match-card small,
+.live-match-note {
+  color: var(--muted);
+}
+
+.live-match-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(2,6,12,.58);
+}
+
+.live-match-card a,
+.live-create-form button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  border: 1px solid rgba(241,199,91,.34);
+  border-radius: 11px;
+  padding: 0 12px;
+  background: linear-gradient(135deg, rgba(255,231,134,.96), rgba(184,116,27,.96));
+  color: #06070b;
+  font-weight: 1000;
+  text-decoration: none;
+}
+
+.live-create-form {
+  display: grid;
+  gap: 9px;
+}
+
+.live-create-form input,
+.live-create-form select,
+.live-create-form textarea {
+  width: 100%;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 11px;
+  padding: 11px 12px;
+  background: rgba(2,6,12,.72);
+  color: var(--ink);
+  font: inherit;
+}
+
+.live-create-form__grid,
+.live-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.live-mode-switch button {
+  min-height: 42px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 11px;
+  background: rgba(255,255,255,.04);
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.live-mode-switch button.is-active {
+  border-color: rgba(52,201,255,.34);
+  background: rgba(52,201,255,.12);
+  color: #d8fbff;
+}
+
+.live-create-form button:disabled {
+  cursor: wait;
+  opacity: .68;
+}
+
+.live-match-message {
+  margin: 0;
+  border: 1px solid rgba(52,201,255,.24);
+  border-radius: 10px;
+  padding: 9px;
+  background: rgba(52,201,255,.08);
+  color: #d9fbff;
+}
+
 .groups-console {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6909,6 +7050,217 @@ body::after,
     rgba(5, 10, 18, .76);
 }
 
+.admin-live-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(241,199,91,.18);
+  border-radius: 14px;
+  padding: 13px;
+  background:
+    radial-gradient(circle at 90% 0, rgba(241,199,91,.14), transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025)),
+    rgba(5, 10, 18, .78);
+}
+
+.admin-live-panel > header,
+.admin-live-block {
+  display: grid;
+  gap: 9px;
+}
+
+.admin-live-panel > header span {
+  width: max-content;
+  border: 1px solid rgba(241,199,91,.38);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(241,199,91,.12);
+  color: #ffe39a;
+  font-size: .72rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.admin-live-panel h2,
+.admin-live-panel h3,
+.admin-live-panel p {
+  margin: 0;
+}
+
+.admin-live-panel p {
+  color: var(--muted);
+}
+
+.admin-live-summary,
+.admin-live-channels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.admin-live-summary article,
+.admin-live-channels article,
+.admin-live-tournament-list article,
+.admin-live-event-list article,
+.admin-live-permission-list form {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(2, 6, 12, .54);
+}
+
+.admin-live-summary article {
+  display: grid;
+  gap: 5px;
+}
+
+.admin-live-summary svg {
+  color: var(--cyan);
+}
+
+.admin-live-summary strong {
+  color: #fff8e8;
+  font-size: 1.24rem;
+}
+
+.admin-live-summary span,
+.admin-live-channels span,
+.admin-live-tournament-list span,
+.admin-live-event-list small,
+.admin-live-permission-list span {
+  color: var(--muted);
+}
+
+.admin-live-channels article {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-live-channels a,
+.admin-live-event-actions a {
+  color: #9df6ff;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.admin-live-tournament-list,
+.admin-live-event-list,
+.admin-live-permission-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-live-tournament-list article,
+.admin-live-event-list article,
+.admin-live-permission-list form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-live-event-list article {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.admin-live-permission-list form {
+  grid-template-columns: minmax(0, 1fr) 76px 76px 120px 100px;
+}
+
+.admin-live-tournament-list strong,
+.admin-live-event-list strong,
+.admin-live-permission-list strong,
+.admin-live-tournament-list span,
+.admin-live-event-list span,
+.admin-live-event-list small,
+.admin-live-permission-list span {
+  display: block;
+}
+
+.admin-live-tournament-list b {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  padding: 6px 8px;
+  color: var(--muted);
+  font-size: .72rem;
+  text-transform: uppercase;
+}
+
+.admin-live-tournament-list b.is-active {
+  border-color: rgba(71, 255, 178, .34);
+  background: rgba(71, 255, 178, .1);
+  color: #b9ffd9;
+}
+
+.admin-live-tournament-list button,
+.admin-live-event-actions button,
+.admin-live-permission-list button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 1px solid rgba(241,199,91,.32);
+  border-radius: 10px;
+  padding: 0 10px;
+  background: rgba(241,199,91,.12);
+  color: #ffe39a;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.admin-live-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.admin-live-event-actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  border: 1px solid rgba(52,201,255,.26);
+  border-radius: 10px;
+  padding: 0 10px;
+  background: rgba(52,201,255,.08);
+}
+
+.admin-live-permission-list input,
+.admin-live-permission-list select,
+.admin-live-metrics-form input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 9px;
+  padding: 8px;
+  background: rgba(2,6,12,.72);
+  color: var(--ink);
+}
+
+.admin-live-metrics-form {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1.1fr 1.1fr .7fr .7fr 1fr auto;
+  gap: 7px;
+}
+
+.admin-live-metrics-form button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 1px solid rgba(52,201,255,.28);
+  border-radius: 10px;
+  padding: 0 10px;
+  background: rgba(52,201,255,.1);
+  color: #d8fbff;
+  cursor: pointer;
+  font-weight: 900;
+}
+
 .admin-team-audit > header {
   display: grid;
   gap: 6px;
@@ -7229,10 +7581,30 @@ body::after,
   .payment-account,
   .payment-plan-grid,
   .admin-stats,
+  .admin-live-summary,
+  .admin-live-channels,
   .admin-team-summary,
   .admin-team-grid,
   .admin-request-tabs {
     grid-template-columns: 1fr;
+  }
+
+  .admin-live-tournament-list article,
+  .admin-live-event-list article,
+  .admin-live-permission-list form,
+  .admin-live-metrics-form,
+  .live-match-card,
+  .live-create-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-live-event-actions {
+    justify-content: stretch;
+  }
+
+  .admin-live-event-actions a,
+  .admin-live-event-actions button {
+    width: 100%;
   }
 
   .payment-console {

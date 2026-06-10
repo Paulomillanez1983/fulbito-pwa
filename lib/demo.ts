@@ -239,5 +239,9 @@ export const demoArenaData: ArenaData = {
   paymentRequests: [],
   paymentMessages: [],
   entitlements: [],
-  billingPlans: []
+  billingPlans: [],
+  liveChannels: [],
+  livePermissions: [],
+  liveEvents: [],
+  featureFlags: []
 };

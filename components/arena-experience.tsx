@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, FormEvent, ReactNode } from "react";
 import {
   Activity,
   ArrowRight,
@@ -11,13 +11,16 @@ import {
   ChevronRight,
   CircleDollarSign,
   Crown,
+  ExternalLink,
   Flag,
   Gamepad2,
+  LoaderCircle,
   LogIn,
   LogOut,
   LocateFixed,
   MapPinned,
   Plus,
+  RadioTower,
   Route,
   Shield,
   ShieldCheck,
@@ -35,7 +38,7 @@ import { VenueMap } from "@/components/venue-map";
 import { roleCatalog } from "@/lib/demo";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaVenue, FieldMode, PaymentRequest } from "@/lib/types";
+import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaVenue, FieldMode, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 
@@ -627,19 +630,22 @@ function UserMenu({
 
 function MatchTile({
   match,
+  liveEvent,
   featured = false,
   onOpen
 }: {
   match: ArenaMatch;
+  liveEvent?: LiveStreamEvent | null;
   featured?: boolean;
   onOpen: () => void;
 }) {
   const isFinal = match.status === "final";
+  const isLive = liveEvent?.lifecycle_status === "live" || liveEvent?.lifecycle_status === "testing";
   return (
     <button className={featured ? "match-tile match-tile--featured match-tile--button" : "match-tile match-tile--button"} onClick={onOpen} type="button">
       <div className="match-tile__meta">
         <span>{match.round_name}</span>
-        <b>{isFinal ? "Final" : "Por jugar"}</b>
+        <b className={isLive ? "is-live" : ""}>{isLive ? "En vivo" : isFinal ? "Final" : "Por jugar"}</b>
       </div>
       <div className="match-tile__teams">
         <div><TeamCrest team={match.homeTeam} /><strong>{match.homeTeam?.short_name ?? "LOC"}</strong></div>
@@ -652,6 +658,32 @@ function MatchTile({
       </footer>
     </button>
   );
+}
+
+function getLiveEventForMatch(events: LiveStreamEvent[], matchId?: string | null) {
+  if (!matchId) return null;
+  const rank: Record<LiveStreamEvent["lifecycle_status"], number> = {
+    live: 0,
+    testing: 1,
+    ready: 2,
+    scheduled: 3,
+    complete: 4,
+    cancelled: 8,
+    failed: 9
+  };
+  return events
+    .filter((event) => event.match_id === matchId)
+    .sort((a, b) => (rank[a.lifecycle_status] ?? 9) - (rank[b.lifecycle_status] ?? 9) || new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0] ?? null;
+}
+
+function liveEventStatusLabel(event?: LiveStreamEvent | null) {
+  if (!event) return "Sin transmision";
+  if (event.lifecycle_status === "live" || event.lifecycle_status === "testing") return "En vivo";
+  if (event.lifecycle_status === "ready") return "Listo";
+  if (event.lifecycle_status === "scheduled") return "Programado";
+  if (event.lifecycle_status === "complete") return "Repeticion";
+  if (event.lifecycle_status === "cancelled") return "Revocado";
+  return "No disponible";
 }
 
 function TeamRow({ team, onOpen }: { team: ArenaTeam; onOpen: () => void }) {
@@ -1046,6 +1078,127 @@ function PlayerSelfJoinPanel({
   );
 }
 
+function LiveMatchPanel({
+  canManageLive,
+  data,
+  initialEvent,
+  match
+}: {
+  canManageLive: boolean;
+  data: ArenaData;
+  initialEvent?: LiveStreamEvent | null;
+  match: ArenaMatch;
+}) {
+  const [liveEvent, setLiveEvent] = useState<LiveStreamEvent | null>(initialEvent ?? null);
+  const [mode, setMode] = useState<Extract<LiveStreamMode, "external_link" | "official_auto">>("external_link");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const status = liveEventStatusLabel(liveEvent);
+  const isLive = liveEvent?.lifecycle_status === "live" || liveEvent?.lifecycle_status === "testing";
+  const canCreate = canManageLive && !liveEvent;
+  const defaultTitle = `${match.homeTeam?.short_name ?? "Local"} vs ${match.awayTeam?.short_name ?? "Visitante"} - Fulbito Live`;
+
+  useEffect(() => {
+    setLiveEvent(initialEvent ?? null);
+    setMessage("");
+  }, [initialEvent?.id]);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!data.user) {
+      setMessage("Entra con Google para crear una transmision.");
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    const form = new FormData(event.currentTarget);
+    try {
+      const response = await fetch("/api/live/events/auto-create", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          tournamentId: match.tournament_id,
+          matchId: match.id,
+          mode,
+          streamType: match.round_name.toLowerCase().includes("final") ? "final" : "match",
+          title: String(form.get("title") || defaultTitle),
+          description: String(form.get("description") || ""),
+          youtubeWatchUrl: String(form.get("youtubeWatchUrl") || ""),
+          visibility: String(form.get("visibility") || "public"),
+          scheduledStartAt: match.scheduled_at,
+          sponsorName: String(form.get("sponsorName") || ""),
+          sponsorUrl: String(form.get("sponsorUrl") || "")
+        })
+      });
+      const result = await response.json() as { event?: LiveStreamEvent; reason?: string; error?: string };
+      if (!response.ok || !result.event) throw new Error(result.reason || result.error || "No se pudo crear Fulbito Live.");
+      setLiveEvent(result.event);
+      setMessage(result.reason || "Transmision guardada.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo crear Fulbito Live.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className={`live-match-panel ${isLive ? "is-live" : ""}`}>
+      <header>
+        <RadioTower size={18} />
+        <div>
+          <span>Fulbito Live</span>
+          <strong>{status}</strong>
+          <small>YouTube o red externa procesa el video. Fulbito solo guarda link, estado y sponsor.</small>
+        </div>
+      </header>
+
+      {liveEvent ? (
+        <article className="live-match-card">
+          <div>
+            <span>{liveEvent.mode === "official_auto" ? "Canal oficial mock" : "Link externo"}</span>
+            <strong>{liveEvent.title}</strong>
+            <small>{liveEvent.sponsor_name ? `Sponsor: ${liveEvent.sponsor_name}` : "Sin sponsor cargado"}</small>
+          </div>
+          {liveEvent.youtube_watch_url ? (
+            <a href={liveEvent.youtube_watch_url} rel="noreferrer" target="_blank">
+              <ExternalLink size={16} />
+              {liveEvent.lifecycle_status === "complete" ? "Ver repeticion" : "Ver en YouTube"}
+            </a>
+          ) : null}
+        </article>
+      ) : null}
+
+      {canCreate ? (
+        <form className="live-create-form" onSubmit={submit}>
+          <div className="live-mode-switch">
+            <button className={mode === "external_link" ? "is-active" : ""} onClick={() => setMode("external_link")} type="button">Link externo</button>
+            <button className={mode === "official_auto" ? "is-active" : ""} onClick={() => setMode("official_auto")} type="button">Oficial mock</button>
+          </div>
+          <input name="title" placeholder="Titulo del vivo" defaultValue={defaultTitle} />
+          {mode === "external_link" ? <input name="youtubeWatchUrl" placeholder="Link YouTube, TikTok, Facebook o Instagram" /> : null}
+          <div className="live-create-form__grid">
+            <input name="sponsorName" placeholder="Sponsor opcional" />
+            <select name="visibility" defaultValue="public">
+              <option value="public">Publico</option>
+              <option value="unlisted">No listado</option>
+              <option value="private">Privado</option>
+            </select>
+          </div>
+          <textarea name="description" placeholder="Notas internas o descripcion corta" rows={2} />
+          <button disabled={busy} type="submit">
+            {busy ? <LoaderCircle className="button-spinner" size={16} /> : <RadioTower size={16} />}
+            {mode === "official_auto" ? "Crear Live oficial mock" : "Guardar link en vivo"}
+          </button>
+        </form>
+      ) : !liveEvent ? (
+        <p className="live-match-note">El creador del torneo habilitado puede activar Fulbito Live para este partido.</p>
+      ) : null}
+
+      {message ? <p className="live-match-message">{message}</p> : null}
+    </section>
+  );
+}
+
 export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: ArenaData; joinCode?: string; inviteTeamCode?: string }) {
   const inviteMode = Boolean(joinCode && data.activeTournament);
   const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
@@ -1080,6 +1233,19 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
 
   const nextMatch = useMemo(() => data.matches.find((match) => match.status !== "final") ?? data.matches[0], [data.matches]);
   const selectedMatch = data.matches.find((match) => match.id === selectedMatchId) ?? nextMatch;
+  const liveEventByMatch = useMemo(() => {
+    return data.liveEvents.reduce<Map<string, LiveStreamEvent>>((map, event) => {
+      if (!event.match_id) return map;
+      const current = map.get(event.match_id);
+      if (!current) {
+        map.set(event.match_id, event);
+        return map;
+      }
+      map.set(event.match_id, getLiveEventForMatch([current, event], event.match_id) ?? current);
+      return map;
+    }, new Map());
+  }, [data.liveEvents]);
+  const selectedMatchLiveEvent = selectedMatch ? liveEventByMatch.get(selectedMatch.id) ?? null : null;
   const selectedTeam = data.teams.find((team) => team.id === selectedTeamId) ?? (inviteMode && !inferredTeam ? undefined : data.teams[0]);
   const nearbyVenues = useMemo(() => {
     if (!venueLocation) return data.venues;
@@ -1104,6 +1270,13 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   );
   const myTeam = ownedTeam ?? memberTeam ?? selectedTeam;
   const hasCreatedTournament = Boolean(data.user && data.activeTournament?.organizer_id === data.user.id);
+  const canManageSelectedMatchLive = Boolean(
+    data.user &&
+    selectedMatch &&
+    data.activeTournament &&
+    selectedMatch.tournament_id === data.activeTournament.id &&
+    (data.activeTournament.organizer_id === data.user.id || userRoles.includes("admin") || userRoles.includes("venue_owner"))
+  );
 
   useEffect(() => {
     if (!data.user || !inferredTeam?.id) return;
@@ -1216,7 +1389,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
         ) : null}
 
         {!inviteMode && nextMatch ? (
-          <MatchTile match={nextMatch} featured onOpen={() => openMatch(nextMatch)} />
+          <MatchTile liveEvent={liveEventByMatch.get(nextMatch.id)} match={nextMatch} featured onOpen={() => openMatch(nextMatch)} />
         ) : !inviteMode && data.user ? (
           <EmptyState icon={<CalendarDays />} title="Tu calendario empieza vacio">
             Crea un torneo, carga tu equipo o espera una invitacion. Cuando haya fixtures reales, aparecen aca.
@@ -1285,29 +1458,32 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           Cada card abre el partido, la sede y los dos clubes. El resultado queda validado por cancha, veedor u organizador.
         </ScreenHeader>
         {selectedMatch ? (
-          <section className="match-detail-console">
-            <div className="match-detail-console__stage">
-              <button onClick={() => selectedMatch.homeTeam && openTeam(selectedMatch.homeTeam.id)} type="button">
-                <TeamCrest team={selectedMatch.homeTeam} size="large" />
-                <strong>{selectedMatch.homeTeam?.name ?? "Local"}</strong>
-              </button>
-              <em>{selectedMatch.status === "final" ? `${selectedMatch.home_score} - ${selectedMatch.away_score}` : "VS"}</em>
-              <button onClick={() => selectedMatch.awayTeam && openTeam(selectedMatch.awayTeam.id)} type="button">
-                <TeamCrest team={selectedMatch.awayTeam} size="large" />
-                <strong>{selectedMatch.awayTeam?.name ?? "Visitante"}</strong>
-              </button>
-            </div>
-            <footer>
-              <button onClick={() => selectedMatch.venue && openVenue(selectedMatch.venue.id)} type="button">
-                <MapPinned size={16} />
-                {selectedMatch.venue?.name ?? "Cancha a confirmar"}
-              </button>
-              <span>{formatDate(selectedMatch.scheduled_at)}</span>
-            </footer>
-          </section>
+          <>
+            <section className="match-detail-console">
+              <div className="match-detail-console__stage">
+                <button onClick={() => selectedMatch.homeTeam && openTeam(selectedMatch.homeTeam.id)} type="button">
+                  <TeamCrest team={selectedMatch.homeTeam} size="large" />
+                  <strong>{selectedMatch.homeTeam?.name ?? "Local"}</strong>
+                </button>
+                <em>{selectedMatch.status === "final" ? `${selectedMatch.home_score} - ${selectedMatch.away_score}` : "VS"}</em>
+                <button onClick={() => selectedMatch.awayTeam && openTeam(selectedMatch.awayTeam.id)} type="button">
+                  <TeamCrest team={selectedMatch.awayTeam} size="large" />
+                  <strong>{selectedMatch.awayTeam?.name ?? "Visitante"}</strong>
+                </button>
+              </div>
+              <footer>
+                <button onClick={() => selectedMatch.venue && openVenue(selectedMatch.venue.id)} type="button">
+                  <MapPinned size={16} />
+                  {selectedMatch.venue?.name ?? "Cancha a confirmar"}
+                </button>
+                <span>{formatDate(selectedMatch.scheduled_at)}</span>
+              </footer>
+            </section>
+            <LiveMatchPanel canManageLive={canManageSelectedMatchLive} data={data} initialEvent={selectedMatchLiveEvent} match={selectedMatch} />
+          </>
         ) : null}
         {data.matches.length ? (
-          <div className="match-stack">{data.matches.map((match) => <MatchTile key={match.id} match={match} onOpen={() => openMatch(match)} />)}</div>
+          <div className="match-stack">{data.matches.map((match) => <MatchTile key={match.id} liveEvent={liveEventByMatch.get(match.id)} match={match} onOpen={() => openMatch(match)} />)}</div>
         ) : (
           <EmptyState icon={<CalendarDays />} title="Todavia no hay partidos">
             Cuando crees un torneo o tu equipo quede inscripto, Fulbito arma el calendario aca.
