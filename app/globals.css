@@ -5873,6 +5873,111 @@ body::after,
   font-weight: 900;
 }
 
+.pro-active-banner--quiet {
+  border-color: rgba(255,255,255,.12);
+  background: rgba(255,255,255,.045);
+}
+
+.my-tournaments-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(52,201,255,.22);
+  border-radius: 14px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(52,201,255,.16), transparent 34%),
+    linear-gradient(180deg, rgba(8,24,36,.72), rgba(5,10,18,.78));
+}
+
+.my-tournaments-panel > header,
+.my-tournaments-list article {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(2, 6, 12, .45);
+}
+
+.my-tournaments-panel > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+
+.my-tournaments-panel > header svg {
+  color: var(--gold);
+}
+
+.my-tournaments-panel strong,
+.my-tournaments-panel span,
+.my-tournaments-panel small {
+  display: block;
+}
+
+.my-tournaments-panel span,
+.my-tournaments-panel small {
+  color: var(--muted);
+}
+
+.my-tournaments-list {
+  display: grid;
+  gap: 8px;
+}
+
+.my-tournaments-list article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.my-tournament-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.my-tournament-stats small,
+.my-tournament-stats b {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 999px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,.045);
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 900;
+}
+
+.my-tournament-stats b.is-active {
+  border-color: rgba(71,255,178,.32);
+  background: rgba(71,255,178,.1);
+  color: #b9ffd9;
+}
+
+.my-tournament-stats b.is-pending {
+  border-color: rgba(241,199,91,.32);
+  background: rgba(241,199,91,.12);
+  color: #ffe39a;
+}
+
+.create-another-tournament {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  border: 1px solid rgba(52,201,255,.26);
+  border-radius: 12px;
+  background: rgba(52,201,255,.1);
+  color: #d8fbff;
+  cursor: pointer;
+  font-weight: 1000;
+}
+
 .payment-plan-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7593,6 +7698,7 @@ body::after,
   .admin-live-event-list article,
   .admin-live-permission-list form,
   .admin-live-metrics-form,
+  .my-tournaments-list article,
   .live-match-card,
   .live-create-form__grid {
     grid-template-columns: 1fr;

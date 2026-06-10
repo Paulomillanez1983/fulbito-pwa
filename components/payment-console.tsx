@@ -2,12 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { CheckCircle2, ChevronDown, Clipboard, Sparkles, Upload } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronDown, Clipboard, PlusCircle, Sparkles, Trophy, Upload, Users } from "lucide-react";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { ArenaData, FieldMode, PaymentMessage, PaymentRequest, TournamentFormat } from "@/lib/types";
+import type { AccountEntitlement, ArenaData, ArenaTournament, FieldMode, PaymentMessage, PaymentRequest, TournamentFormat } from "@/lib/types";
 
 const tournamentFormatOptions: Array<{ value: TournamentFormat; label: string; note: string }> = [
   { value: "world_cup", label: "Grupos + eliminatorias", note: "Ideal para Mundial barrial" },
@@ -207,26 +207,43 @@ function isRequestPending(request?: PaymentRequest) {
   return request?.status === "pending_review";
 }
 
-function tournamentInviteCode(activeTournament: ArenaData["activeTournament"], request: PaymentRequest) {
-  if (request.target_type !== "tournament") return "";
-  if (activeTournament?.id === request.target_id) return activeTournament.slug;
-  return request.target_id ?? "";
+function isEntitlementActive(entitlement: AccountEntitlement, now = Date.now()) {
+  return !entitlement.expires_at || new Date(entitlement.expires_at).getTime() > now;
 }
 
-function TournamentInviteLink({ request, activeTournament }: { request: PaymentRequest; activeTournament: ArenaData["activeTournament"] }) {
+function daysLeft(value: string | null) {
+  if (!value) return "Activo";
+  const diff = new Date(value).getTime() - Date.now();
+  if (diff <= 0) return "Vencido";
+  const days = Math.ceil(diff / (24 * 60 * 60 * 1000));
+  return `${days} dias`;
+}
+
+function TournamentInviteLink({ tournament }: { tournament: ArenaTournament }) {
   const [href, setHref] = useState("");
 
   useEffect(() => {
-    const code = tournamentInviteCode(activeTournament, request);
-    if (!code) return;
-    const joinUrl = `${window.location.origin}/?join=${encodeURIComponent(code)}`;
-    const tournamentName = request.title.replace(/^Mundial barrial - /, "");
-    const text = `Te invito a jugar ${tournamentName} en Fulbito Arena. Entra a ${joinUrl}, crea o elegi tu equipo y carga el plantel para sumarte a la copa.`;
+    const joinUrl = `${window.location.origin}/?join=${encodeURIComponent(tournament.slug)}`;
+    const text = `Te invito a jugar ${tournament.name} en Fulbito Arena. Entra a ${joinUrl}, crea o elegi tu equipo y carga el plantel para sumarte a la copa.`;
     setHref(`https://wa.me/?text=${encodeURIComponent(text)}`);
-  }, [activeTournament, request]);
+  }, [tournament]);
 
   if (!href) return null;
   return <a className="whatsapp-invite" href={href} rel="noreferrer" target="_blank">Invitar equipos por WhatsApp</a>;
+}
+
+function PlanActiveBanner({ entitlements }: { entitlements: AccountEntitlement[] }) {
+  if (!entitlements.length) return null;
+  return (
+    <div className="pro-active-banner">
+      <CheckCircle2 size={20} />
+      <span>
+        {entitlements.length === 1
+          ? `Beneficio activo por ${daysLeft(entitlements[0].expires_at)}.`
+          : `${entitlements.length} beneficios activos.`}
+      </span>
+    </div>
+  );
 }
 
 function TeamProForm({
@@ -657,14 +674,72 @@ function CreatorPaymentCard({
   );
 }
 
+function MyTournamentsPanel({
+  activeEntitlements,
+  data
+}: {
+  activeEntitlements: AccountEntitlement[];
+  data: ArenaData;
+}) {
+  const tournamentEntitlements = activeEntitlements.filter((entitlement) => entitlement.plan_code === "tournament_pro" && entitlement.target_id);
+  const tournamentRows = data.tournaments.map((tournament) => {
+    const entitlement = tournamentEntitlements.find((item) => item.target_id === tournament.id);
+    const pendingRequest = data.paymentRequests.find((request) =>
+      request.target_type === "tournament" &&
+      request.target_id === tournament.id &&
+      request.status === "pending_review"
+    );
+    const teamCount = data.tournamentTeams.filter((row) => row.tournament_id === tournament.id).length;
+    const playerCount = data.players.filter((player) => {
+      return data.tournamentTeams.some((row) => row.tournament_id === tournament.id && row.team_id === player.team_id);
+    }).length;
+    return { tournament, entitlement, pendingRequest, teamCount, playerCount };
+  });
+
+  if (!tournamentRows.length) return null;
+
+  return (
+    <section className="my-tournaments-panel">
+      <header>
+        <Trophy size={18} />
+        <div>
+          <strong>Mis torneos</strong>
+          <span>Los equipos aparecen cuando se inscriben. El plantel puede completarse despues.</span>
+        </div>
+      </header>
+      <div className="my-tournaments-list">
+        {tournamentRows.map(({ tournament, entitlement, pendingRequest, teamCount, playerCount }) => (
+          <article key={tournament.id}>
+            <div>
+              <strong>{tournament.name}</strong>
+              <span>{tournament.field_mode} / {tournament.status} / {tournament.max_teams ?? "sin limite"} equipos max.</span>
+            </div>
+            <div className="my-tournament-stats">
+              <small><Users size={14} />{teamCount} equipos</small>
+              <small><CalendarDays size={14} />{playerCount} jugadores</small>
+              <b className={entitlement ? "is-active" : pendingRequest ? "is-pending" : ""}>
+                {entitlement ? `Pro ${daysLeft(entitlement.expires_at)}` : pendingRequest ? "Pago en revision" : "Basico"}
+              </b>
+            </div>
+            {entitlement ? <TournamentInviteLink tournament={tournament} /> : null}
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes?: PaymentPlan["code"][] }) {
   const [requests, setRequests] = useState(data.paymentRequests);
+  const [showNewTournament, setShowNewTournament] = useState(false);
   const plans = useMemo(() => {
     const merged = mergePaymentPlans(data.billingPlans);
     return planCodes?.length ? merged.filter((plan) => planCodes.includes(plan.code)) : merged;
   }, [data.billingPlans, planCodes]);
-  const hasApprovedPro = data.entitlements.length > 0 || requests.some((request) => request.status === "approved");
   const teamOnly = planCodes?.length === 1 && planCodes[0] === "team_pro";
+  const activeEntitlements = useMemo(() => data.entitlements.filter((entitlement) => isEntitlementActive(entitlement)), [data.entitlements]);
+  const activePlanCodes = useMemo(() => new Set(activeEntitlements.map((entitlement) => entitlement.plan_code)), [activeEntitlements]);
+  const hasActiveTournamentPro = activeEntitlements.some((entitlement) => entitlement.plan_code === "tournament_pro");
 
   const pendingRequestByPlan = useMemo(() => {
     return requests.reduce<Partial<Record<PaymentPlan["code"], PaymentRequest>>>((groups, request) => {
@@ -673,14 +748,19 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
       return groups;
     }, {});
   }, [requests]);
-  const approvedTournamentRequests = useMemo(() => {
-    if (planCodes && !planCodes.includes("tournament_pro")) return [];
-    return requests.filter((request) => request.status === "approved" && request.target_type === "tournament");
-  }, [planCodes, requests]);
+  const visiblePlans = useMemo(() => {
+    return plans.filter((plan) => {
+      if (pendingRequestByPlan[plan.code]) return true;
+      if (plan.code === "tournament_pro") return !hasActiveTournamentPro || showNewTournament;
+      return !activePlanCodes.has(plan.code);
+    });
+  }, [activePlanCodes, hasActiveTournamentPro, pendingRequestByPlan, plans, showNewTournament]);
+  const tournamentPlan = plans.find((plan) => plan.code === "tournament_pro");
 
   function onCreated(request: PaymentRequest) {
     setRequests((current) => [request, ...current]);
     window.dispatchEvent(new CustomEvent<PaymentRequest>("fulbito:payment-request-created", { detail: request }));
+    if (request.plan_code === "tournament_pro") setShowNewTournament(false);
   }
 
   if (!data.user) return null;
@@ -697,45 +777,35 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
         </p>
       </div>
 
-      {hasApprovedPro ? (
-        <div className="pro-active-banner">
-          <CheckCircle2 size={20} />
-          <span>Tenes funciones premium activas en esta cuenta.</span>
-        </div>
+      <PlanActiveBanner entitlements={activeEntitlements} />
+
+      {!teamOnly ? <MyTournamentsPanel activeEntitlements={activeEntitlements} data={{ ...data, paymentRequests: requests }} /> : null}
+
+      {hasActiveTournamentPro && tournamentPlan && !teamOnly ? (
+        <button className="create-another-tournament" onClick={() => setShowNewTournament((current) => !current)} type="button">
+          <PlusCircle size={17} />
+          {showNewTournament ? "Cerrar nueva copa" : "Crear otra copa"}
+        </button>
       ) : null}
 
-      <div className="payment-plan-grid creator-grid">
-        {plans.map((plan) => (
-          <CreatorPaymentCard
-            data={data}
-            existingRequest={pendingRequestByPlan[plan.code]}
-            key={plan.code}
-            onCreated={onCreated}
-            plan={plan}
-          />
-        ))}
-      </div>
-
-      {approvedTournamentRequests.length ? (
-        <section className="approved-invite-panel">
-          <header>
-            <CheckCircle2 size={18} />
-            <div>
-              <strong>Tu copa esta habilitada</strong>
-              <span>Ahora podes compartir la entrada del torneo. Todos los equipos llegan al mismo mundial.</span>
-            </div>
-          </header>
-          {approvedTournamentRequests.map((request) => (
-            <article key={request.id}>
-              <div>
-                <strong>{request.title.replace(/^Mundial barrial - /, "")}</strong>
-                <small>Link unico de invitacion</small>
-              </div>
-              <TournamentInviteLink activeTournament={data.activeTournament} request={request} />
-            </article>
+      {visiblePlans.length ? (
+        <div className="payment-plan-grid creator-grid">
+          {visiblePlans.map((plan) => (
+            <CreatorPaymentCard
+              data={data}
+              existingRequest={pendingRequestByPlan[plan.code]}
+              key={plan.code}
+              onCreated={onCreated}
+              plan={plan}
+            />
           ))}
-        </section>
-      ) : null}
+        </div>
+      ) : (
+        <div className="pro-active-banner pro-active-banner--quiet">
+          <CheckCircle2 size={20} />
+          <span>No hay pagos pendientes para esta pantalla. Tus beneficios activos quedan visibles arriba.</span>
+        </div>
+      )}
     </section>
   );
 }

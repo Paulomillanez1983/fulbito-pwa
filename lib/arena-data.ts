@@ -1,7 +1,7 @@
 import { attachMatchRelations, computeStandings, demoArenaData } from "@/lib/demo";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AccountEntitlement, AppFeatureFlag, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaVenue, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, SessionUser } from "@/lib/types";
+import type { AccountEntitlement, AppFeatureFlag, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentTeam, ArenaVenue, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, SessionUser } from "@/lib/types";
 
 type TournamentTeamRow = {
   tournament_id: string;
@@ -16,11 +16,13 @@ function emptyUserArenaData(user: SessionUser | null): ArenaData {
     configured: true,
     user,
     activeTournament: null,
+    tournaments: [],
+    tournamentTeams: [],
     venues: [],
     teams: [],
-    players: [],
-    matches: [],
-    standings: [],
+      players: [],
+      matches: [],
+      standings: [],
     paymentRequests: [],
     paymentMessages: [],
     entitlements: [],
@@ -68,7 +70,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
       supabase.from("teams").select("*").order("created_at", { ascending: true }),
       supabase.from("team_members").select("*").order("team_id", { ascending: true }).order("jersey_number", { ascending: true, nullsFirst: false }),
       supabase.from("matches").select("*").order("scheduled_at", { ascending: true }),
-      user || normalizedJoinCode ? supabase.from("tournament_teams").select("tournament_id,team_id") : emptyResult,
+      user || normalizedJoinCode ? supabase.from("tournament_teams").select("tournament_id,team_id,status,created_at") : emptyResult,
       user ? supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(12) : emptyResult,
       user ? supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(80) : emptyResult,
       user ? supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }) : emptyResult,
@@ -93,6 +95,8 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
     let players = rawPlayers;
     let matchRows = rawMatches;
     let liveEvents = rawLiveEvents;
+    let tournaments = activeTournament ? [activeTournament] : [];
+    let tournamentTeamRows = tournamentTeams as ArenaTournamentTeam[];
     let roles = ((rolesResult.data ?? []).map((item) => item.role) as AppRole[]) || ["player"];
     if (!roles.length) roles = ["player"];
 
@@ -106,6 +110,8 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
       players = invitedTeamIds.size ? rawPlayers.filter((player) => invitedTeamIds.has(player.team_id)) : [];
       matchRows = rawMatches.filter((match) => match.tournament_id === invitedTournament.id);
       liveEvents = rawLiveEvents.filter((event) => event.tournament_id === invitedTournament.id);
+      tournaments = [invitedTournament];
+      tournamentTeamRows = tournamentTeamRows.filter((row) => row.tournament_id === invitedTournament.id);
       const venueIds = new Set<string>();
       if (invitedTournament.venue_id) venueIds.add(invitedTournament.venue_id);
       matchRows.forEach((match) => {
@@ -149,6 +155,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
         return belongsToTournament || belongsToTeam;
       });
       liveEvents = rawLiveEvents.filter((event) => relatedTournamentIds.has(event.tournament_id));
+      tournamentTeamRows = tournamentTeamRows.filter((row) => relatedTournamentIds.has(row.tournament_id));
 
       const relatedVenueIds = new Set<string>();
       matchRows.forEach((match) => {
@@ -160,6 +167,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
 
       venues = rawVenues.filter((venue) => Boolean(venue.owner_id) || relatedVenueIds.has(venue.id));
       activeTournament = invitedTournament ?? rawTournaments.find((tournament) => relatedTournamentIds.has(tournament.id)) ?? null;
+      tournaments = rawTournaments.filter((tournament) => relatedTournamentIds.has(tournament.id));
     }
 
     const matches = attachMatchRelations(matchRows, teams, venues);
@@ -169,6 +177,8 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
       configured: true,
       user: sessionUser,
       activeTournament,
+      tournaments,
+      tournamentTeams: tournamentTeamRows,
       venues,
       teams,
       players,

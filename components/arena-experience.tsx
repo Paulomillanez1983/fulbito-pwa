@@ -1269,7 +1269,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
     (selectedTeam?.owner_id === data.user.id || userRoles.includes("organizer") || userRoles.includes("admin"))
   );
   const myTeam = ownedTeam ?? memberTeam ?? selectedTeam;
-  const hasCreatedTournament = Boolean(data.user && data.activeTournament?.organizer_id === data.user.id);
+  const hasCreatedTournament = Boolean(data.user && data.tournaments.some((tournament) => tournament.organizer_id === data.user?.id));
   const canManageSelectedMatchLive = Boolean(
     data.user &&
     selectedMatch &&

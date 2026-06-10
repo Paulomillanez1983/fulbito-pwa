@@ -98,6 +98,13 @@ export type ArenaTournament = {
   venue_id: string | null;
 };
 
+export type ArenaTournamentTeam = {
+  tournament_id: string;
+  team_id: string;
+  status: string;
+  created_at?: string;
+};
+
 export type ArenaMatch = {
   id: string;
   tournament_id: string;
@@ -255,6 +262,8 @@ export type ArenaData = {
   configured: boolean;
   user: SessionUser | null;
   activeTournament: ArenaTournament | null;
+  tournaments: ArenaTournament[];
+  tournamentTeams: ArenaTournamentTeam[];
   venues: ArenaVenue[];
   teams: ArenaTeam[];
   players: ArenaPlayer[];

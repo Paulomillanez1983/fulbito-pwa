@@ -56,13 +56,14 @@ export async function POST(request: NextRequest) {
   if (reviewError) return NextResponse.json({ error: reviewError.message }, { status: 400 });
 
   if (status === "approved") {
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const entitlement: Omit<AccountEntitlement, "id" | "starts_at" | "created_at"> = {
       owner_id: existing.requester_id,
       plan_code: existing.plan_code,
       target_type: existing.target_type,
       target_id: existing.target_id,
       source_payment_request_id: existing.id,
-      expires_at: null
+      expires_at: expiresAt
     };
     const { error: entitlementError } = await supabase.from("account_entitlements").upsert(entitlement, {
       onConflict: "owner_id,plan_code,target_type,target_id"
