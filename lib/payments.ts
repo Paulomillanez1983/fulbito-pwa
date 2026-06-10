@@ -20,11 +20,11 @@ export const paymentAccount = {
 export const paymentPlans: PaymentPlan[] = [
   {
     code: "tournament_pro",
-    title: "Crear Torneo barrial",
+    title: "Crear Torneo Pro",
     amount: 15000,
     targetType: "tournament",
     kicker: "Camino a la copa",
-    description: "Crea una copa con grupos, eliminatorias o todos contra todos. Despues invita equipos por WhatsApp.",
+    description: "Crea una copa con grupos + eliminatorias o eliminacion directa. Despues invita equipos por WhatsApp.",
     features: ["Fixture premium", "Llave eliminatoria", "Portada social"]
   },
   {

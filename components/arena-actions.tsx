@@ -344,6 +344,7 @@ export function ArenaActions({
   const managedTeamPlayers = data.players.filter((player) => player.team_id === playerTeamId);
   const rosterFull = Boolean(playerTeamId && managedTeamPlayers.length >= rosterRule.maxPlayers);
   const showPlayer = Boolean(managedTeam) && (mode === "all" || mode === "squad" || mode === "slot" || selfPlayerMode);
+  const [venueMode, setVenueMode] = useState<"simple" | "pro">("simple");
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -456,6 +457,7 @@ export function ArenaActions({
     setMessage("");
     const name = String(formData.get("venueName") || "").trim();
     if (!name) return setMessage("La cancha necesita nombre.");
+    const selectedVenueMode = String(formData.get("venueMode") || "simple") === "pro" ? "pro" : "simple";
     const latitudeValue = String(formData.get("latitude") || "");
     const longitudeValue = String(formData.get("longitude") || "");
     const latitude = Number(latitudeValue);
@@ -466,10 +468,12 @@ export function ArenaActions({
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Entra con Google para continuar.");
     let coverUrl: string | null = null;
-    try {
-      coverUrl = await uploadArenaMedia(supabase, "venue-photos", userId, formData.get("venuePhoto"));
-    } catch (error) {
-      return setMessage(error instanceof Error ? error.message : "No se pudo subir la foto de cancha.");
+    if (selectedVenueMode === "pro") {
+      try {
+        coverUrl = await uploadArenaMedia(supabase, "venue-photos", userId, formData.get("venuePhoto"));
+      } catch (error) {
+        return setMessage(error instanceof Error ? error.message : "No se pudo subir la foto de cancha.");
+      }
     }
     const payload = {
       owner_id: userId,
@@ -477,17 +481,17 @@ export function ArenaActions({
       slug: `${slugify(name)}-${Date.now().toString(36)}`,
       neighborhood: String(formData.get("venueNeighborhood") || "").trim() || "Barrio sin cargar",
       address: String(formData.get("venueAddress") || "").trim() || null,
-      surface: String(formData.get("venueSurface") || "").trim() || "Sintetico",
+      surface: selectedVenueMode === "pro" ? String(formData.get("venueSurface") || "").trim() || "Sintetico" : null,
       phone: String(formData.get("venuePhone") || "").trim() || null,
       latitude,
       longitude,
-      price_per_hour: Number(formData.get("pricePerHour") || 0),
-      inscription_fee: Number(formData.get("inscriptionFee") || 0),
+      price_per_hour: selectedVenueMode === "pro" ? Number(formData.get("pricePerHour") || 0) : 0,
+      inscription_fee: selectedVenueMode === "pro" ? Number(formData.get("inscriptionFee") || 0) : 0,
       cover_url: coverUrl,
       status: "pending"
     };
     const { error } = await supabase.from("venues").insert(payload);
-    setMessage(error ? error.message : "Cancha registrada. Queda pendiente de verificacion.");
+    setMessage(error ? error.message : selectedVenueMode === "pro" ? "Cancha Pro registrada. Queda pendiente de verificacion." : "Cancha registrada gratis. Queda pendiente de verificacion.");
   }
 
   async function submitResult(formData: FormData) {
@@ -594,19 +598,40 @@ export function ArenaActions({
         {showVenue ? <form action={createVenue} className="action-card action-card--venue">
           <MapPinned />
           <h3>Selecciona la ubicacion</h3>
-          <p>Primero marca el punto real de la cancha. Despues completa precio, superficie y foto para publicarla.</p>
+          <p>Primero marca el punto real de la cancha. El registro gratis muestra nombre y WhatsApp; Pro agrega foto, precio y visibilidad.</p>
+          <input name="venueMode" type="hidden" value={venueMode} />
+          <div className="creator-toggle venue-mode-toggle" aria-label="Tipo de registro de cancha">
+            <button className={venueMode === "simple" ? "is-active" : ""} onClick={() => setVenueMode("simple")} type="button">Simple gratis</button>
+            <button className={venueMode === "pro" ? "is-active" : ""} onClick={() => setVenueMode("pro")} type="button">Cancha Pro</button>
+          </div>
           <VenueLocationPicker />
           <div className="venue-form-grid">
-          <input name="venueName" placeholder="Nombre de la cancha" />
-          <input name="venueNeighborhood" placeholder="Barrio" />
-          <input name="venueAddress" placeholder="Direccion" />
-          <input name="venuePhone" inputMode="tel" placeholder="WhatsApp o telefono" />
-          <input name="venueSurface" placeholder="Superficie" />
-          <input name="pricePerHour" inputMode="numeric" placeholder="Precio por hora" />
-          <input name="inscriptionFee" inputMode="numeric" placeholder="Inscripcion sugerida" />
+            <input name="venueName" placeholder="Nombre de la cancha" />
+            <input name="venuePhone" inputMode="tel" placeholder="WhatsApp o telefono" />
+            {venueMode === "pro" ? (
+              <>
+                <input name="venueNeighborhood" placeholder="Barrio" />
+                <input name="venueAddress" placeholder="Direccion" />
+                <input name="venueSurface" placeholder="Superficie" />
+                <input name="pricePerHour" inputMode="numeric" placeholder="Precio por hora" />
+                <input name="inscriptionFee" inputMode="numeric" placeholder="Inscripcion sugerida" />
+              </>
+            ) : (
+              <>
+                <input name="venueNeighborhood" type="hidden" />
+                <input name="venueAddress" type="hidden" />
+              </>
+            )}
           </div>
-          <MediaField accept="image/png,image/jpeg,image/webp" helper="Foto horizontal optimizada para portada." label="Foto de la cancha" name="venuePhoto" variant="wide" />
-          <SubmitButton idle="Guardar cancha" pending="Registrando cancha" />
+          {venueMode === "pro" ? (
+            <MediaField accept="image/png,image/jpeg,image/webp" helper="Foto horizontal optimizada para portada y LED." label="Foto de la cancha" name="venuePhoto" variant="wide" />
+          ) : (
+            <div className="pro-lock-note">
+              <strong>Sin fotos en registro gratis</strong>
+              <span>Para ahorrar storage, las fotos de sede y publicidad se habilitan con Cancha Pro.</span>
+            </div>
+          )}
+          <SubmitButton idle={venueMode === "pro" ? "Guardar cancha Pro" : "Guardar cancha gratis"} pending="Registrando cancha" />
         </form> : null}
 
         {showPlayer && rosterFull && !selfPlayerMode ? (

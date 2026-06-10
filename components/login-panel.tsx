@@ -13,12 +13,14 @@ export function LoginPanel({
   configured,
   joinCode,
   teamCode,
-  tournamentName
+  tournamentName,
+  nextTarget = "/"
 }: {
   configured: boolean;
   joinCode?: string;
   teamCode?: string;
   tournamentName?: string;
+  nextTarget?: string;
 }) {
   const inviteMode = Boolean(joinCode);
   const [role, setRole] = useState<AppRole>(inviteMode ? "captain" : "player");
@@ -30,10 +32,10 @@ export function LoginPanel({
     const nextParams = new URLSearchParams();
     if (joinCode) nextParams.set("join", joinCode);
     if (teamCode) nextParams.set("team", teamCode);
-    url.searchParams.set("next", nextParams.size ? `/?${nextParams.toString()}` : "/");
+    url.searchParams.set("next", nextParams.size ? `/?${nextParams.toString()}` : nextTarget);
     url.searchParams.set("role", role);
     return url.toString();
-  }, [joinCode, role, teamCode]);
+  }, [joinCode, nextTarget, role, teamCode]);
 
   async function signInWithGoogle() {
     const supabase = createSupabaseBrowserClient();

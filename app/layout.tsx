@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     description: "Roles, canchas, equipos, fixture, tabla, grupos, eliminatorias y resultado oficial validado.",
     images: [
       {
-        url: "/og-image.jpg",
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
         alt: "Fulbito Arena, app de torneos barriales con estilo deportivo premium."
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Fulbito Arena | El barrio entra en modo torneo",
     description: "PWA para crear mundiales barriales con acceso Google, roles, canchas, equipos, fixture, tabla y resultados validados.",
-    images: ["/og-image.jpg"]
+    images: ["/twitter-image"]
   },
   icons: {
     icon: "/assets/icon.svg",

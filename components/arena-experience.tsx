@@ -10,7 +10,6 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
-  CircleDollarSign,
   Crown,
   ExternalLink,
   Flag,
@@ -59,6 +58,10 @@ const tabs: Array<{ id: TabId; label: string; icon: typeof Gamepad2 }> = [
   { id: "squad", label: "Equipo", icon: Shield },
   { id: "venues", label: "Canchas", icon: MapPinned }
 ];
+
+function isTabId(value: unknown): value is TabId {
+  return typeof value === "string" && tabs.some((tab) => tab.id === value);
+}
 
 const playableRoles: AppRole[] = ["player", "captain", "venue_owner", "organizer", "referee"];
 
@@ -836,20 +839,18 @@ function DrawLiveTeaser({
 function YouTubeFollowStrip() {
   const { followed, markFollowed } = useYouTubeFollowState();
   return (
-    <section className="youtube-follow-strip">
+    <a className="youtube-follow-strip" href={fulbitoLiveChannelUrl} onClick={markFollowed} rel="noreferrer" target="_blank">
       <YouTubeLogo size={24} />
       <div>
         <strong>Fulbito TV en YouTube</strong>
         <span>Sorteos, vivos, finales y repeticiones quedan en el canal oficial.</span>
       </div>
-      {!followed ? (
-        <a href={fulbitoLiveChannelUrl} onClick={markFollowed} rel="noreferrer" target="_blank">
-          <YouTubeLogo size={16} />
-          Seguir
-          <ExternalLink size={15} />
-        </a>
-      ) : null}
-    </section>
+      <span className="youtube-follow-strip__cta">
+        <YouTubeLogo size={16} />
+        {followed ? "Abrir canal" : "Seguir"}
+        <ExternalLink size={15} />
+      </span>
+    </a>
   );
 }
 
@@ -954,6 +955,12 @@ function statusLabel(status: PaymentRequest["status"]) {
   return "Pendiente";
 }
 
+function isFreshNotification(request: PaymentRequest, maxDays = 30) {
+  const createdAt = new Date(request.created_at).getTime();
+  if (!Number.isFinite(createdAt)) return true;
+  return Date.now() - createdAt <= maxDays * 24 * 60 * 60 * 1000;
+}
+
 function tournamentInviteCode(activeTournament: ArenaTournament | null, request: PaymentRequest) {
   if (request.target_type !== "tournament") return "";
   if (activeTournament?.id === request.target_id) return activeTournament.slug;
@@ -979,10 +986,11 @@ function UserMenu({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [origin, setOrigin] = useState("");
   const [menuRequests, setMenuRequests] = useState(paymentRequests);
-  const approvedCount = menuRequests.filter((request) => request.status === "approved").length;
-  const pendingCount = menuRequests.filter((request) => request.status === "pending_review").length;
-  const latestRequests = menuRequests.slice(0, 6);
-  const approvedTournamentRequests = menuRequests.filter((request) => request.status === "approved" && request.target_type === "tournament");
+  const freshRequests = useMemo(() => menuRequests.filter((request) => isFreshNotification(request)), [menuRequests]);
+  const approvedCount = freshRequests.filter((request) => request.status === "approved").length;
+  const pendingCount = freshRequests.filter((request) => request.status === "pending_review").length;
+  const latestRequests = freshRequests;
+  const approvedTournamentRequests = freshRequests.filter((request) => request.status === "approved" && request.target_type === "tournament");
 
   useEffect(() => {
     if (!user) return;
@@ -1015,7 +1023,7 @@ function UserMenu({
         .from("payment_requests")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(12);
+        .limit(40);
       if (mounted && nextRequests) setMenuRequests(nextRequests as PaymentRequest[]);
     }
 
@@ -2035,10 +2043,49 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   const [venueLocationAsked, setVenueLocationAsked] = useState(false);
   const [venueLocationStatus, setVenueLocationStatus] = useState("Mostrando canchas registradas.");
   const [showVenueForm, setShowVenueForm] = useState(false);
+  const [loginNextTarget, setLoginNextTarget] = useState("/");
+  const activeRef = useRef<TabId>(active);
+  const historyReadyRef = useRef(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowSplash(false), 2600);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  const setActiveTab = useCallback((next: TabId) => {
+    if (activeRef.current === next) return;
+    if (typeof window !== "undefined") {
+      window.history.pushState({ ...(window.history.state ?? {}), fulbitoTab: next }, "", window.location.href);
+    }
+    activeRef.current = next;
+    setActive(next);
+  }, []);
+
+  useEffect(() => {
+    if (historyReadyRef.current) return;
+    historyReadyRef.current = true;
+    window.history.replaceState({ ...(window.history.state ?? {}), fulbitoTab: activeRef.current }, "", window.location.href);
+
+    function handlePopState(event: PopStateEvent) {
+      const nextTab = event.state?.fulbitoTab;
+      if (isTabId(nextTab)) {
+        activeRef.current = nextTab;
+        setActive(nextTab);
+        return;
+      }
+      if (activeRef.current !== "home") {
+        window.history.pushState({ ...(window.history.state ?? {}), fulbitoTab: "home" }, "", window.location.href);
+        activeRef.current = "home";
+        setActive("home");
+      }
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
   const nextMatch = useMemo(() => data.matches.find((match) => match.status !== "final") ?? data.matches[0], [data.matches]);
@@ -2152,17 +2199,35 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
     requestVenueLocation();
   }, [active, data.user, requestVenueLocation, venueLocationAsked]);
 
-  function openLoginPanel() {
+  useEffect(() => {
+    if (!data.user || inviteMode) return;
+    const params = new URLSearchParams(window.location.search);
+    const shouldOpenTournament = params.get("start") === "tournament" || window.location.hash === "#pro";
+    if (!shouldOpenTournament) return;
+    activeRef.current = "home";
     setActive("home");
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "tournament_pro" }));
+      document.getElementById("pro")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 140);
+    window.history.replaceState({ ...(window.history.state ?? {}), fulbitoTab: "home" }, "", "/");
+  }, [data.user, inviteMode]);
+
+  function openLoginPanel(nextTarget = "/") {
+    setLoginNextTarget(nextTarget);
+    setActiveTab("home");
     window.setTimeout(() => {
       document.getElementById("login")?.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 60);
   }
 
   function openTournamentStarter() {
-    setActive("home");
+    setLoginNextTarget("/?start=tournament#pro");
+    setActiveTab("home");
     window.setTimeout(() => {
-      document.getElementById(data.user ? "pro" : "login")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      const target = data.user ? "pro" : "login";
+      if (data.user) window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "tournament_pro" }));
+      document.getElementById(target)?.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 60);
   }
 
@@ -2171,7 +2236,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
       openLoginPanel();
       return;
     }
-    setActive("home");
+    setActiveTab("home");
     window.setTimeout(() => {
       window.dispatchEvent(new Event("fulbito:open-my-tournaments"));
       document.getElementById("my-tournaments")?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -2180,18 +2245,18 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
 
   const openTeam = useCallback((teamId: string) => {
     setSelectedTeamId(teamId);
-    setActive("squad");
-  }, []);
+    setActiveTab("squad");
+  }, [setActiveTab]);
 
   const openVenue = useCallback((venueId: string) => {
     setSelectedVenueId(venueId);
-    setActive("venues");
-  }, []);
+    setActiveTab("venues");
+  }, [setActiveTab]);
 
   const openMatch = useCallback((match: ArenaMatch) => {
     setSelectedMatchId(match.id);
-    setActive("matches");
-  }, []);
+    setActiveTab("matches");
+  }, [setActiveTab]);
 
   async function addRole(role: AppRole) {
     if (!data.user) return;
@@ -2219,7 +2284,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
               <strong>{playerInviteMode ? invitedTeam?.name : data.activeTournament?.name}</strong>
               <small>{playerInviteMode ? `Este link te suma al equipo en ${data.activeTournament?.name}.` : "Este link te lleva a la misma copa que creo el organizador."}</small>
             </div>
-            <button onClick={() => (data.user ? setActive("squad") : openLoginPanel())} type="button">{playerInviteMode ? "Cargar ficha" : "Cargar equipo"}</button>
+            <button onClick={() => (data.user ? setActiveTab("squad") : openLoginPanel())} type="button">{playerInviteMode ? "Cargar ficha" : "Cargar equipo"}</button>
           </section>
         ) : null}
 
@@ -2232,7 +2297,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
             <div className="hero-actions">
               <InstallAppButton variant="hero" />
               <button onClick={openTournamentStarter} type="button">Crear torneo</button>
-              <button onClick={() => setActive("matches")} type="button">Ver fecha</button>
+              <button onClick={() => setActiveTab("matches")} type="button">Ver fecha</button>
             </div>
           </section>
         ) : null}
@@ -2247,9 +2312,9 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
 
         {(!inviteMode || data.user) ? (
           <section className="mini-grid">
-            <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActive("league")} value={data.activeTournament?.name ?? "Torneo"} />
-            <MiniStat icon={<Users />} label="Equipos" onClick={() => setActive("squad")} value={data.teams.length} />
-            <MiniStat icon={<CalendarDays />} label="Partidos" onClick={() => setActive("matches")} value={data.matches.length} />
+            <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActiveTab("league")} value={data.activeTournament?.name ?? "Torneo"} />
+            <MiniStat icon={<Users />} label="Equipos" onClick={() => setActiveTab("squad")} value={data.teams.length} />
+            <MiniStat icon={<CalendarDays />} label="Partidos" onClick={() => setActiveTab("matches")} value={data.matches.length} />
             <MiniStat icon={<Trophy />} label="Mis torneos" onClick={openMyTournaments} value={data.tournaments.length} />
           </section>
         ) : null}
@@ -2259,7 +2324,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
         {!inviteMode && data.user ? (
           <DrawLiveTeaser
             data={data}
-            onOpenMatches={() => setActive("matches")}
+            onOpenMatches={() => setActiveTab("matches")}
             onOpenTournaments={openMyTournaments}
             tournament={data.activeTournament}
           />
@@ -2284,7 +2349,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           ) : null}
           {inviteMode && data.user ? (
             <div className="join-focus-actions">
-              <button className="join-focus-button" onClick={() => setActive("squad")} type="button">
+              <button className="join-focus-button" onClick={() => setActiveTab("squad")} type="button">
                 {playerInviteMode ? `Completar ficha en ${invitedTeam?.name}` : `Cargar equipo en ${data.activeTournament?.name}`}
                 <ChevronRight size={18} />
               </button>
@@ -2303,7 +2368,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
               user={data.user}
             />
           ) : (
-            <LoginPanel configured={data.configured} joinCode={joinCode} teamCode={inviteTeamCode} tournamentName={data.activeTournament?.name} />
+            <LoginPanel configured={data.configured} joinCode={joinCode} nextTarget={loginNextTarget} teamCode={inviteTeamCode} tournamentName={data.activeTournament?.name} />
           )}
         </section>
         {!inviteMode ? <PaymentConsole data={data} /> : null}
@@ -2524,10 +2589,14 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           )}
         </section>
         <section className="console-panel money-console">
-          <MiniStat icon={<CircleDollarSign />} label="Ticket promedio" onClick={() => setActive("venues")} value={money(selectedVenue?.price_per_hour ?? 0)} />
-          <MiniStat icon={<Crown />} label="Visibilidad Pro" onClick={() => setActive("league")} value="Sin comision" />
-          <MiniStat icon={<Route />} label="Sedes cercanas" onClick={() => setActive("matches")} value={nearbyVenues.length} />
+          <MiniStat icon={<Route />} label="Sedes cercanas" onClick={() => setActiveTab("venues")} value={nearbyVenues.length} />
+          <MiniStat icon={<MapPinned />} label="Registro simple" onClick={() => setShowVenueForm(true)} value="Gratis" />
+          <MiniStat icon={<Crown />} label="Cancha Pro" onClick={() => {
+            setShowVenueForm(true);
+            window.setTimeout(() => window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "featured_venue" })), 80);
+          }} value="Destacar" />
         </section>
+        {data.user ? <PaymentConsole data={data} planCodes={["featured_venue"]} /> : null}
       </>
     );
   }
@@ -2545,7 +2614,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
       {showSplash ? <SplashScreen /> : null}
       <ArenaAdBoards campaigns={visibleAdCampaigns} />
       <header className="game-topbar">
-        <button className="game-brand" onClick={() => setActive("home")} type="button">
+        <button className="game-brand" onClick={() => setActiveTab("home")} type="button">
           <img alt="" src="/assets/icon.svg" />
           <span>
             <strong>Fulbito Arena</strong>
@@ -2579,7 +2648,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
         {tabs.map((item) => {
           const Icon = item.icon;
           return (
-            <button className={active === item.id ? "is-active" : ""} key={item.id} onClick={() => setActive(item.id)} type="button">
+            <button className={active === item.id ? "is-active" : ""} key={item.id} onClick={() => setActiveTab(item.id)} type="button">
               <Icon size={19} />
               <span>{item.label}</span>
             </button>

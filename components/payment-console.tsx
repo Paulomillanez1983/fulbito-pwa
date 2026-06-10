@@ -11,8 +11,7 @@ import type { AccountEntitlement, ArenaData, ArenaTournament, FieldMode, Payment
 
 const tournamentFormatOptions: Array<{ value: TournamentFormat; label: string; note: string }> = [
   { value: "world_cup", label: "Grupos + eliminatorias", note: "Ideal para Mundial barrial" },
-  { value: "knockout", label: "Eliminacion directa", note: "Llave rapida hasta la final" },
-  { value: "league", label: "Todos contra todos", note: "Tabla larga por puntos" }
+  { value: "knockout", label: "Eliminacion directa", note: "Llave rapida hasta la final" }
 ];
 
 const tournamentFormatLabels: Record<TournamentFormat, string> = {
@@ -770,12 +769,25 @@ function CreatorPaymentCard({
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const cardRef = useRef<HTMLElement | null>(null);
   const pending = isRequestPending(existingRequest);
   const statusLabel = pending ? "En revision" : "Tocar para abrir";
   const statusTone = pending ? "is-pending" : "is-idle";
 
+  useEffect(() => {
+    function openRequested(event: Event) {
+      const requestedPlan = (event as CustomEvent<PaymentPlan["code"]>).detail;
+      if (requestedPlan !== plan.code) return;
+      setOpen(true);
+      window.setTimeout(() => cardRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 60);
+    }
+
+    window.addEventListener("fulbito:open-payment-plan", openRequested);
+    return () => window.removeEventListener("fulbito:open-payment-plan", openRequested);
+  }, [plan.code]);
+
   return (
-    <article className={`payment-plan-card creator-card ${open ? "is-open" : ""}`}>
+    <article className={`payment-plan-card creator-card ${open ? "is-open" : ""}`} ref={cardRef}>
       <button
         aria-expanded={open}
         className="payment-plan-card__summary"
@@ -952,10 +964,19 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
   const [showNewTournament, setShowNewTournament] = useState(false);
   const plans = useMemo(() => {
     const merged = mergePaymentPlans(data.billingPlans);
-    return planCodes?.length ? merged.filter((plan) => planCodes.includes(plan.code)) : merged;
+    if (planCodes?.length) return merged.filter((plan) => planCodes.includes(plan.code));
+    return merged.filter((plan) => plan.code !== "featured_venue");
   }, [data.billingPlans, planCodes]);
   const teamOnly = planCodes?.length === 1 && planCodes[0] === "team_pro";
-  const activeEntitlements = useMemo(() => data.entitlements.filter((entitlement) => isEntitlementActive(entitlement)), [data.entitlements]);
+  const venueOnly = planCodes?.length === 1 && planCodes[0] === "featured_venue";
+  const showTournamentTools = !teamOnly && !venueOnly;
+  const activeEntitlements = useMemo(() => {
+    return data.entitlements.filter((entitlement) => {
+      if (!isEntitlementActive(entitlement)) return false;
+      if (planCodes?.length) return planCodes.includes(entitlement.plan_code);
+      return true;
+    });
+  }, [data.entitlements, planCodes]);
   const activePlanCodes = useMemo(() => new Set(activeEntitlements.map((entitlement) => entitlement.plan_code)), [activeEntitlements]);
   const hasActiveTournamentPro = activeEntitlements.some((entitlement) => entitlement.plan_code === "tournament_pro");
 
@@ -986,18 +1007,20 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
   return (
     <section className="console-panel payment-console" id="pro">
       <div className="payment-console__head">
-        <span>{teamOnly ? "Equipo Pro" : "Crear torneo"}</span>
-        <h2>{teamOnly ? "Activa identidad premium" : "Arma tu torneo barrial"}</h2>
+        <span>{teamOnly ? "Equipo Pro" : venueOnly ? "Cancha Pro" : "Crear torneo Pro"}</span>
+        <h2>{teamOnly ? "Activa identidad premium" : venueOnly ? "Destaca tu cancha" : "Crea tu torneo barrial"}</h2>
         <p>
           {teamOnly
             ? "El equipo gratis puede inscribirse con escudo y plantel. Equipo Pro habilita fotos de jugadores, cartas estilo juego y estadisticas premium."
-            : "Crea la copa, elegi formato, invita equipos y deja que cada club cargue su plantel. El equipo basico es gratis; lo premium activa fotos, cartas y estadisticas."}
+            : venueOnly
+              ? "Cancha gratis muestra ubicacion, nombre y WhatsApp. Cancha Pro habilita foto, precio, promo y visibilidad en mapa y carteleria LED."
+              : "Arma la copa, elegi formato, envia invitaciones por WhatsApp y deja que cada club cargue su plantel. El equipo basico es gratis; lo premium activa fotos, cartas y estadisticas."}
         </p>
       </div>
 
       <ActiveBenefitsPanel data={data} entitlements={activeEntitlements} />
 
-      {!teamOnly ? (
+      {showTournamentTools ? (
         <MyTournamentsPanel
           activeEntitlements={activeEntitlements}
           data={{ ...data, paymentRequests: requests }}
@@ -1010,7 +1033,7 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
         />
       ) : null}
 
-      {hasActiveTournamentPro && tournamentPlan && !teamOnly ? (
+      {hasActiveTournamentPro && tournamentPlan && showTournamentTools ? (
         <button className="create-another-tournament" onClick={() => setShowNewTournament((current) => !current)} type="button">
           <PlusCircle size={17} />
           {showNewTournament ? "Cerrar nueva copa" : "Crear otra copa"}

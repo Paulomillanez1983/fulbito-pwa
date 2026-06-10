@@ -3263,6 +3263,8 @@ body::after {
   background:
     radial-gradient(circle at 0 0, rgba(255,49,49,.16), transparent 32%),
     linear-gradient(180deg, rgba(20,26,36,.86), rgba(5,9,17,.9));
+  color: var(--ink);
+  text-decoration: none;
 }
 
 .youtube-logo {
@@ -3280,7 +3282,7 @@ body::after {
   color: var(--muted);
 }
 
-.youtube-follow-strip a {
+.youtube-follow-strip__cta {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -6082,6 +6084,10 @@ body::after {
 .notification-list {
   display: grid;
   gap: 8px;
+  max-height: min(440px, 58vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 3px;
 }
 
 .notification-item {
@@ -7781,7 +7787,7 @@ body::after,
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .youtube-follow-strip a {
+  .youtube-follow-strip__cta {
     grid-column: 1 / -1;
     justify-content: center;
   }
