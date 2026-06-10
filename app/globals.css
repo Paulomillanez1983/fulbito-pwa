@@ -5878,6 +5878,91 @@ body::after,
   background: rgba(255,255,255,.045);
 }
 
+.active-benefits-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(255,255,255,.08), transparent 30%),
+    linear-gradient(180deg, rgba(32,36,44,.78), rgba(8,12,20,.78));
+}
+
+.active-benefits-panel > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+}
+
+.active-benefits-panel > header svg,
+.active-benefit-card > button svg:first-child {
+  color: #b9ffd9;
+}
+
+.active-benefits-panel > header strong,
+.active-benefits-panel > header span,
+.active-benefit-card b,
+.active-benefit-card small {
+  display: block;
+}
+
+.active-benefits-panel > header span,
+.active-benefit-card small,
+.active-benefit-card p {
+  color: var(--muted);
+}
+
+.active-benefits-panel > div {
+  display: grid;
+  gap: 8px;
+}
+
+.active-benefit-card {
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025)),
+    rgba(26,30,38,.72);
+}
+
+.active-benefit-card > button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  padding: 10px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.active-benefit-card > button svg:last-child {
+  color: var(--muted);
+  transition: transform .18s ease;
+}
+
+.active-benefit-card.is-open > button svg:last-child {
+  transform: rotate(180deg);
+}
+
+.active-benefit-card > div {
+  display: grid;
+  gap: 4px;
+  border-top: 1px solid rgba(255,255,255,.09);
+  padding: 10px;
+}
+
+.active-benefit-card p {
+  margin: 0;
+}
+
 .my-tournaments-panel {
   display: grid;
   gap: 10px;
@@ -6060,7 +6145,7 @@ body::after,
 
 .payment-plan-card__price {
   width: max-content;
-  max-width: 112px;
+  max-width: 124px;
   border: 1px solid rgba(241,199,91,.34);
   border-radius: 11px;
   padding: 8px 10px;
@@ -6069,6 +6154,13 @@ body::after,
   font-size: .98rem;
   font-weight: 1000;
   text-align: center;
+}
+
+.payment-plan-card__price small {
+  display: inline;
+  margin-left: 4px;
+  color: rgba(9,10,13,.72);
+  font-size: .72rem;
 }
 
 .payment-plan-card__status {

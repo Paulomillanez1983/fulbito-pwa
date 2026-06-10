@@ -1329,6 +1329,17 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
     }, 60);
   }
 
+  function openMyTournaments() {
+    if (!data.user) {
+      openLoginPanel();
+      return;
+    }
+    setActive("home");
+    window.setTimeout(() => {
+      document.getElementById("my-tournaments")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 80);
+  }
+
   const openTeam = useCallback((teamId: string) => {
     setSelectedTeamId(teamId);
     setActive("squad");
@@ -1374,15 +1385,16 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           </section>
         ) : null}
 
-        {!inviteMode && !hasCreatedTournament ? (
+        {!inviteMode ? (
           <section className="console-hero-panel console-hero-panel--2026">
             <img alt="" className="hero-mark" src="/assets/icon.svg" />
             <span>Fulbito Arena 2026</span>
-            <h1>Tu liga entra en modo juego.</h1>
-            <p>Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur.</p>
+            <h1>{hasCreatedTournament ? "Tus copas entran en modo juego." : "Tu liga entra en modo juego."}</h1>
+            <p>{hasCreatedTournament ? "Administra tus torneos, invita equipos y revisa como se completan los planteles." : "Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur."}</p>
             <div className="hero-actions">
               <InstallAppButton variant="hero" />
               <button onClick={openTournamentStarter} type="button">Crear mundial</button>
+              <button onClick={openMyTournaments} type="button">Mis torneos</button>
               <button onClick={() => setActive("matches")} type="button">Ver fecha</button>
             </div>
           </section>

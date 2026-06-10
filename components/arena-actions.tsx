@@ -332,6 +332,11 @@ export function ArenaActions({
   const defaultOwnedTeamId = selectedTeamId && ownedTeams.some((team) => team.id === selectedTeamId) ? selectedTeamId : ownedTeams[0]?.id ?? "";
   const [selectedOwnedTeamId, setSelectedOwnedTeamId] = useState(defaultOwnedTeamId);
   const selectedOwnedTeam = ownedTeams.find((team) => team.id === selectedOwnedTeamId) ?? ownedTeams[0] ?? null;
+  const selectedOwnedTeamEnrolled = Boolean(
+    selectedOwnedTeam &&
+    data.activeTournament &&
+    data.tournamentTeams.some((row) => row.tournament_id === data.activeTournament?.id && row.team_id === selectedOwnedTeam.id)
+  );
   const selectedManagedTeam = selectedTeamId ? data.teams.find((team) => team.id === selectedTeamId) : null;
   const managedTeam = selfPlayerMode ? selectedManagedTeam ?? null : selectedManagedTeam ?? selectedOwnedTeam ?? null;
   const playerTeamId = managedTeam?.id ?? "";
@@ -550,7 +555,7 @@ export function ArenaActions({
           <article className="action-card action-card--locked">
             <ShieldPlus />
             <h3>Elegir equipo propio</h3>
-            <p>{selectedOwnedTeam.name} esta asociado a tu cuenta. Esta copa permite {rosterRule.starters} titulares + {rosterRule.substitutes} suplentes.</p>
+            <p>{selectedOwnedTeam.name} esta asociado a tu cuenta. {data.activeTournament ? `Lo podes inscribir en ${data.activeTournament.name}.` : "Elegilo para gestionar plantel."} Esta copa permite {rosterRule.starters} titulares + {rosterRule.substitutes} suplentes.</p>
             {ownedTeams.length > 1 ? (
               <select value={selectedOwnedTeam.id} onChange={(event) => setSelectedOwnedTeamId(event.target.value)}>
                 {ownedTeams.map((team) => (
@@ -560,9 +565,9 @@ export function ArenaActions({
             ) : null}
             <div className="team-invite-actions">
               {data.activeTournament ? (
-                <button className="inline-enroll-button" disabled={pendingEnrollId === selectedOwnedTeam.id} onClick={enrollOwnedTeam} type="button">
+                <button className="inline-enroll-button" disabled={selectedOwnedTeamEnrolled || pendingEnrollId === selectedOwnedTeam.id} onClick={enrollOwnedTeam} type="button">
                   {pendingEnrollId === selectedOwnedTeam.id ? <LoaderCircle className="button-spinner" size={16} /> : null}
-                  {pendingEnrollId === selectedOwnedTeam.id ? "Inscribiendo" : "Inscribir en esta copa"}
+                  {selectedOwnedTeamEnrolled ? "Equipo inscripto" : pendingEnrollId === selectedOwnedTeam.id ? "Inscribiendo" : data.activeTournament ? `Inscribir en ${data.activeTournament.name}` : "Inscribir en esta copa"}
                 </button>
               ) : null}
               {teamInviteHref(selectedOwnedTeam) ? (
@@ -577,7 +582,7 @@ export function ArenaActions({
         {showTeam ? <form action={createTeam} className={selectedOwnedTeam ? "action-card action-card--secondary" : "action-card"}>
           <ShieldPlus />
           <h3>{selectedOwnedTeam ? "Crear otro equipo" : "Crear equipo"}</h3>
-          <p>Subi escudo, sigla y color base. La imagen se adapta al marco del club.</p>
+          <p>{data.activeTournament ? `Este equipo queda inscripto en ${data.activeTournament.name}. ` : ""}Subi escudo, sigla y color base. La imagen se adapta al marco del club.</p>
           <input name="teamName" placeholder="Nombre del club" />
           <input name="shortName" maxLength={4} placeholder="Sigla" />
           <input name="neighborhood" placeholder="Barrio" />

@@ -152,7 +152,7 @@ function InlinePaymentAccount({ amount }: { amount: number }) {
 
   return (
     <div className="inline-payment-account">
-      <span>Transferi {formatPaymentMoney(amount)} y adjunta el comprobante</span>
+      <span>Transferi {formatPaymentMoney(amount)} por mes y adjunta el comprobante</span>
       <button onClick={() => copyValue(paymentAccount.alias, "Alias")} type="button">
         <span>Alias</span>
         <b>{paymentAccount.alias}</b>
@@ -243,6 +243,66 @@ function PlanActiveBanner({ entitlements }: { entitlements: AccountEntitlement[]
           : `${entitlements.length} beneficios activos.`}
       </span>
     </div>
+  );
+}
+
+function entitlementTitle(entitlement: AccountEntitlement, data: ArenaData) {
+  if (entitlement.plan_code === "tournament_pro") {
+    const tournament = data.tournaments.find((item) => item.id === entitlement.target_id);
+    return tournament ? `Torneo Pro - ${tournament.name}` : "Torneo Pro";
+  }
+  if (entitlement.plan_code === "team_pro") {
+    const team = data.teams.find((item) => item.id === entitlement.target_id);
+    return team ? `Equipo Pro - ${team.name}` : "Equipo Pro";
+  }
+  if (entitlement.plan_code === "featured_venue") {
+    const venue = data.venues.find((item) => item.id === entitlement.target_id);
+    return venue ? `Cancha destacada - ${venue.name}` : "Cancha destacada";
+  }
+  return "Sponsor local";
+}
+
+function ActiveBenefitCard({ entitlement, data }: { entitlement: AccountEntitlement; data: ArenaData }) {
+  const [open, setOpen] = useState(false);
+  const title = entitlementTitle(entitlement, data);
+
+  return (
+    <article className={`active-benefit-card ${open ? "is-open" : ""}`}>
+      <button onClick={() => setOpen((current) => !current)} type="button">
+        <CheckCircle2 size={17} />
+        <span>
+          <b>{title}</b>
+          <small>Activo por {daysLeft(entitlement.expires_at)}</small>
+        </span>
+        <ChevronDown size={18} />
+      </button>
+      {open ? (
+        <div>
+          <p>Este beneficio ya esta comprado. No hace falta volver a pagarlo hasta que venza.</p>
+          <small>Se renueva por 30 dias desde cada comprobante aprobado.</small>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function ActiveBenefitsPanel({ entitlements, data }: { entitlements: AccountEntitlement[]; data: ArenaData }) {
+  if (!entitlements.length) return null;
+  return (
+    <section className="active-benefits-panel">
+      <header>
+        <CheckCircle2 size={18} />
+        <div>
+          <strong>Beneficios activos</strong>
+          <span>No se vuelven a mostrar como pago pendiente durante el periodo contratado.</span>
+        </div>
+      </header>
+      <div>
+        {entitlements.map((entitlement) => (
+          <ActiveBenefitCard data={data} entitlement={entitlement} key={entitlement.id} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -658,7 +718,7 @@ function CreatorPaymentCard({
           <b>{plan.title}</b>
           <em>{plan.description}</em>
         </span>
-        <span className="payment-plan-card__price">{formatPaymentMoney(plan.amount)}</span>
+        <span className="payment-plan-card__price">{formatPaymentMoney(plan.amount)}<small>/ mes</small></span>
         <span className={`payment-plan-card__status ${statusTone}`}>{statusLabel}</span>
         <ChevronDown className="payment-plan-card__chevron" size={20} />
       </button>
@@ -699,7 +759,7 @@ function MyTournamentsPanel({
   if (!tournamentRows.length) return null;
 
   return (
-    <section className="my-tournaments-panel">
+    <section className="my-tournaments-panel" id="my-tournaments">
       <header>
         <Trophy size={18} />
         <div>
@@ -713,6 +773,7 @@ function MyTournamentsPanel({
             <div>
               <strong>{tournament.name}</strong>
               <span>{tournament.field_mode} / {tournament.status} / {tournament.max_teams ?? "sin limite"} equipos max.</span>
+              <small>Los equipos aparecen aca apenas se inscriben; el plantel puede completarse despues.</small>
             </div>
             <div className="my-tournament-stats">
               <small><Users size={14} />{teamCount} equipos</small>
@@ -778,6 +839,8 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
       </div>
 
       <PlanActiveBanner entitlements={activeEntitlements} />
+
+      <ActiveBenefitsPanel data={data} entitlements={activeEntitlements} />
 
       {!teamOnly ? <MyTournamentsPanel activeEntitlements={activeEntitlements} data={{ ...data, paymentRequests: requests }} /> : null}
 
