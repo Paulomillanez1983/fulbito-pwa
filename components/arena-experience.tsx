@@ -40,7 +40,7 @@ import { buildTournamentDraw, type DrawResult } from "@/lib/draw";
 import { roleCatalog } from "@/lib/demo";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaVenue, FieldMode, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
+import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaVenue, FieldMode, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 
@@ -620,40 +620,69 @@ function YouTubeFollowStrip() {
   );
 }
 
-function ArenaAdBoards() {
-  const mainSponsors = [
-    <><YouTubeLogo size={14} /> Segui Fulbito TV</>,
-    "Fulbito Live",
-    "TikTok @FulbitoArena",
-    "Sorteos en vivo",
-    "Sponsor local",
-    "Tu marca aca"
+function AdBoardItem({ campaign }: { campaign: AdCampaign }) {
+  const isYouTube = /youtube|youtu\.be/i.test(`${campaign.target_url ?? ""} ${campaign.advertiser_name} ${campaign.headline}`);
+  return (
+    <span>
+      {campaign.logo_url ? <img alt="" src={campaign.logo_url} /> : isYouTube ? <YouTubeLogo size={15} /> : null}
+      <b>{campaign.headline}</b>
+      {campaign.body ? <small>{campaign.body}</small> : null}
+    </span>
+  );
+}
+
+function ArenaAdBoards({ campaigns }: { campaigns: AdCampaign[] }) {
+  const fallbackCampaigns: AdCampaign[] = [
+    {
+      id: "fallback-fulbito-tv",
+      created_by: null,
+      approved_by: null,
+      advertiser_name: "Fulbito TV",
+      headline: "Segui Fulbito TV",
+      body: "Sorteos en vivo",
+      logo_url: null,
+      target_url: fulbitoLiveChannelUrl,
+      placement: "arena_led",
+      scope: "national",
+      latitude: null,
+      longitude: null,
+      radius_km: 50,
+      status: "active",
+      starts_at: new Date().toISOString(),
+      ends_at: null,
+      sort_order: 1,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    },
+    {
+      id: "fallback-fulbito-live",
+      created_by: null,
+      approved_by: null,
+      advertiser_name: "Fulbito Live",
+      headline: "Fulbito Live",
+      body: "Vivos y finales",
+      logo_url: null,
+      target_url: fulbitoLiveChannelUrl,
+      placement: "arena_led",
+      scope: "national",
+      latitude: null,
+      longitude: null,
+      radius_km: 50,
+      status: "active",
+      starts_at: new Date().toISOString(),
+      ends_at: null,
+      sort_order: 2,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
   ];
-  const sideSponsors = [
-    <><YouTubeLogo size={14} /> Fulbito TV</>,
-    "Coca-Cola demo",
-    "Mercado Pago demo",
-    "Mercado Libre demo",
-    "Finales por YouTube",
-    "Publicidad barrial",
-    "Fulbito Arena"
-  ];
-  const repeatedMainSponsors = [...mainSponsors, ...mainSponsors, ...mainSponsors];
-  const repeatedSideSponsors = [...sideSponsors, ...sideSponsors, ...sideSponsors];
+  const visibleCampaigns = campaigns.length ? campaigns : fallbackCampaigns;
+  const repeatedCampaigns = [...visibleCampaigns, ...visibleCampaigns, ...visibleCampaigns, ...visibleCampaigns];
 
   return (
     <div aria-hidden="true" className="arena-ad-boards">
       <div className="arena-ad-boards__lane arena-ad-boards__lane--front">
-        {repeatedMainSponsors.map((item, index) => <span key={`front-${index}`}>{item}</span>)}
-      </div>
-      <div className="arena-ad-boards__lane arena-ad-boards__lane--back">
-        {repeatedSideSponsors.map((item, index) => <span key={`back-${index}`}>{item}</span>)}
-      </div>
-      <div className="arena-ad-boards__lane arena-ad-boards__lane--side arena-ad-boards__lane--side-left">
-        {repeatedSideSponsors.map((item, index) => <span key={`side-left-${index}`}>{item}</span>)}
-      </div>
-      <div className="arena-ad-boards__lane arena-ad-boards__lane--side arena-ad-boards__lane--side-right">
-        {repeatedMainSponsors.map((item, index) => <span key={`side-right-${index}`}>{item}</span>)}
+        {repeatedCampaigns.map((campaign, index) => <AdBoardItem campaign={campaign} key={`${campaign.id}-${index}`} />)}
       </div>
     </div>
   );
@@ -1508,6 +1537,33 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
       .sort((a, b) => a.distance - b.distance)
       .map((item) => item.venue);
   }, [data.user?.id, data.venues, venueLocation]);
+  const visibleAdCampaigns = useMemo(() => {
+    const now = Date.now();
+    return data.adCampaigns.filter((campaign) => {
+      if (campaign.status !== "active") return false;
+      if (new Date(campaign.starts_at).getTime() > now) return false;
+      if (campaign.ends_at && new Date(campaign.ends_at).getTime() < now) return false;
+      if (campaign.scope === "national") return true;
+      if (!venueLocation) return true;
+      if (typeof campaign.latitude !== "number" || typeof campaign.longitude !== "number") return false;
+      return distanceKm(venueLocation, {
+        id: campaign.id,
+        owner_id: null,
+        name: campaign.advertiser_name,
+        slug: campaign.id,
+        neighborhood: "",
+        address: null,
+        latitude: campaign.latitude,
+        longitude: campaign.longitude,
+        price_per_hour: 0,
+        inscription_fee: 0,
+        commission_rate: 0,
+        status: "active",
+        surface: null,
+        open_hours: null
+      }) <= campaign.radius_km;
+    });
+  }, [data.adCampaigns, venueLocation]);
   const selectedVenue = nearbyVenues.find((venue) => venue.id === selectedVenueId) ?? nearbyVenues[0];
   const selectedPlayers = data.players.filter((player) => player.team_id === selectedTeam?.id);
   const selectedPlayer = selectedPlayers.find((player) => player.id === selectedPlayerId) ?? null;
@@ -1941,7 +1997,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   return (
     <div className="game-app-shell">
       {showSplash ? <SplashScreen /> : null}
-      <ArenaAdBoards />
+      <ArenaAdBoards campaigns={visibleAdCampaigns} />
       <header className="game-topbar">
         <button className="game-brand" onClick={() => setActive("home")} type="button">
           <img alt="" src="/assets/icon.svg" />

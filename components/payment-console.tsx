@@ -598,7 +598,13 @@ function SponsorForm({
     submitLockedRef.current = true;
     setPending(true);
     try {
-      const note = String(form.get("payerNote") || "").trim() || `Sponsor: ${sponsorName}`;
+      const note = [
+        `Sponsor: ${sponsorName}`,
+        `Alcance: ${String(form.get("scope") || "local")}`,
+        `Zona: ${String(form.get("zone") || "").trim() || "A coordinar"}`,
+        `Link: ${String(form.get("targetUrl") || "").trim() || "Sin link"}`,
+        `Mensaje: ${String(form.get("payerNote") || "").trim() || "Sin comentario"}`
+      ].join(" / ");
       const created = await createPaymentRequest({
         userId: data.user.id,
         plan,
@@ -624,7 +630,13 @@ function SponsorForm({
   return (
     <form className="creator-form" onSubmit={submit}>
       <input name="sponsorName" placeholder="Nombre del sponsor" />
-      <input name="payerNote" placeholder="Donde queres aparecer: fecha, final, MVP" />
+      <select name="scope" defaultValue="local">
+        <option value="local">Local / radio barrial</option>
+        <option value="national">Nacional / tienda online</option>
+      </select>
+      <input name="zone" placeholder="Barrio, ciudad o zona donde quiere aparecer" />
+      <input name="targetUrl" placeholder="Instagram, web o WhatsApp del comercio" />
+      <input name="payerNote" placeholder="Promo, rubro o mensaje para Fulbito" />
       <InlinePaymentAccount amount={plan.amount} />
       <ProofField disabled={pending || sent} onReady={setProofReady} ready={proofReady} sent={sent} />
       <SubmitButton disabled={!proofReady || sent} idle="Crear sponsor" pending={pending} sent={sent} />

@@ -1,7 +1,7 @@
 import { attachMatchRelations, computeStandings, demoArenaData } from "@/lib/demo";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AccountEntitlement, AppFeatureFlag, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, SessionUser } from "@/lib/types";
+import type { AccountEntitlement, AdCampaign, AppFeatureFlag, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, SessionUser } from "@/lib/types";
 
 type TournamentTeamRow = {
   tournament_id: string;
@@ -28,6 +28,7 @@ function emptyUserArenaData(user: SessionUser | null): ArenaData {
     paymentMessages: [],
     entitlements: [],
     billingPlans: [],
+    adCampaigns: [],
     liveChannels: [],
     livePermissions: [],
     liveEvents: [],
@@ -64,7 +65,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
         ? supabase.from("tournaments").select("*").eq("id", normalizedJoinCode).limit(1)
         : supabase.from("tournaments").select("*").eq("slug", normalizedJoinCode).limit(1)
       : supabase.from("tournaments").select("*").order("created_at", { ascending: false }).limit(user ? 50 : 1);
-    const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, matchesResult, tournamentTeamsResult, tournamentDrawsResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult, liveChannelsResult, livePermissionsResult, liveEventsResult, featureFlagsResult] = await Promise.all([
+    const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, matchesResult, tournamentTeamsResult, tournamentDrawsResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult, adCampaignsResult, liveChannelsResult, livePermissionsResult, liveEventsResult, featureFlagsResult] = await Promise.all([
       user ? supabase.from("user_roles").select("role").eq("user_id", user.id) : Promise.resolve({ data: [] }),
       tournamentQuery,
       supabase.from("venues").select("*").order("created_at", { ascending: true }),
@@ -77,6 +78,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
       user ? supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(80) : emptyResult,
       user ? supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }) : emptyResult,
       supabase.from("billing_plan_settings").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
+      supabase.from("ad_campaigns").select("*").eq("placement", "arena_led").order("sort_order", { ascending: true }).order("created_at", { ascending: false }).limit(24),
       supabase.from("live_stream_channels").select("*").order("created_at", { ascending: true }),
       user ? supabase.from("live_stream_permissions").select("*").order("created_at", { ascending: false }) : emptyResult,
       supabase.from("live_stream_events").select("*").order("scheduled_start_at", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),
@@ -194,6 +196,7 @@ export async function getArenaData({ joinCode }: { joinCode?: string } = {}): Pr
       paymentMessages: (paymentMessagesResult.data ?? []) as PaymentMessage[],
       entitlements: (entitlementsResult.data ?? []) as AccountEntitlement[],
       billingPlans: (billingPlansResult.data ?? []) as BillingPlanSetting[],
+      adCampaigns: (adCampaignsResult.data ?? []) as AdCampaign[],
       liveChannels: (liveChannelsResult.data ?? []) as LiveStreamChannel[],
       livePermissions: (livePermissionsResult.data ?? []) as LiveStreamPermission[],
       liveEvents,

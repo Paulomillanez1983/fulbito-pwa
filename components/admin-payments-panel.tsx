@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { Ban, CheckCircle2, Clock3, ExternalLink, LoaderCircle, MessageCircle, RadioTower, ShieldCheck, Trophy, Users, Send, Video, XCircle } from "lucide-react";
+import { Ban, CheckCircle2, Clock3, ExternalLink, LoaderCircle, Megaphone, MessageCircle, RadioTower, ShieldCheck, Trophy, Users, Send, Upload, Video, XCircle } from "lucide-react";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AccountEntitlement, AppRole, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
+import type { AccountEntitlement, AdCampaign, AdCampaignScope, AdCampaignStatus, AppRole, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
 
 const statusIcons: Record<PaymentRequest["status"], typeof Clock3> = {
   pending_review: Clock3,
@@ -238,6 +238,210 @@ function AdminPlanPrices({
         ))}
       </div>
       {notice ? <p>{notice}</p> : null}
+    </section>
+  );
+}
+
+async function optimizeAdLogo(file: File) {
+  if (file.type === "image/svg+xml") return file;
+  if (!file.type.startsWith("image/")) throw new Error("El logo debe ser PNG, JPG, WEBP o SVG.");
+  const bitmap = await createImageBitmap(file);
+  const maxSide = 360;
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return file;
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.78));
+  if (!blob) return file;
+  const filename = file.name.replace(/\.[^.]+$/, "") || "sponsor";
+  return new File([blob], `${filename}.webp`, { type: "image/webp" });
+}
+
+function localDateTime(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function AdminAdCampaignPanel({
+  adminId,
+  initialCampaigns
+}: {
+  adminId: string;
+  initialCampaigns: AdCampaign[];
+}) {
+  const [campaigns, setCampaigns] = useState(initialCampaigns);
+  const [busyId, setBusyId] = useState("");
+  const [notice, setNotice] = useState("");
+
+  async function uploadLogo(fileValue: FormDataEntryValue | null) {
+    if (!(fileValue instanceof File) || fileValue.size === 0) return null;
+    const supabase = createSupabaseBrowserClient();
+    const optimized = await optimizeAdLogo(fileValue);
+    const extension = optimized.type === "image/svg+xml" ? "svg" : optimized.type === "image/webp" ? "webp" : optimized.name.split(".").pop()?.toLowerCase() || "webp";
+    const path = `${adminId}/${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage.from("ad-assets").upload(path, optimized, {
+      cacheControl: "604800",
+      contentType: optimized.type || undefined,
+      upsert: false
+    });
+    if (error) throw error;
+    return supabase.storage.from("ad-assets").getPublicUrl(path).data.publicUrl;
+  }
+
+  async function createCampaign(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setNotice("");
+    setBusyId("new-ad");
+    const form = new FormData(event.currentTarget);
+    const scope = String(form.get("scope") || "local") as AdCampaignScope;
+    const latitude = Number(form.get("latitude") || "");
+    const longitude = Number(form.get("longitude") || "");
+    const radiusKm = Number(form.get("radiusKm") || 50);
+    const advertiserName = String(form.get("advertiserName") || "").trim();
+    const headline = String(form.get("headline") || "").trim();
+    const startsAt = String(form.get("startsAt") || "");
+    const endsAt = String(form.get("endsAt") || "");
+
+    try {
+      if (!advertiserName || !headline) throw new Error("Carga nombre del comercio y texto del LED.");
+      if (scope === "local" && (!Number.isFinite(latitude) || !Number.isFinite(longitude))) {
+        throw new Error("Para publicidad local carga latitud y longitud del comercio.");
+      }
+      const logoUrl = await uploadLogo(form.get("logoFile"));
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("ad_campaigns")
+        .insert({
+          created_by: adminId,
+          approved_by: adminId,
+          advertiser_name: advertiserName,
+          headline,
+          body: String(form.get("body") || "").trim() || null,
+          logo_url: logoUrl,
+          target_url: String(form.get("targetUrl") || "").trim() || null,
+          placement: "arena_led",
+          scope,
+          latitude: scope === "local" ? latitude : null,
+          longitude: scope === "local" ? longitude : null,
+          radius_km: Number.isFinite(radiusKm) ? Math.max(1, Math.round(radiusKm)) : 50,
+          status: String(form.get("status") || "active") as AdCampaignStatus,
+          starts_at: startsAt ? new Date(startsAt).toISOString() : new Date().toISOString(),
+          ends_at: endsAt ? new Date(endsAt).toISOString() : null,
+          sort_order: Number(form.get("sortOrder") || 100)
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      setCampaigns((current) => [data as AdCampaign, ...current].sort((a, b) => a.sort_order - b.sort_order));
+      event.currentTarget.reset();
+      setNotice("Publicidad cargada. Si esta activa, ya puede aparecer en la tira LED.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo guardar la publicidad.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function updateCampaignStatus(campaign: AdCampaign, status: AdCampaignStatus) {
+    setBusyId(campaign.id);
+    setNotice("");
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data, error } = await supabase
+        .from("ad_campaigns")
+        .update({ status, approved_by: adminId })
+        .eq("id", campaign.id)
+        .select()
+        .single();
+      if (error) throw error;
+      setCampaigns((current) => current.map((item) => item.id === campaign.id ? data as AdCampaign : item));
+      setNotice(status === "active" ? "Publicidad activada." : "Publicidad pausada.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo actualizar la publicidad.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  return (
+    <section className="admin-ad-panel">
+      <header>
+        <span>Publicidad</span>
+        <h2>Carteleria LED</h2>
+        <p>Administra sponsors que aparecen en la tira inferior. Local se filtra por radio; nacional se ve en todo el pais.</p>
+      </header>
+
+      <form className="admin-ad-form" onSubmit={createCampaign}>
+        <div className="admin-ad-form__grid">
+          <input name="advertiserName" placeholder="Nombre del comercio" />
+          <input name="headline" placeholder="Texto principal del LED" />
+          <input name="body" placeholder="Subtexto corto: promo, barrio o rubro" />
+          <input name="targetUrl" placeholder="Link web / Instagram / WhatsApp" />
+          <select name="scope" defaultValue="local">
+            <option value="local">Local 50 km</option>
+            <option value="national">Nacional / tienda online</option>
+          </select>
+          <select name="status" defaultValue="active">
+            <option value="active">Activa</option>
+            <option value="pending">Pendiente</option>
+            <option value="paused">Pausada</option>
+          </select>
+          <input name="latitude" placeholder="Latitud local" />
+          <input name="longitude" placeholder="Longitud local" />
+          <input defaultValue="50" inputMode="numeric" name="radiusKm" placeholder="Radio km" />
+          <input defaultValue="100" inputMode="numeric" name="sortOrder" placeholder="Orden" />
+          <label className="admin-ad-logo-field">
+            <Upload size={16} />
+            <span>Logo del sponsor</span>
+            <input accept="image/png,image/jpeg,image/webp,image/svg+xml" name="logoFile" type="file" />
+          </label>
+          <input name="startsAt" type="datetime-local" />
+          <input name="endsAt" type="datetime-local" />
+        </div>
+        <button disabled={busyId === "new-ad"} type="submit">
+          {busyId === "new-ad" ? <LoaderCircle className="button-spinner" size={16} /> : <Megaphone size={16} />}
+          Publicar en LED
+        </button>
+      </form>
+
+      <div className="admin-ad-list">
+        {campaigns.length ? campaigns.map((campaign) => (
+          <article className={`admin-ad-card is-${campaign.status}`} key={campaign.id}>
+            <header>
+              <span>{campaign.logo_url ? <img alt="" src={campaign.logo_url} /> : <Megaphone size={18} />}</span>
+              <div>
+                <strong>{campaign.headline}</strong>
+                <small>{campaign.advertiser_name} / {campaign.scope === "national" ? "Nacional" : `${campaign.radius_km} km`}</small>
+              </div>
+              <b>{campaign.status}</b>
+            </header>
+            {campaign.body ? <p>{campaign.body}</p> : null}
+            <small>
+              {localDateTime(campaign.starts_at) || "sin inicio"} / {localDateTime(campaign.ends_at) || "sin vencimiento"}
+            </small>
+            <div>
+              <button disabled={busyId === campaign.id || campaign.status === "active"} onClick={() => updateCampaignStatus(campaign, "active")} type="button">Activar</button>
+              <button disabled={busyId === campaign.id || campaign.status === "paused"} onClick={() => updateCampaignStatus(campaign, "paused")} type="button">Pausar</button>
+            </div>
+          </article>
+        )) : (
+          <article className="admin-empty">
+            <Megaphone size={24} />
+            <strong>No hay publicidades cargadas.</strong>
+            <span>Cuando cargues una campaña activa, aparece en la tira LED de la app.</span>
+          </article>
+        )}
+      </div>
+      {notice ? <p className="admin-notice">{notice}</p> : null}
     </section>
   );
 }
@@ -548,6 +752,7 @@ function AdminLivePanel({
 
 export function AdminPaymentsPanel({
   adminId,
+  adCampaigns,
   requests: initialRequests,
   messages: initialMessages,
   profiles,
@@ -561,6 +766,7 @@ export function AdminPaymentsPanel({
   userBlocks
 }: {
   adminId: string;
+  adCampaigns: AdCampaign[];
   requests: PaymentRequest[];
   messages: PaymentMessage[];
   profiles: AdminProfile[];
@@ -761,6 +967,8 @@ export function AdminPaymentsPanel({
       </section>
 
       <AdminPlanPrices adminId={adminId} initialPlans={billingPlans} />
+
+      <AdminAdCampaignPanel adminId={adminId} initialCampaigns={adCampaigns} />
 
       <AdminLivePanel
         adminId={adminId}

@@ -8,6 +8,10 @@ export type BillingPlanCode = "team_pro" | "tournament_pro" | "sponsor" | "featu
 
 export type PaymentRequestStatus = "pending_review" | "approved" | "rejected" | "cancelled";
 
+export type AdCampaignStatus = "pending" | "active" | "paused" | "rejected" | "expired";
+
+export type AdCampaignScope = "local" | "national";
+
 export type MatchStatus =
   | "scheduled"
   | "live"
@@ -296,6 +300,28 @@ export type BillingPlanSetting = {
   updated_at: string;
 };
 
+export type AdCampaign = {
+  id: string;
+  created_by: string | null;
+  approved_by: string | null;
+  advertiser_name: string;
+  headline: string;
+  body: string | null;
+  logo_url: string | null;
+  target_url: string | null;
+  placement: string;
+  scope: AdCampaignScope;
+  latitude: number | null;
+  longitude: number | null;
+  radius_km: number;
+  status: AdCampaignStatus;
+  starts_at: string;
+  ends_at: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ArenaData = {
   source: "supabase" | "demo";
   configured: boolean;
@@ -313,6 +339,7 @@ export type ArenaData = {
   paymentMessages: PaymentMessage[];
   entitlements: AccountEntitlement[];
   billingPlans: BillingPlanSetting[];
+  adCampaigns: AdCampaign[];
   liveChannels: LiveStreamChannel[];
   livePermissions: LiveStreamPermission[];
   liveEvents: LiveStreamEvent[];
