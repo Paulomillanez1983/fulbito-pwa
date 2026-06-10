@@ -7220,7 +7220,7 @@ body::after,
   .competition-cup-bracket__field {
     grid-template-columns: minmax(118px, 1fr) 86px minmax(118px, 1fr);
     gap: 6px;
-    min-height: 392px;
+    min-height: 334px;
     margin-inline: -2px;
     padding: 10px 6px;
   }
@@ -7243,7 +7243,7 @@ body::after,
   }
 
   .cup-stage > div {
-    max-height: 292px;
+    max-height: 226px;
   }
 
   .cup-slot {
@@ -7259,7 +7259,7 @@ body::after,
   }
 
   .cup-trophy {
-    min-height: 170px;
+    min-height: 142px;
   }
 
   .cup-trophy__halo {

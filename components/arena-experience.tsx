@@ -1346,10 +1346,10 @@ function FormationPanel({
 function getCupRoundLabel(label: string) {
   const labels: Record<string, string> = {
     Final: "Finalistas",
-    Semis: "Semifinalistas",
+    Semis: "Semis",
     Cuartos: "Cuartos",
     Octavos: "Octavos",
-    "16avos": "Dieciseisavos"
+    "16avos": "16avos"
   };
   return labels[label] ?? label;
 }
