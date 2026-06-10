@@ -33,6 +33,7 @@ import { LoginPanel } from "@/components/login-panel";
 import { PaymentConsole } from "@/components/payment-console";
 import { VenueMap } from "@/components/venue-map";
 import { roleCatalog } from "@/lib/demo";
+import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaVenue, FieldMode, PaymentRequest } from "@/lib/types";
 
@@ -792,7 +793,8 @@ function FormationPanel({
   onModeChange,
   onPresetChange,
   onOpenPlayer,
-  onSelectSlot
+  onSelectSlot,
+  lockedMode = false
 }: {
   team?: ArenaTeam;
   players: ArenaPlayer[];
@@ -805,7 +807,10 @@ function FormationPanel({
   onPresetChange: (presetId: string) => void;
   onOpenPlayer: (playerId: string) => void;
   onSelectSlot: (index: number) => void;
+  lockedMode?: boolean;
 }) {
+  const fieldModes = lockedMode ? [mode] : (["5v5", "7v7", "11v11"] as FieldMode[]);
+
   return (
     <article className="console-panel formation-console">
       <div className="formation-console__head">
@@ -815,13 +820,14 @@ function FormationPanel({
           <span>{isManager ? "Toca un puesto y carga jugador" : "Plantel y formacion publica"}</span>
         </div>
         <div className="formation-controls" aria-label="Modo de cancha">
-          {(["5v5", "7v7", "11v11"] as FieldMode[]).map((item) => (
+          {fieldModes.map((item) => (
             <button className={mode === item ? "is-active" : ""} key={item} onClick={() => onModeChange(item)} type="button">
               {item}
             </button>
           ))}
         </div>
       </div>
+      {lockedMode ? <p className="formation-locked-note">Formato fijado por esta copa: {mode}.</p> : null}
       <div className="formation-presets" aria-label="Esquema tactico">
         {formationPresets[mode].map((item) => (
           <button className={item.id === presetId ? "is-active" : ""} key={item.id} onClick={() => onPresetChange(item.id)} type="button">
@@ -962,12 +968,15 @@ function SplashScreen() {
   );
 }
 
-export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?: string }) {
+export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: ArenaData; joinCode?: string; inviteTeamCode?: string }) {
   const inviteMode = Boolean(joinCode && data.activeTournament);
   const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
   const memberTeamId = data.user ? data.players.find((player) => player.profile_id === data.user?.id)?.team_id : null;
   const memberTeam = memberTeamId ? data.teams.find((team) => team.id === memberTeamId) : null;
-  const inferredTeam = ownedTeam ?? memberTeam ?? (inviteMode ? null : data.teams[0] ?? null);
+  const invitedTeam = inviteTeamCode
+    ? data.teams.find((team) => team.slug === inviteTeamCode || team.id === inviteTeamCode || team.short_name.toLowerCase() === inviteTeamCode.toLowerCase())
+    : null;
+  const inferredTeam = ownedTeam ?? memberTeam ?? invitedTeam ?? (inviteMode ? null : data.teams[0] ?? null);
 
   const [showSplash, setShowSplash] = useState(true);
   const [active, setActive] = useState<TabId>(() => inviteMode && data.user ? "squad" : "home");
@@ -1009,6 +1018,7 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
   const knockoutRounds = useMemo(() => buildKnockoutRounds(data.teams), [data.teams]);
   const currentFormation = getFormationPreset(formationMode, formationPresetId);
   const selectedSlot = currentFormation.slots[selectedSlotIndex] ?? currentFormation.slots[0];
+  const rosterRule = getRosterRule(data.activeTournament?.field_mode);
   const isTeamManager = Boolean(
     data.user &&
     (selectedTeam?.owner_id === data.user.id || userRoles.includes("organizer") || userRoles.includes("admin"))
@@ -1157,10 +1167,15 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
               : "Entra con Google para armar una copa, elegir formato, invitar equipos y seguir el torneo desde el celular."}
           </ScreenHeader>
           {inviteMode && data.user ? (
-            <button className="join-focus-button" onClick={() => setActive("squad")} type="button">
-              Cargar equipo en {data.activeTournament?.name}
-              <ChevronRight size={18} />
-            </button>
+            <div className="join-focus-actions">
+              <button className="join-focus-button" onClick={() => setActive("squad")} type="button">
+                Cargar equipo en {data.activeTournament?.name}
+                <ChevronRight size={18} />
+              </button>
+              <button className="join-secondary-button" onClick={() => { window.location.href = "/"; }} type="button">
+                Crear nueva copa
+              </button>
+            </div>
           ) : data.user ? (
             <RoleConsole
               activeRole={activeRole}
@@ -1172,7 +1187,7 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
               user={data.user}
             />
           ) : (
-            <LoginPanel configured={data.configured} joinCode={joinCode} tournamentName={data.activeTournament?.name} />
+            <LoginPanel configured={data.configured} joinCode={joinCode} teamCode={inviteTeamCode} tournamentName={data.activeTournament?.name} />
           )}
         </section>
         {!inviteMode ? <PaymentConsole data={data} /> : null}
@@ -1257,7 +1272,9 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
       return (
         <>
           <ScreenHeader compact eyebrow="Tu club" title="Crea tu equipo">
-            Todavia no tenes un equipo asociado a tu cuenta. Cargalo para activar plantel, escudo y formacion.
+            {inviteMode
+              ? `${data.activeTournament?.name} es ${rosterRule.label}: ${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes.`
+              : "Todavia no tenes un equipo asociado a tu cuenta. Cargalo para activar plantel, escudo y formacion."}
           </ScreenHeader>
           <EmptyState icon={<Shield />} title="No hay equipo propio">
             Empeza por crear tu club. Despues vas a poder cargar jugadores desde la canchita.
@@ -1271,7 +1288,9 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
     return (
       <>
         <ScreenHeader compact eyebrow={isTeamManager ? "Panel del club" : "Club"} title={selectedTeam?.name ?? "Equipo"}>
-          Toca una posicion del campo para cargar jugador. Cambia de equipo desde el selector.
+          {inviteMode
+            ? `${rosterRule.label}: hasta ${rosterRule.maxPlayers} jugadores (${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes).`
+            : "Toca una posicion del campo para cargar jugador. Cambia de equipo desde el selector."}
         </ScreenHeader>
         <FormationPanel
           isManager={isTeamManager}
@@ -1294,6 +1313,7 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
           presetId={formationPresetId}
           selectedSlotIndex={selectedSlotIndex}
           team={selectedTeam}
+          lockedMode={inviteMode}
         />
         <section className={`slot-editor-console ${isTeamManager ? "" : "slot-editor-console--public"}`}>
           <div>

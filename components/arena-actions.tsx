@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { Camera, Flag, LoaderCircle, LocateFixed, MapPinned, ShieldPlus, UserPlus } from "lucide-react";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
+import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ArenaData } from "@/lib/types";
 import type { Map, Marker } from "maplibre-gl";
@@ -79,49 +80,81 @@ function MediaField({
 }
 
 const imageTargets: Record<MediaBucket, { width: number; height: number; quality: number; fit: "cover" | "contain" }> = {
-  "team-badges": { width: 512, height: 512, quality: 0.84, fit: "contain" },
-  "player-photos": { width: 512, height: 512, quality: 0.82, fit: "cover" },
-  "venue-photos": { width: 1280, height: 720, quality: 0.78, fit: "cover" }
+  "team-badges": { width: 512, height: 512, quality: 0.82, fit: "contain" },
+  "player-photos": { width: 640, height: 640, quality: 0.8, fit: "cover" },
+  "venue-photos": { width: 1280, height: 720, quality: 0.76, fit: "cover" }
+};
+
+const imageBudgets: Record<MediaBucket, { maxBytes: number; minQuality: number; minScale: number }> = {
+  "team-badges": { maxBytes: 120 * 1024, minQuality: 0.58, minScale: 0.74 },
+  "player-photos": { maxBytes: 170 * 1024, minQuality: 0.58, minScale: 0.68 },
+  "venue-photos": { maxBytes: 430 * 1024, minQuality: 0.55, minScale: 0.72 }
 };
 
 async function optimizeImageFile(file: File, bucket: MediaBucket) {
-  if (file.type === "image/svg+xml") return file;
+  if (file.type === "image/svg+xml") {
+    if (file.size > 180 * 1024) throw new Error("El SVG es demasiado pesado. Subi PNG, JPG o WebP para optimizarlo.");
+    return file;
+  }
   if (!file.type.startsWith("image/")) return file;
 
   const target = imageTargets[bucket];
-  const bitmap = await createImageBitmap(file);
-  const canvas = document.createElement("canvas");
-  canvas.width = target.width;
-  canvas.height = target.height;
-  const context = canvas.getContext("2d", { alpha: target.fit === "contain" });
-  if (!context) return file;
+  const budget = imageBudgets[bucket];
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image", resizeQuality: "high" });
+  let bestBlob: Blob | null = null;
+  let scale = 1;
 
-  if (target.fit === "contain") {
-    const scale = Math.min(target.width / bitmap.width, target.height / bitmap.height) * 0.94;
-    const dw = bitmap.width * scale;
-    const dh = bitmap.height * scale;
-    context.clearRect(0, 0, target.width, target.height);
-    context.drawImage(bitmap, (target.width - dw) / 2, (target.height - dh) / 2, dw, dh);
-  } else {
-    const sourceRatio = bitmap.width / bitmap.height;
-    const targetRatio = target.width / target.height;
-    let sx = 0;
-    let sy = 0;
-    let sw = bitmap.width;
-    let sh = bitmap.height;
+  while (scale >= budget.minScale) {
+    const width = Math.max(320, Math.round(target.width * scale));
+    const height = Math.max(320, Math.round(target.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { alpha: target.fit === "contain" });
+    if (!context) break;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
 
-    if (sourceRatio > targetRatio) {
-      sw = bitmap.height * targetRatio;
-      sx = (bitmap.width - sw) / 2;
+    if (target.fit === "contain") {
+      const drawScale = Math.min(width / bitmap.width, height / bitmap.height) * 0.94;
+      const dw = bitmap.width * drawScale;
+      const dh = bitmap.height * drawScale;
+      context.clearRect(0, 0, width, height);
+      context.drawImage(bitmap, (width - dw) / 2, (height - dh) / 2, dw, dh);
     } else {
-      sh = bitmap.width / targetRatio;
-      sy = (bitmap.height - sh) / 2;
-    }
-    context.drawImage(bitmap, sx, sy, sw, sh, 0, 0, target.width, target.height);
-  }
-  bitmap.close();
+      const sourceRatio = bitmap.width / bitmap.height;
+      const targetRatio = width / height;
+      let sx = 0;
+      let sy = 0;
+      let sw = bitmap.width;
+      let sh = bitmap.height;
 
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", target.quality));
+      if (sourceRatio > targetRatio) {
+        sw = bitmap.height * targetRatio;
+        sx = (bitmap.width - sw) / 2;
+      } else {
+        sh = bitmap.width / targetRatio;
+        sy = (bitmap.height - sh) / 2;
+      }
+      context.drawImage(bitmap, sx, sy, sw, sh, 0, 0, width, height);
+    }
+
+    for (let quality = target.quality; quality >= budget.minQuality; quality -= 0.07) {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", Number(quality.toFixed(2))));
+      if (!blob) continue;
+      if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
+      if (blob.size <= budget.maxBytes) {
+        bitmap.close();
+        const filename = file.name.replace(/\.[^.]+$/, "") || "arena-media";
+        return new File([blob], `${filename}.webp`, { type: "image/webp" });
+      }
+    }
+
+    scale *= 0.86;
+  }
+
+  bitmap.close();
+  const blob = bestBlob;
   if (!blob) return file;
   const filename = file.name.replace(/\.[^.]+$/, "") || "arena-media";
   return new File([blob], `${filename}.webp`, { type: "image/webp" });
@@ -287,6 +320,7 @@ export function ArenaActions({
   slotDraft?: SlotDraft;
 }) {
   const [message, setMessage] = useState("");
+  const [origin, setOrigin] = useState("");
   const showTeam = mode === "all" || mode === "squad";
   const hasMatches = data.matches.length > 0;
   const showVenue = mode === "all" || mode === "venue";
@@ -295,7 +329,14 @@ export function ArenaActions({
   const selectedManagedTeam = selectedTeamId ? data.teams.find((team) => team.id === selectedTeamId) : null;
   const managedTeam = selectedManagedTeam ?? ownedTeam ?? null;
   const playerTeamId = managedTeam?.id ?? "";
+  const rosterRule = getRosterRule(data.activeTournament?.field_mode);
+  const managedTeamPlayers = data.players.filter((player) => player.team_id === playerTeamId);
+  const rosterFull = Boolean(playerTeamId && managedTeamPlayers.length >= rosterRule.maxPlayers);
   const showPlayer = Boolean(managedTeam) && (mode === "all" || mode === "squad" || mode === "slot");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   function hasTeamProAccess(teamId: string) {
     const now = Date.now();
@@ -306,6 +347,13 @@ export function ArenaActions({
       if (entitlement.expires_at && new Date(entitlement.expires_at).getTime() < now) return false;
       return true;
     });
+  }
+
+  function teamInviteHref() {
+    if (!origin || !ownedTeam || !data.activeTournament?.slug) return "";
+    const joinUrl = `${origin}/?join=${encodeURIComponent(data.activeTournament.slug)}&team=${encodeURIComponent(ownedTeam.slug)}`;
+    const text = `Te invito a sumarte a ${ownedTeam.name} en ${data.activeTournament.name}. Entra a ${joinUrl}, carga tu nombre, dorsal y apodo para quedar en el plantel.`;
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
   }
 
   async function getUserId() {
@@ -455,6 +503,10 @@ export function ArenaActions({
     const displayName = String(formData.get("playerName") || "").trim();
     const teamId = String(formData.get("playerTeamId") || "");
     if (!displayName || !teamId) return setMessage("El jugador necesita nombre y equipo.");
+    const currentCount = data.players.filter((player) => player.team_id === teamId).length;
+    if (currentCount >= rosterRule.maxPlayers) {
+      return setMessage(`Plantel completo para ${rosterRule.label}: ${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes.`);
+    }
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Entra con Google para continuar.");
     let photoUrl: string | null = null;
@@ -487,12 +539,19 @@ export function ArenaActions({
           <article className="action-card action-card--locked">
             <ShieldPlus />
             <h3>Equipo ya creado</h3>
-            <p>{ownedTeam.name} ya esta asociado a tu cuenta. Desde esta pantalla podes cargar jugadores y completar la formacion.</p>
-            {data.activeTournament ? (
-              <button className="inline-enroll-button" onClick={enrollOwnedTeam} type="button">
-                Inscribir en esta copa
-              </button>
-            ) : null}
+            <p>{ownedTeam.name} ya esta asociado a tu cuenta. Esta copa permite {rosterRule.starters} titulares + {rosterRule.substitutes} suplentes.</p>
+            <div className="team-invite-actions">
+              {data.activeTournament ? (
+                <button className="inline-enroll-button" onClick={enrollOwnedTeam} type="button">
+                  Inscribir en esta copa
+                </button>
+              ) : null}
+              {teamInviteHref() ? (
+                <a className="inline-whatsapp-button" href={teamInviteHref()} rel="noreferrer" target="_blank">
+                  Invitar jugadores por WhatsApp
+                </a>
+              ) : null}
+            </div>
           </article>
         ) : null}
 
@@ -526,10 +585,25 @@ export function ArenaActions({
           <SubmitButton idle="Guardar cancha" pending="Registrando cancha" />
         </form> : null}
 
-        {showPlayer ? <form action={createPlayer} className={mode === "slot" ? "action-card action-card--slot" : "action-card"}>
+        {showPlayer && rosterFull ? (
+          <article className="action-card action-card--locked">
+            <UserPlus />
+            <h3>Plantel completo</h3>
+            <p>{managedTeam?.name} ya tiene {managedTeamPlayers.length}/{rosterRule.maxPlayers} jugadores para {rosterRule.label}: {rosterRule.starters} titulares + {rosterRule.substitutes} suplentes.</p>
+            {teamInviteHref() ? <a className="inline-whatsapp-button" href={teamInviteHref()} rel="noreferrer" target="_blank">Compartir equipo</a> : null}
+          </article>
+        ) : null}
+
+        {showPlayer && !rosterFull ? <form action={createPlayer} className={mode === "slot" ? "action-card action-card--slot" : "action-card"}>
           <UserPlus />
           <h3>{mode === "slot" ? `Cargar ${slotDraft?.label ?? "posicion"}` : "Agregar jugador"}</h3>
-          <p>{mode === "slot" ? "Completa el puesto desde el mapa de formacion." : hasTeamProAccess(playerTeamId) ? "Nombre, apodo, dorsal, posicion y foto para el plantel." : "Carga el plantel gratis con nombre, apodo, dorsal y posicion. Las fotos se activan con Equipo Pro."}</p>
+          <p>
+            {mode === "slot"
+              ? `Completa el puesto desde el mapa. Plantel: ${managedTeamPlayers.length}/${rosterRule.maxPlayers}.`
+              : hasTeamProAccess(playerTeamId)
+                ? `Nombre, apodo, dorsal, posicion y foto. Plantel: ${managedTeamPlayers.length}/${rosterRule.maxPlayers}.`
+                : `Carga el plantel gratis con nombre, apodo, dorsal y posicion. Plantel: ${managedTeamPlayers.length}/${rosterRule.maxPlayers}.`}
+          </p>
           <select name="playerTeamId" defaultValue={playerTeamId}>
             {managedTeam ? <option value={managedTeam.id}>{managedTeam.name}</option> : null}
           </select>

@@ -9,7 +9,17 @@ import type { AppRole } from "@/lib/types";
 
 const loginRoles: AppRole[] = ["player", "captain", "venue_owner", "organizer", "referee"];
 
-export function LoginPanel({ configured, joinCode, tournamentName }: { configured: boolean; joinCode?: string; tournamentName?: string }) {
+export function LoginPanel({
+  configured,
+  joinCode,
+  teamCode,
+  tournamentName
+}: {
+  configured: boolean;
+  joinCode?: string;
+  teamCode?: string;
+  tournamentName?: string;
+}) {
   const inviteMode = Boolean(joinCode);
   const [role, setRole] = useState<AppRole>(inviteMode ? "captain" : "player");
   const selected = roleCatalog[role];
@@ -17,10 +27,13 @@ export function LoginPanel({ configured, joinCode, tournamentName }: { configure
 
   const redirectTo = useMemo(() => {
     const url = new URL("/auth/callback", getSiteUrl());
-    url.searchParams.set("next", joinCode ? `/?join=${encodeURIComponent(joinCode)}` : "/");
+    const nextParams = new URLSearchParams();
+    if (joinCode) nextParams.set("join", joinCode);
+    if (teamCode) nextParams.set("team", teamCode);
+    url.searchParams.set("next", nextParams.size ? `/?${nextParams.toString()}` : "/");
     url.searchParams.set("role", role);
     return url.toString();
-  }, [joinCode, role]);
+  }, [joinCode, role, teamCode]);
 
   async function signInWithGoogle() {
     const supabase = createSupabaseBrowserClient();

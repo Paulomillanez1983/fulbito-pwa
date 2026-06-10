@@ -10,7 +10,9 @@ type HomePageProps = {
 export default async function HomePage({ searchParams }: HomePageProps) {
   const params = await searchParams;
   const joinParam = params?.join;
+  const teamParam = params?.team;
   const joinCode = Array.isArray(joinParam) ? joinParam[0] : joinParam;
+  const inviteTeamCode = Array.isArray(teamParam) ? teamParam[0] : teamParam;
   const data = await getArenaData({ joinCode });
-  return <ArenaExperience data={data} joinCode={joinCode} />;
+  return <ArenaExperience data={data} joinCode={joinCode} inviteTeamCode={inviteTeamCode} />;
 }
