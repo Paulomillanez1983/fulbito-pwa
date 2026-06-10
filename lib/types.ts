@@ -25,6 +25,7 @@ export type ArenaVenue = {
   slug: string;
   neighborhood: string;
   address: string | null;
+  phone?: string | null;
   cover_url?: string | null;
   latitude?: number | null;
   longitude?: number | null;
@@ -73,6 +74,7 @@ export type ArenaPlayer = {
 
 export type ArenaTournament = {
   id: string;
+  organizer_id?: string | null;
   name: string;
   slug: string;
   format: TournamentFormat;

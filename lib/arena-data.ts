@@ -1,7 +1,30 @@
 import { attachMatchRelations, computeStandings, demoArenaData } from "@/lib/demo";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AccountEntitlement, AppRole, ArenaData, ArenaMatch, ArenaTeam, ArenaTournament, ArenaVenue, BillingPlanSetting, PaymentMessage, PaymentRequest } from "@/lib/types";
+import type { AccountEntitlement, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaVenue, BillingPlanSetting, PaymentMessage, PaymentRequest, SessionUser } from "@/lib/types";
+
+type TournamentTeamRow = {
+  tournament_id: string;
+  team_id: string;
+};
+
+function emptyUserArenaData(user: SessionUser | null): ArenaData {
+  return {
+    source: "supabase",
+    configured: true,
+    user,
+    activeTournament: null,
+    venues: [],
+    teams: [],
+    players: [],
+    matches: [],
+    standings: [],
+    paymentRequests: [],
+    paymentMessages: [],
+    entitlements: [],
+    billingPlans: []
+  };
+}
 
 export async function getArenaData(): Promise<ArenaData> {
   const env = getSupabaseEnv();
@@ -10,45 +33,106 @@ export async function getArenaData(): Promise<ArenaData> {
     return { ...demoArenaData, configured: false };
   }
 
+  let sessionUser: SessionUser | null = null;
+
   try {
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
+    sessionUser = user
+      ? {
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split("@")[0],
+          avatarUrl: user.user_metadata?.avatar_url,
+          roles: ["player"]
+        }
+      : null;
 
     const emptyResult = Promise.resolve({ data: [] });
-    const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, matchesResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult] = await Promise.all([
+    const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, matchesResult, tournamentTeamsResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult] = await Promise.all([
       user ? supabase.from("user_roles").select("role").eq("user_id", user.id) : Promise.resolve({ data: [] }),
-      supabase.from("tournaments").select("*").order("created_at", { ascending: false }).limit(1),
+      supabase.from("tournaments").select("*").order("created_at", { ascending: false }).limit(user ? 50 : 1),
       supabase.from("venues").select("*").order("created_at", { ascending: true }),
       supabase.from("teams").select("*").order("created_at", { ascending: true }),
       supabase.from("team_members").select("*").order("team_id", { ascending: true }).order("jersey_number", { ascending: true, nullsFirst: false }),
       supabase.from("matches").select("*").order("scheduled_at", { ascending: true }),
+      user ? supabase.from("tournament_teams").select("tournament_id,team_id") : emptyResult,
       user ? supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(12) : emptyResult,
       user ? supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(80) : emptyResult,
       user ? supabase.from("account_entitlements").select("*").eq("owner_id", user.id).order("created_at", { ascending: false }) : emptyResult,
       supabase.from("billing_plan_settings").select("*").eq("is_active", true).order("sort_order", { ascending: true })
     ]);
 
-    const activeTournament = ((tournamentsResult.data ?? [])[0] ?? null) as ArenaTournament | null;
-    const venues = (venuesResult.data ?? []) as ArenaVenue[];
-    const teams = (teamsResult.data ?? []) as ArenaTeam[];
-    const matches = attachMatchRelations((matchesResult.data ?? []) as ArenaMatch[], teams, venues);
+    const rawTournaments = (tournamentsResult.data ?? []) as ArenaTournament[];
+    const rawVenues = (venuesResult.data ?? []) as ArenaVenue[];
+    const rawTeams = (teamsResult.data ?? []) as ArenaTeam[];
+    const rawPlayers = (playersResult.data ?? []) as ArenaPlayer[];
+    const rawMatches = (matchesResult.data ?? []) as ArenaMatch[];
+    const tournamentTeams = (tournamentTeamsResult.data ?? []) as TournamentTeamRow[];
+    let activeTournament = (rawTournaments[0] ?? null) as ArenaTournament | null;
+    let venues = rawVenues;
+    let teams = rawTeams;
+    let players = rawPlayers;
+    let matchRows = rawMatches;
+    let roles = ((rolesResult.data ?? []).map((item) => item.role) as AppRole[]) || ["player"];
+    if (!roles.length) roles = ["player"];
+
+    if (user) {
+      sessionUser = sessionUser ? { ...sessionUser, roles } : null;
+      const userTeamIds = new Set<string>();
+      rawTeams.forEach((team) => {
+        if (team.owner_id === user.id) userTeamIds.add(team.id);
+      });
+      rawPlayers.forEach((player) => {
+        if (player.profile_id === user.id) userTeamIds.add(player.team_id);
+      });
+
+      const relatedTournamentIds = new Set<string>();
+      rawTournaments.forEach((tournament) => {
+        if (tournament.organizer_id === user.id) relatedTournamentIds.add(tournament.id);
+      });
+      tournamentTeams.forEach((row) => {
+        if (userTeamIds.has(row.team_id)) relatedTournamentIds.add(row.tournament_id);
+      });
+
+      const relatedTeamIds = new Set(userTeamIds);
+      tournamentTeams.forEach((row) => {
+        if (relatedTournamentIds.has(row.tournament_id)) relatedTeamIds.add(row.team_id);
+      });
+
+      teams = rawTeams.filter((team) => relatedTeamIds.has(team.id));
+      players = rawPlayers.filter((player) => relatedTeamIds.has(player.team_id));
+      matchRows = rawMatches.filter((match) => {
+        const belongsToTournament = relatedTournamentIds.has(match.tournament_id);
+        const belongsToTeam = Boolean(
+          (match.home_team_id && relatedTeamIds.has(match.home_team_id)) ||
+          (match.away_team_id && relatedTeamIds.has(match.away_team_id))
+        );
+        return belongsToTournament || belongsToTeam;
+      });
+
+      const relatedVenueIds = new Set<string>();
+      matchRows.forEach((match) => {
+        if (match.venue_id) relatedVenueIds.add(match.venue_id);
+      });
+      rawTournaments.forEach((tournament) => {
+        if (relatedTournamentIds.has(tournament.id) && tournament.venue_id) relatedVenueIds.add(tournament.venue_id);
+      });
+
+      venues = rawVenues.filter((venue) => Boolean(venue.owner_id) || relatedVenueIds.has(venue.id));
+      activeTournament = rawTournaments.find((tournament) => relatedTournamentIds.has(tournament.id)) ?? null;
+    }
+
+    const matches = attachMatchRelations(matchRows, teams, venues);
 
     return {
       source: "supabase",
       configured: true,
-      user: user
-        ? {
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email?.split("@")[0],
-            avatarUrl: user.user_metadata?.avatar_url,
-            roles: ((rolesResult.data ?? []).map((item) => item.role) as AppRole[]) || ["player"]
-          }
-        : null,
+      user: sessionUser,
       activeTournament,
       venues,
       teams,
-      players: playersResult.data ?? [],
+      players,
       matches,
       standings: computeStandings(teams, matches),
       paymentRequests: (paymentRequestsResult.data ?? []) as PaymentRequest[],
@@ -58,6 +142,7 @@ export async function getArenaData(): Promise<ArenaData> {
     };
   } catch (error) {
     console.error("Fulbito Arena data fallback", error);
+    if (sessionUser) return emptyUserArenaData(sessionUser);
     return { ...demoArenaData, configured: true };
   }
 }

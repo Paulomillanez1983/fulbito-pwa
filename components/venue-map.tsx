@@ -33,11 +33,13 @@ function coordinatesForVenue(venue: ArenaVenue, index: number): [number, number]
 export function VenueMap({
   venues,
   selectedVenueId,
-  onSelectVenue
+  onSelectVenue,
+  userLocation
 }: {
   venues: ArenaVenue[];
   selectedVenueId?: string;
   onSelectVenue: (venueId: string) => void;
+  userLocation?: { latitude: number; longitude: number } | null;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<{ remove: () => void } | null>(null);
@@ -52,21 +54,31 @@ export function VenueMap({
     let cancelled = false;
 
     async function mountMap() {
-      if (!containerRef.current || !points.length) return;
+      if (!containerRef.current || (!points.length && !userLocation)) return;
       try {
         const maplibregl = await import("maplibre-gl");
         if (cancelled || !containerRef.current) return;
 
         const selected = points.find((point) => point.venue.id === selectedVenueId) ?? points[0];
+        const userCoordinates: [number, number] | null = userLocation ? [userLocation.longitude, userLocation.latitude] : null;
         const map = new maplibregl.Map({
           container: containerRef.current,
           style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-          center: selected.coordinates,
-          zoom: 11.6,
+          center: selected?.coordinates ?? userCoordinates ?? [-58.3816, -34.6037],
+          zoom: selected ? 11.6 : userCoordinates ? 12.2 : 10.8,
           attributionControl: false
         });
 
         map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+        if (userCoordinates) {
+          const userMarker = document.createElement("span");
+          userMarker.className = "venue-user-marker";
+          userMarker.innerHTML = "<i></i>";
+          new maplibregl.Marker({ element: userMarker, anchor: "center" })
+            .setLngLat(userCoordinates)
+            .setPopup(new maplibregl.Popup({ closeButton: false, offset: 16 }).setText("Tu ubicacion"))
+            .addTo(map);
+        }
         points.forEach((point) => {
           const markerNode = document.createElement("button");
           markerNode.type = "button";
@@ -94,7 +106,7 @@ export function VenueMap({
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [onSelectVenue, points, selectedVenueId]);
+  }, [onSelectVenue, points, selectedVenueId, userLocation]);
 
   return (
     <section className="venue-map-console">
@@ -108,6 +120,7 @@ export function VenueMap({
       <div className="venue-map-canvas" ref={containerRef}>
         {mapUnavailable ? (
           <div className="venue-map-fallback">
+            {userLocation ? <span className="venue-map-user-fallback" /> : null}
             {points.map((point, index) => (
               <button
                 className={point.venue.id === selectedVenueId ? "is-active" : ""}

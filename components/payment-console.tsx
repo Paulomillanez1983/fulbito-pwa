@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { CheckCircle2, Clipboard, Clock3, Crown, LoaderCircle, MessageCircle, Send, Sparkles, Upload, XCircle } from "lucide-react";
+import { SlideSubmitButton } from "@/components/slide-submit-button";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount, paymentStatusMeta } from "@/lib/payments";
 import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -169,10 +170,7 @@ function ProofField({ ready, onReady }: { ready: boolean; onReady: (ready: boole
 
 function SubmitButton({ pending, idle, disabled }: { pending: boolean; idle: string; disabled: boolean }) {
   return (
-    <button disabled={pending || disabled} type="submit">
-      {pending ? <LoaderCircle className="button-spinner" size={17} /> : <Send size={17} />}
-      {pending ? "Enviando" : idle}
-    </button>
+    <SlideSubmitButton disabled={disabled} idle={idle} pendingLabel="Enviando" submitting={pending} />
   );
 }
 
@@ -456,6 +454,7 @@ function FeaturedVenueForm({
             slug: `${slugify(venueName)}-${Date.now().toString(36)}`,
             neighborhood: String(form.get("neighborhood") || "").trim() || "Barrio a confirmar",
             address: String(form.get("address") || "").trim() || null,
+            phone: String(form.get("phone") || "").trim() || null,
             surface: String(form.get("surface") || "").trim() || "Sintetico",
             price_per_hour: Number(form.get("pricePerHour") || 0),
             status: "pending"
@@ -505,6 +504,7 @@ function FeaturedVenueForm({
           <input name="venueName" placeholder="Nombre de la cancha" />
           <input name="neighborhood" placeholder="Barrio" />
           <input name="address" placeholder="Direccion" />
+          <input name="phone" inputMode="tel" placeholder="WhatsApp o telefono" />
           <div className="creator-inline">
             <input name="surface" placeholder="Superficie" />
             <input name="pricePerHour" inputMode="numeric" placeholder="Precio hora" />

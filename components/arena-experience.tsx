@@ -14,6 +14,7 @@ import {
   Gamepad2,
   LogIn,
   LogOut,
+  LocateFixed,
   MapPinned,
   Plus,
   Route,
@@ -61,6 +62,7 @@ const positionLabels: Record<string, string> = {
 
 type FormationSlot = { x: number; y: number; label: string };
 type FormationPreset = { id: string; name: string; shape: string; slots: FormationSlot[] };
+type GeoPoint = { latitude: number; longitude: number };
 
 const formationPresets: Record<FieldMode, FormationPreset[]> = {
   "5v5": [
@@ -209,6 +211,27 @@ function getFormationPreset(mode: FieldMode, presetId: string) {
 
 function money(value: number) {
   return `$ ${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+}
+
+function hasCoordinates(venue: ArenaVenue) {
+  return typeof venue.latitude === "number" && typeof venue.longitude === "number";
+}
+
+function distanceKm(from: GeoPoint, venue: ArenaVenue) {
+  if (!hasCoordinates(venue)) return Number.POSITIVE_INFINITY;
+  const earthRadius = 6371;
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const dLat = toRad((venue.latitude ?? 0) - from.latitude);
+  const dLon = toRad((venue.longitude ?? 0) - from.longitude);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(from.latitude)) * Math.cos(toRad(venue.latitude ?? 0)) * Math.sin(dLon / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function venueWhatsappUrl(phone?: string | null) {
+  const digits = phone?.replace(/\D/g, "");
+  return digits ? `https://wa.me/${digits}` : "";
 }
 
 function formatDate(value: string | null) {
@@ -497,7 +520,7 @@ function VenueRow({ venue, onOpen }: { venue: ArenaVenue; onOpen: () => void }) 
     <button className="venue-row venue-row--button" onClick={onOpen} type="button">
       <div>
         <strong>{venue.name}</strong>
-        <span>{venue.neighborhood} / {venue.surface ?? "Sintetico"} / {venue.address ?? "Direccion pendiente"}</span>
+        <span>{venue.neighborhood} / {venue.surface ?? "Sintetico"} / {venue.phone ? `Contacto ${venue.phone}` : venue.address ?? "Direccion pendiente"}</span>
       </div>
       <b>{money(venue.price_per_hour)}</b>
     </button>
@@ -733,14 +756,39 @@ function KnockoutPath({ rounds, teams }: { rounds: Array<{ label: string; slots:
 
 function VenueSpotlight({ venue }: { venue?: ArenaVenue }) {
   if (!venue) return null;
+  const whatsappUrl = venueWhatsappUrl(venue.phone);
   return (
     <section className="venue-spotlight">
       <div>
         <span>{venue.status === "verified" ? "Cancha verificada" : "Cancha partner"}</span>
         <h2>{venue.name}</h2>
         <p>{venue.address ?? venue.neighborhood} / {venue.open_hours ?? "Horario a cargar"}</p>
+        {venue.phone ? <small>Contacto: {venue.phone}</small> : null}
       </div>
-      <strong>{money(venue.price_per_hour)}<small>por hora</small></strong>
+      <div>
+        <strong>{money(venue.price_per_hour)}<small>por hora</small></strong>
+        {whatsappUrl ? <a className="venue-contact-link" href={whatsappUrl} rel="noreferrer" target="_blank">Consultar turno</a> : null}
+      </div>
+    </section>
+  );
+}
+
+function EmptyState({
+  icon,
+  title,
+  children
+}: {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="empty-arena-state">
+      <span>{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <p>{children}</p>
+      </div>
     </section>
   );
 }
@@ -781,6 +829,9 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
   const [userRoles, setUserRoles] = useState<AppRole[]>(() => data.user?.roles.length ? data.user.roles : ["player"]);
   const [activeRole, setActiveRole] = useState<AppRole>(() => data.user?.roles[0] ?? "player");
   const [roleMessage, setRoleMessage] = useState("");
+  const [venueLocation, setVenueLocation] = useState<GeoPoint | null>(null);
+  const [venueLocationAsked, setVenueLocationAsked] = useState(false);
+  const [venueLocationStatus, setVenueLocationStatus] = useState("Mostrando canchas registradas.");
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowSplash(false), 2600);
@@ -790,7 +841,15 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
   const nextMatch = useMemo(() => data.matches.find((match) => match.status !== "final") ?? data.matches[0], [data.matches]);
   const selectedMatch = data.matches.find((match) => match.id === selectedMatchId) ?? nextMatch;
   const selectedTeam = data.teams.find((team) => team.id === selectedTeamId) ?? data.teams[0];
-  const selectedVenue = data.venues.find((venue) => venue.id === selectedVenueId) ?? data.venues[0];
+  const nearbyVenues = useMemo(() => {
+    if (!venueLocation) return data.venues;
+    return data.venues
+      .map((venue) => ({ venue, distance: distanceKm(venueLocation, venue) }))
+      .filter((item) => item.distance <= 50 || item.venue.owner_id === data.user?.id)
+      .sort((a, b) => a.distance - b.distance)
+      .map((item) => item.venue);
+  }, [data.user?.id, data.venues, venueLocation]);
+  const selectedVenue = nearbyVenues.find((venue) => venue.id === selectedVenueId) ?? nearbyVenues[0];
   const selectedPlayers = data.players.filter((player) => player.team_id === selectedTeam?.id);
   const selectedPlayer = selectedPlayers.find((player) => player.id === selectedPlayerId) ?? null;
   const totalPot = data.teams.length * (data.activeTournament?.registration_fee ?? 0);
@@ -808,6 +867,38 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
     if (!data.user || !inferredTeam?.id) return;
     setSelectedTeamId((current) => current || inferredTeam.id);
   }, [data.user, inferredTeam?.id]);
+
+  useEffect(() => {
+    if (selectedVenue?.id) setSelectedVenueId((current) => current || selectedVenue.id);
+  }, [selectedVenue?.id]);
+
+  const requestVenueLocation = useCallback(() => {
+    setVenueLocationAsked(true);
+    if (!navigator.geolocation) {
+      setVenueLocationStatus("Tu navegador no permite ubicacion. Mostramos todas las canchas registradas.");
+      return;
+    }
+    setVenueLocationStatus("Buscando canchas a 50 km de tu ubicacion...");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const point = {
+          latitude: Number(position.coords.latitude.toFixed(6)),
+          longitude: Number(position.coords.longitude.toFixed(6))
+        };
+        setVenueLocation(point);
+        setVenueLocationStatus("Mostrando canchas registradas hasta 50 km de tu ubicacion.");
+      },
+      () => {
+        setVenueLocationStatus("No se pudo tomar tu ubicacion. Mostramos todas las canchas registradas.");
+      },
+      { enableHighAccuracy: true, maximumAge: 120000, timeout: 12000 }
+    );
+  }, []);
+
+  useEffect(() => {
+    if (active !== "venues" || !data.user || venueLocationAsked) return;
+    requestVenueLocation();
+  }, [active, data.user, requestVenueLocation, venueLocationAsked]);
 
   function openLoginPanel() {
     setActive("home");
@@ -860,13 +951,19 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
           </div>
         </section>
 
-        {nextMatch ? <MatchTile match={nextMatch} featured onOpen={() => openMatch(nextMatch)} /> : null}
+        {nextMatch ? (
+          <MatchTile match={nextMatch} featured onOpen={() => openMatch(nextMatch)} />
+        ) : data.user ? (
+          <EmptyState icon={<CalendarDays />} title="Tu calendario empieza vacio">
+            Crea un torneo, carga tu equipo o espera una invitacion. Cuando haya fixtures reales, aparecen aca.
+          </EmptyState>
+        ) : null}
 
         <section className="mini-grid">
           <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActive("league")} value={data.activeTournament?.name ?? "Torneo"} />
           <MiniStat icon={<Users />} label="Equipos" onClick={() => setActive("squad")} value={data.teams.length} />
           <MiniStat icon={<CalendarDays />} label="Partidos" onClick={() => setActive("matches")} value={data.matches.length} />
-          <MiniStat icon={<CircleDollarSign />} label="Pozo demo" onClick={() => setActive("venues")} value={money(totalPot)} />
+          <MiniStat icon={<CircleDollarSign />} label="Pozo estimado" onClick={() => setActive("venues")} value={money(totalPot)} />
         </section>
 
         <section className="console-panel">
@@ -920,7 +1017,13 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
             </footer>
           </section>
         ) : null}
-        <div className="match-stack">{data.matches.map((match) => <MatchTile key={match.id} match={match} onOpen={() => openMatch(match)} />)}</div>
+        {data.matches.length ? (
+          <div className="match-stack">{data.matches.map((match) => <MatchTile key={match.id} match={match} onOpen={() => openMatch(match)} />)}</div>
+        ) : (
+          <EmptyState icon={<CalendarDays />} title="Todavia no hay partidos">
+            Cuando crees un torneo o tu equipo quede inscripto, Fulbito arma el calendario aca.
+          </EmptyState>
+        )}
         <section className="console-panel flow-compact">
           <article><Flag /><strong>Veedor</strong><span>Carga marcador</span></article>
           <article><MapPinned /><strong>Cancha</strong><span>Valida acta</span></article>
@@ -937,9 +1040,17 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
         <ScreenHeader eyebrow="Camino a la copa" title="Liga">
           Grupos de cuatro, tabla automatica y llave eliminatoria generada segun cantidad de equipos.
         </ScreenHeader>
-        <StandingCompact onTeamOpen={openTeam} teams={data.standings} />
-        <GroupTables groups={groups} />
-        <KnockoutPath rounds={knockoutRounds} teams={data.standings.length ? data.standings : data.teams} />
+        {data.teams.length ? (
+          <>
+            <StandingCompact onTeamOpen={openTeam} teams={data.standings} />
+            <GroupTables groups={groups} />
+            <KnockoutPath rounds={knockoutRounds} teams={data.standings.length ? data.standings : data.teams} />
+          </>
+        ) : (
+          <EmptyState icon={<Trophy />} title="Sin tabla todavia">
+            La clasificacion aparece cuando haya equipos reales en tu torneo.
+          </EmptyState>
+        )}
       </>
     );
   }
@@ -950,6 +1061,20 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
       jersey: selectedSlotIndex + 1,
       position: positionLabels[selectedSlot.label] ?? selectedSlot.label
     };
+
+    if (!selectedTeam) {
+      return (
+        <>
+          <ScreenHeader compact eyebrow="Tu club" title="Crea tu equipo">
+            Todavia no tenes un equipo asociado a tu cuenta. Cargalo para activar plantel, escudo y formacion.
+          </ScreenHeader>
+          <EmptyState icon={<Shield />} title="No hay equipo propio">
+            Empeza por crear tu club. Despues vas a poder cargar jugadores desde la canchita.
+          </EmptyState>
+          <ArenaActions data={data} mode="squad" />
+        </>
+      );
+    }
 
     return (
       <>
@@ -1016,22 +1141,37 @@ export function ArenaExperience({ data }: { data: ArenaData }) {
     return (
       <>
         <ScreenHeader eyebrow="Alta de sede" title="Canchas">
-          Marca la ubicacion exacta, ajusta el puntero si hace falta y carga precio, superficie y fotos para publicar tu cancha.
+          Marca tu ubicacion para ver canchas registradas en un radio de 50 km, o registra una sede con precio, contacto y foto.
         </ScreenHeader>
+        <section className="venue-nearby-toolbar">
+          <button onClick={requestVenueLocation} type="button">
+            <LocateFixed size={16} />
+            Usar mi ubicacion
+          </button>
+          <span>{venueLocationStatus}</span>
+        </section>
         <ArenaActions data={data} mode="venue" />
         <section className="venues-marketplace">
           <header>
             <span>Sedes activas</span>
-            <strong>Mapa y precios cargados</strong>
+            <strong>{venueLocation ? "Radio 50 km" : "Mapa y precios cargados"}</strong>
           </header>
-          <VenueMap onSelectVenue={openVenue} selectedVenueId={selectedVenue?.id} venues={data.venues} />
-          <VenueSpotlight venue={selectedVenue} />
-          <section className="venue-stack">{data.venues.map((venue) => <VenueRow key={venue.id} onOpen={() => setSelectedVenueId(venue.id)} venue={venue} />)}</section>
+          <VenueMap onSelectVenue={openVenue} selectedVenueId={selectedVenue?.id} userLocation={venueLocation} venues={nearbyVenues} />
+          {nearbyVenues.length ? (
+            <>
+              <VenueSpotlight venue={selectedVenue} />
+              <section className="venue-stack">{nearbyVenues.map((venue) => <VenueRow key={venue.id} onOpen={() => setSelectedVenueId(venue.id)} venue={venue} />)}</section>
+            </>
+          ) : (
+            <EmptyState icon={<MapPinned />} title="No hay canchas registradas cerca">
+              Se muestran solo sedes reales cargadas por usuarios. Registra la tuya para que aparezca en el mapa.
+            </EmptyState>
+          )}
         </section>
         <section className="console-panel money-console">
           <MiniStat icon={<CircleDollarSign />} label="Ticket promedio" onClick={() => setActive("venues")} value={money(selectedVenue?.price_per_hour ?? 0)} />
-          <MiniStat icon={<Crown />} label="Comision demo" onClick={() => setActive("league")} value="8-9%" />
-          <MiniStat icon={<Route />} label="Sedes activas" onClick={() => setActive("matches")} value={data.venues.length} />
+          <MiniStat icon={<Crown />} label="Visibilidad Pro" onClick={() => setActive("league")} value="Sin comision" />
+          <MiniStat icon={<Route />} label="Sedes cercanas" onClick={() => setActive("matches")} value={nearbyVenues.length} />
         </section>
       </>
     );

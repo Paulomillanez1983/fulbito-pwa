@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import { useFormStatus } from "react-dom";
 import { Camera, Flag, LoaderCircle, LocateFixed, MapPinned, ShieldPlus, UserPlus } from "lucide-react";
+import { SlideSubmitButton } from "@/components/slide-submit-button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ArenaData } from "@/lib/types";
 import type { Map, Marker } from "maplibre-gl";
@@ -32,13 +32,7 @@ function slugify(value: string) {
 }
 
 function SubmitButton({ idle, pending }: { idle: string; pending: string }) {
-  const form = useFormStatus();
-  return (
-    <button disabled={form.pending} type="submit">
-      {form.pending ? <LoaderCircle className="button-spinner" size={17} /> : null}
-      {form.pending ? pending : idle}
-    </button>
-  );
+  return <SlideSubmitButton idle={idle} pendingLabel={pending} />;
 }
 
 function MediaField({
@@ -294,9 +288,11 @@ export function ArenaActions({
 }) {
   const [message, setMessage] = useState("");
   const showTeam = mode === "all" || mode === "squad";
-  const showPlayer = mode === "all" || mode === "squad" || mode === "slot";
+  const hasTeams = data.teams.length > 0;
+  const hasMatches = data.matches.length > 0;
+  const showPlayer = hasTeams && (mode === "all" || mode === "squad" || mode === "slot");
   const showVenue = mode === "all" || mode === "venue";
-  const showResult = mode === "all" || mode === "result";
+  const showResult = hasMatches && (mode === "all" || mode === "result");
   const playerTeamId = selectedTeamId ?? data.teams[0]?.id;
   const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
 
@@ -384,6 +380,7 @@ export function ArenaActions({
       neighborhood: String(formData.get("venueNeighborhood") || "").trim() || "Barrio sin cargar",
       address: String(formData.get("venueAddress") || "").trim() || null,
       surface: String(formData.get("venueSurface") || "").trim() || "Sintetico",
+      phone: String(formData.get("venuePhone") || "").trim() || null,
       latitude,
       longitude,
       price_per_hour: Number(formData.get("pricePerHour") || 0),
@@ -471,6 +468,7 @@ export function ArenaActions({
           <input name="venueName" placeholder="Nombre de la cancha" />
           <input name="venueNeighborhood" placeholder="Barrio" />
           <input name="venueAddress" placeholder="Direccion" />
+          <input name="venuePhone" inputMode="tel" placeholder="WhatsApp o telefono" />
           <input name="venueSurface" placeholder="Superficie" />
           <input name="pricePerHour" inputMode="numeric" placeholder="Precio por hora" />
           <input name="inscriptionFee" inputMode="numeric" placeholder="Inscripcion sugerida" />
@@ -514,6 +512,14 @@ export function ArenaActions({
           <input name="note" placeholder="Nota del veedor" />
           <SubmitButton idle="Enviar a validacion" pending="Enviando resultado" />
         </form> : null}
+
+        {(mode === "result" && !hasMatches) ? (
+          <article className="action-card action-card--locked">
+            <Flag />
+            <h3>Sin partidos para cargar</h3>
+            <p>Cuando crees o te sumes a un torneo, aca aparece el acta para enviar resultados.</p>
+          </article>
+        ) : null}
       </div>
       {message ? <p className="console-message">{message}</p> : null}
     </>
