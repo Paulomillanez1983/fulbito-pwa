@@ -2,7 +2,7 @@ import { AdminPaymentsPanel } from "@/components/admin-payments-panel";
 import { LoginPanel } from "@/components/login-panel";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AccountEntitlement, AppRole, BillingPlanSetting, FieldMode, PaymentMessage, PaymentRequest } from "@/lib/types";
+import type { AccountEntitlement, AppRole, BillingPlanSetting, FieldMode, PaymentMessage, PaymentRequest, UserBlock } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +105,7 @@ export default async function AdminPage() {
     );
   }
 
-  const [requestsResult, messagesResult, billingPlansResult, teamsResult, teamMembersResult, tournamentTeamsResult, tournamentsAuditResult, entitlementsAuditResult] = await Promise.all([
+  const [requestsResult, messagesResult, billingPlansResult, teamsResult, teamMembersResult, tournamentTeamsResult, tournamentsAuditResult, entitlementsAuditResult, userBlocksResult] = await Promise.all([
     supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(80),
     supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(300),
     supabase.from("billing_plan_settings").select("*").order("sort_order", { ascending: true }),
@@ -113,7 +113,8 @@ export default async function AdminPage() {
     supabase.from("team_members").select("id,team_id").limit(3000),
     supabase.from("tournament_teams").select("tournament_id,team_id,status,created_at").order("created_at", { ascending: false }).limit(600),
     supabase.from("tournaments").select("id,name,slug,status,field_mode").order("created_at", { ascending: false }).limit(160),
-    supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }).limit(400)
+    supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }).limit(400),
+    supabase.from("user_blocks").select("*").order("created_at", { ascending: false }).limit(500)
   ]);
 
   const requests = (requestsResult.data ?? []) as PaymentRequest[];
@@ -123,10 +124,12 @@ export default async function AdminPage() {
   const tournamentTeams = (tournamentTeamsResult.data ?? []) as AdminTournamentTeamRow[];
   const tournaments = (tournamentsAuditResult.data ?? []) as AdminTournamentRow[];
   const entitlements = (entitlementsAuditResult.data ?? []) as AccountEntitlement[];
+  const userBlocks = (userBlocksResult.data ?? []) as UserBlock[];
   const profileIds = Array.from(new Set([
     ...requests.map((item) => item.requester_id),
     ...messages.map((item) => item.sender_id),
-    ...teamRows.map((item) => item.owner_id).filter(Boolean)
+    ...teamRows.map((item) => item.owner_id).filter(Boolean),
+    ...userBlocks.map((item) => item.blocked_user_id)
   ] as string[]));
   const profilesResult = profileIds.length
     ? await supabase.from("profiles").select("id,display_name,avatar_url").in("id", profileIds)
@@ -179,6 +182,7 @@ export default async function AdminPage() {
       requests={requests}
       roles={roles}
       teamAudit={teamAudit}
+      userBlocks={userBlocks}
     />
   );
 }

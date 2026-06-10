@@ -151,6 +151,14 @@ export type AccountEntitlement = {
   created_at: string;
 };
 
+export type UserBlock = {
+  id: string;
+  blocked_user_id: string;
+  blocked_by: string | null;
+  reason: string | null;
+  created_at: string;
+};
+
 export type BillingPlanSetting = {
   plan_code: BillingPlanCode;
   title: string;

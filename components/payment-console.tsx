@@ -83,6 +83,14 @@ async function createPaymentRequest({
   proofFile: FormDataEntryValue | null;
 }) {
   const supabase = createSupabaseBrowserClient();
+  const { data: block, error: blockError } = await supabase
+    .from("user_blocks")
+    .select("reason")
+    .eq("blocked_user_id", userId)
+    .maybeSingle();
+  if (blockError) throw blockError;
+  if (block) throw new Error(block.reason || "Tu cuenta esta bloqueada para enviar nuevos comprobantes. Escribile al admin de Fulbito.");
+
   const { data: existingRequest, error: existingError } = await supabase
     .from("payment_requests")
     .select("id")

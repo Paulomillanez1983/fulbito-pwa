@@ -6525,6 +6525,12 @@ body::after,
   background: rgba(255,100,117,.1);
 }
 
+.payment-status--blocked {
+  border: 1px solid rgba(255,100,117,.42);
+  color: #ffd2d7;
+  background: rgba(255,100,117,.16);
+}
+
 .payment-thread__messages,
 .admin-chat > div {
   display: grid;
@@ -6959,6 +6965,51 @@ body::after,
   color: #d7fbff;
 }
 
+.admin-request-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.admin-request-tabs button {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 9px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.025)),
+    rgba(5, 10, 18, .74);
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+}
+
+.admin-request-tabs button.is-active {
+  border-color: rgba(241,199,91,.42);
+  background:
+    radial-gradient(circle at 100% 0, rgba(241,199,91,.18), transparent 32%),
+    rgba(12, 15, 21, .92);
+  color: #fff8e8;
+}
+
+.admin-request-tabs span,
+.admin-request-tabs strong {
+  display: block;
+}
+
+.admin-request-tabs span {
+  font-size: .75rem;
+  font-weight: 900;
+}
+
+.admin-request-tabs strong {
+  color: var(--gold);
+  font-size: 1.05rem;
+}
+
 .admin-payment-list {
   display: grid;
   gap: 12px;
@@ -6986,6 +7037,21 @@ body::after,
 
 .admin-payment-card__body > div {
   min-width: 0;
+}
+
+.admin-payment-card.is-blocked {
+  border-color: rgba(255,100,117,.24);
+  background:
+    radial-gradient(circle at 100% 0, rgba(255,100,117,.12), transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025)),
+    rgba(5, 10, 18, .78);
+}
+
+.admin-payment-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
 }
 
 .admin-payment-card__body h2 {
@@ -7020,6 +7086,14 @@ body::after,
   color: #ffd2d7;
 }
 
+.admin-review-actions .admin-block-button {
+  border-color: rgba(255,100,117,.32);
+  background:
+    linear-gradient(135deg, rgba(255,100,117,.14), rgba(88,17,26,.18)),
+    rgba(255,255,255,.035);
+  color: #ffd2d7;
+}
+
 .admin-chat {
   display: grid;
   gap: 9px;
@@ -7040,7 +7114,8 @@ body::after,
   .payment-plan-grid,
   .admin-stats,
   .admin-team-summary,
-  .admin-team-grid {
+  .admin-team-grid,
+  .admin-request-tabs {
     grid-template-columns: 1fr;
   }
 

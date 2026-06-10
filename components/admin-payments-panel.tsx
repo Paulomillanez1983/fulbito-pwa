@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { CheckCircle2, Clock3, ExternalLink, LoaderCircle, MessageCircle, ShieldCheck, Trophy, Users, Send, XCircle } from "lucide-react";
+import { Ban, CheckCircle2, Clock3, ExternalLink, LoaderCircle, MessageCircle, ShieldCheck, Trophy, Users, Send, XCircle } from "lucide-react";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AccountEntitlement, AppRole, BillingPlanSetting, PaymentMessage, PaymentRequest } from "@/lib/types";
+import type { AccountEntitlement, AppRole, BillingPlanSetting, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
 
 const statusIcons: Record<PaymentRequest["status"], typeof Clock3> = {
   pending_review: Clock3,
@@ -13,6 +13,8 @@ const statusIcons: Record<PaymentRequest["status"], typeof Clock3> = {
   rejected: XCircle,
   cancelled: XCircle
 };
+
+type AdminRequestFilter = PaymentRequestStatus | "blocked" | "all";
 
 type AdminProfile = {
   id: string;
@@ -50,7 +52,8 @@ function formatDate(value: string) {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
+    timeZone: "America/Argentina/Buenos_Aires"
   }).format(new Date(value));
 }
 
@@ -111,7 +114,7 @@ function AdminTeamAudit({ teams }: { teams: AdminTeamAuditItem[] }) {
               </header>
 
               <div className="admin-team-meta">
-                <span>Dueño: <strong>{item.owner?.display_name ?? "Sin perfil visible"}</strong></span>
+                <span>Dueno: <strong>{item.owner?.display_name ?? "Sin perfil visible"}</strong></span>
                 <span>Jugadores: <strong>{item.playerCount}</strong></span>
                 <span>Creado: <strong>{formatDate(item.team.created_at)}</strong></span>
               </div>
@@ -237,7 +240,8 @@ export function AdminPaymentsPanel({
   profiles,
   billingPlans,
   roles,
-  teamAudit
+  teamAudit,
+  userBlocks
 }: {
   adminId: string;
   requests: PaymentRequest[];
@@ -246,9 +250,12 @@ export function AdminPaymentsPanel({
   billingPlans: BillingPlanSetting[];
   roles: AppRole[];
   teamAudit: AdminTeamAuditItem[];
+  userBlocks: UserBlock[];
 }) {
   const [requests, setRequests] = useState(initialRequests);
   const [messages, setMessages] = useState(initialMessages);
+  const [blocks, setBlocks] = useState(userBlocks);
+  const [filter, setFilter] = useState<AdminRequestFilter>("pending_review");
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -264,12 +271,46 @@ export function AdminPaymentsPanel({
     }, {});
   }, [messages]);
 
+  const blockedUserIds = useMemo(() => new Set(blocks.map((block) => block.blocked_user_id)), [blocks]);
+
+  const filteredRequests = useMemo(() => {
+    return requests.filter((request) => {
+      const blocked = blockedUserIds.has(request.requester_id);
+      if (filter === "all") return true;
+      if (filter === "blocked") return blocked;
+      if (filter === "pending_review") return request.status === "pending_review" && !blocked;
+      return request.status === filter;
+    });
+  }, [blockedUserIds, filter, requests]);
+
+  const filterCounts = useMemo<Record<AdminRequestFilter, number>>(() => {
+    return {
+      pending_review: requests.filter((item) => item.status === "pending_review" && !blockedUserIds.has(item.requester_id)).length,
+      approved: requests.filter((item) => item.status === "approved").length,
+      rejected: requests.filter((item) => item.status === "rejected").length,
+      cancelled: requests.filter((item) => item.status === "cancelled").length,
+      blocked: requests.filter((item) => blockedUserIds.has(item.requester_id)).length,
+      all: requests.length
+    };
+  }, [blockedUserIds, requests]);
+
   function replaceRequest(next: PaymentRequest) {
     setRequests((current) => current.map((item) => item.id === next.id ? next : item));
   }
 
+  function replaceRequests(next: PaymentRequest[]) {
+    if (!next.length) return;
+    const byId = new Map(next.map((item) => [item.id, item]));
+    setRequests((current) => current.map((item) => byId.get(item.id) ?? item));
+  }
+
   function addMessage(message: PaymentMessage) {
     setMessages((current) => [...current, message]);
+  }
+
+  function addMessages(next: PaymentMessage[]) {
+    if (!next.length) return;
+    setMessages((current) => [...current, ...next]);
   }
 
   async function openProof(request: PaymentRequest) {
@@ -310,40 +351,53 @@ export function AdminPaymentsPanel({
     setNotice("");
     setBusyId(request.id);
     try {
-      const supabase = createSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("payment_requests")
-        .update({
-          status,
-          admin_note: note,
-          reviewed_by: adminId,
-          reviewed_at: new Date().toISOString()
-        })
-        .eq("id", request.id)
-        .select()
-        .single();
-      if (error) throw error;
-
-      if (status === "approved") {
-        const entitlement: Omit<AccountEntitlement, "id" | "starts_at" | "created_at"> = {
-          owner_id: request.requester_id,
-          plan_code: request.plan_code,
-          target_type: request.target_type,
-          target_id: request.target_id,
-          source_payment_request_id: request.id,
-          expires_at: null
-        };
-        const { error: entitlementError } = await supabase.from("account_entitlements").upsert(entitlement, {
-          onConflict: "owner_id,plan_code,target_type,target_id"
-        });
-        if (entitlementError) throw entitlementError;
-      }
-
-      replaceRequest(data as PaymentRequest);
-      await sendAdminMessage(request.id, status === "approved" ? "Comprobante aprobado. Tu beneficio premium ya esta activo." : `Comprobante rechazado: ${note || "necesitamos revisar el archivo."}`);
+      const response = await fetch("/api/admin/payment-requests/review", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ requestId: request.id, status, note })
+      });
+      const result = (await response.json()) as { request?: PaymentRequest; message?: PaymentMessage; error?: string };
+      if (!response.ok || !result.request) throw new Error(result.error || "No se pudo revisar la solicitud.");
+      replaceRequest(result.request);
+      if (result.message) addMessage(result.message);
       setNotice(status === "approved" ? "Comprobante aprobado y beneficio activado." : "Comprobante rechazado y usuario notificado.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo revisar la solicitud.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function toggleBlockUser(request: PaymentRequest) {
+    const isBlocked = blockedUserIds.has(request.requester_id);
+    setNotice("");
+    setBusyId(`block-${request.requester_id}`);
+    try {
+      const response = await fetch("/api/admin/users/block", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: isBlocked ? "unblock" : "block",
+          userId: request.requester_id,
+          reason: "Bloqueado por comprobantes invalidos o repetidos."
+        })
+      });
+      const result = (await response.json()) as { block?: UserBlock | null; requests?: PaymentRequest[]; messages?: PaymentMessage[]; error?: string };
+      if (!response.ok) throw new Error(result.error || "No se pudo actualizar el bloqueo.");
+      if (isBlocked) {
+        setBlocks((current) => current.filter((block) => block.blocked_user_id !== request.requester_id));
+        setNotice("Usuario desbloqueado para nuevos comprobantes.");
+      } else if (result.block) {
+        setBlocks((current) => {
+          const exists = current.some((block) => block.blocked_user_id === result.block?.blocked_user_id);
+          return exists ? current.map((block) => block.blocked_user_id === result.block?.blocked_user_id ? result.block as UserBlock : block) : [result.block as UserBlock, ...current];
+        });
+        replaceRequests(result.requests ?? []);
+        addMessages(result.messages ?? []);
+        setNotice("Usuario bloqueado. Sus pendientes quedaron cancelados.");
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo bloquear el usuario.");
     } finally {
       setBusyId("");
     }
@@ -391,21 +445,47 @@ export function AdminPaymentsPanel({
 
       {notice ? <p className="admin-notice">{notice}</p> : null}
 
+      <section className="admin-request-tabs" aria-label="Filtrar comprobantes">
+        {[
+          ["pending_review", "Pendientes"],
+          ["approved", "Aprobados"],
+          ["rejected", "Rechazados"],
+          ["cancelled", "Cancelados"],
+          ["blocked", "Bloqueados"],
+          ["all", "Todos"]
+        ].map(([value, label]) => (
+          <button
+            className={filter === value ? "is-active" : ""}
+            key={value}
+            onClick={() => setFilter(value as AdminRequestFilter)}
+            type="button"
+          >
+            <span>{label}</span>
+            <strong>{filterCounts[value as AdminRequestFilter]}</strong>
+          </button>
+        ))}
+      </section>
+
       <section className="admin-payment-list">
-        {requests.length ? requests.map((request) => {
+        {filteredRequests.length ? filteredRequests.map((request) => {
           const meta = paymentStatusMeta[request.status];
           const StatusIcon = statusIcons[request.status];
           const requestMessages = messagesByRequest[request.id] ?? [];
           const requester = profileMap.get(request.requester_id);
           const busy = busyId === request.id;
+          const blocked = blockedUserIds.has(request.requester_id);
+          const blockBusy = busyId === `block-${request.requester_id}`;
           return (
-            <article className="admin-payment-card" key={request.id}>
+            <article className={`admin-payment-card ${blocked ? "is-blocked" : ""}`} key={request.id}>
               <header>
                 <Requester profile={requester} />
-                <b className={`payment-status payment-status--${meta.tone}`}>
-                  <StatusIcon size={15} />
-                  {meta.label}
-                </b>
+                <div className="admin-payment-badges">
+                  {blocked ? <b className="payment-status payment-status--blocked"><Ban size={15} />Bloqueado</b> : null}
+                  <b className={`payment-status payment-status--${meta.tone}`}>
+                    <StatusIcon size={15} />
+                    {meta.label}
+                  </b>
+                </div>
               </header>
               <div className="admin-payment-card__body">
                 <div>
@@ -429,6 +509,10 @@ export function AdminPaymentsPanel({
                 <button disabled={busy || request.status === "rejected"} onClick={() => reviewRequest(request, "rejected", "Comprobante no validado. Envia uno nuevo o aclara el pago.")} type="button">
                   <XCircle size={17} />
                   Rechazar
+                </button>
+                <button className="admin-block-button" disabled={blockBusy} onClick={() => toggleBlockUser(request)} type="button">
+                  {blockBusy ? <LoaderCircle className="button-spinner" size={17} /> : <Ban size={17} />}
+                  {blocked ? "Desbloquear" : "Bloquear usuario"}
                 </button>
               </div>
 
@@ -457,8 +541,8 @@ export function AdminPaymentsPanel({
         }) : (
           <article className="admin-empty">
             <Clock3 size={24} />
-            <strong>No hay comprobantes todavia.</strong>
-            <span>Cuando un usuario envie un comprobante premium, aparece aca.</span>
+            <strong>No hay comprobantes en esta bandeja.</strong>
+            <span>Cambia el filtro para revisar otro estado.</span>
           </article>
         )}
       </section>

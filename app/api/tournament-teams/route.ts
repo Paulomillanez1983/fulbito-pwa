@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   if (teamError) return NextResponse.json({ error: teamError.message }, { status: 400 });
   if (!team) return NextResponse.json({ error: "No se encontro el equipo." }, { status: 404 });
-  if (team.owner_id !== auth.user.id) return NextResponse.json({ error: "Solo el dueño del club puede inscribirlo en esta copa." }, { status: 403 });
+  if (team.owner_id !== auth.user.id) return NextResponse.json({ error: "Solo el dueno del club puede inscribirlo en esta copa." }, { status: 403 });
 
   const { data: tournament, error: tournamentError } = await supabase
     .from("tournaments")

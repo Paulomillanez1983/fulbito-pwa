@@ -1,4 +1,4 @@
-const CACHE_NAME = "fulbito-arena-v8";
+const CACHE_NAME = "fulbito-arena-v9";
 const CORE_ASSETS = [
   "/",
   "/offline",
@@ -27,9 +27,21 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const request = event.request;
+  const url = new URL(request.url);
+
+  if (
+    url.origin === self.location.origin &&
+    (url.pathname.startsWith("/admin") || url.pathname.startsWith("/api") || url.pathname.startsWith("/auth"))
+  ) {
+    return;
+  }
 
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match("/offline")));
+    event.respondWith(
+      fetch(request).catch(async () => {
+        return (await caches.match("/offline")) || new Response("Offline", { status: 503, headers: { "content-type": "text/plain" } });
+      })
+    );
     return;
   }
 
@@ -37,9 +49,14 @@ self.addEventListener("fetch", (event) => {
     caches.match(request).then((cached) => {
       if (cached) return cached;
       return fetch(request).then((response) => {
+        if (!response || !response.ok) return response;
+        if (url.origin !== self.location.origin) return response;
+        if (!["style", "script", "image", "font"].includes(request.destination)) return response;
         const copy = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
         return response;
+      }).catch(async () => {
+        return (await caches.match(request)) || Response.error();
       });
     })
   );
