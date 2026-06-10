@@ -496,6 +496,14 @@ function UserMenu({
     if (!user) return;
     let mounted = true;
 
+    function handleCreated(event: Event) {
+      const request = (event as CustomEvent<PaymentRequest>).detail;
+      if (!request) return;
+      setMenuRequests((current) => [request, ...current.filter((item) => item.id !== request.id)]);
+      setNotificationsOpen(true);
+      setOpen(false);
+    }
+
     async function refreshRequests() {
       const supabase = createSupabaseBrowserClient();
       const { data: nextRequests } = await supabase
@@ -506,9 +514,11 @@ function UserMenu({
       if (mounted && nextRequests) setMenuRequests(nextRequests as PaymentRequest[]);
     }
 
+    window.addEventListener("fulbito:payment-request-created", handleCreated);
     const interval = window.setInterval(refreshRequests, 30000);
     return () => {
       mounted = false;
+      window.removeEventListener("fulbito:payment-request-created", handleCreated);
       window.clearInterval(interval);
     };
   }, [user]);
@@ -1003,6 +1013,7 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
     (selectedTeam?.owner_id === data.user.id || userRoles.includes("organizer") || userRoles.includes("admin"))
   );
   const myTeam = ownedTeam ?? memberTeam ?? selectedTeam;
+  const hasCreatedTournament = Boolean(data.user && data.activeTournament?.organizer_id === data.user.id);
 
   useEffect(() => {
     if (!data.user || !inferredTeam?.id) return;
@@ -1088,17 +1099,19 @@ export function ArenaExperience({ data, joinCode }: { data: ArenaData; joinCode?
   function renderHome() {
     return (
       <>
-        <section className="console-hero-panel console-hero-panel--2026">
-          <img alt="" className="hero-mark" src="/assets/icon.svg" />
-          <span>Fulbito Arena 2026</span>
-          <h1>Tu liga entra en modo juego.</h1>
-          <p>Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur.</p>
-          <div className="hero-actions">
-            <InstallAppButton variant="hero" />
-            <button onClick={openTournamentStarter} type="button">Crear mundial</button>
-            <button onClick={() => setActive("matches")} type="button">Ver fecha</button>
-          </div>
-        </section>
+        {!hasCreatedTournament ? (
+          <section className="console-hero-panel console-hero-panel--2026">
+            <img alt="" className="hero-mark" src="/assets/icon.svg" />
+            <span>Fulbito Arena 2026</span>
+            <h1>Tu liga entra en modo juego.</h1>
+            <p>Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur.</p>
+            <div className="hero-actions">
+              <InstallAppButton variant="hero" />
+              <button onClick={openTournamentStarter} type="button">Crear mundial</button>
+              <button onClick={() => setActive("matches")} type="button">Ver fecha</button>
+            </div>
+          </section>
+        ) : null}
 
         {nextMatch ? (
           <MatchTile match={nextMatch} featured onOpen={() => openMatch(nextMatch)} />

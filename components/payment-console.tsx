@@ -2,19 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { CheckCircle2, Clipboard, Clock3, Crown, LoaderCircle, MessageCircle, Send, Sparkles, Upload, XCircle } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clipboard, Sparkles, Upload } from "lucide-react";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
-import { formatPaymentMoney, mergePaymentPlans, paymentAccount, paymentStatusMeta } from "@/lib/payments";
+import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ArenaData, FieldMode, PaymentMessage, PaymentRequest, TournamentFormat } from "@/lib/types";
-
-const statusIcons: Record<PaymentRequest["status"], typeof Clock3> = {
-  pending_review: Clock3,
-  approved: CheckCircle2,
-  rejected: XCircle,
-  cancelled: XCircle
-};
 
 const tournamentFormatOptions: Array<{ value: TournamentFormat; label: string; note: string }> = [
   { value: "world_cup", label: "Grupos + eliminatorias", note: "Ideal para Mundial barrial" },
@@ -35,15 +28,6 @@ function slugify(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(new Date(value));
 }
 
 async function optimizeProofFile(file: File) {
@@ -630,115 +614,45 @@ function CreatorPaymentCard({
   existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
-  return (
-    <article className="payment-plan-card creator-card">
-      <div>
-        <Sparkles size={18} />
-        <span>{plan.kicker}</span>
-      </div>
-      <h3>{plan.title}</h3>
-      <strong>{formatPaymentMoney(plan.amount)}</strong>
-      <p>{plan.description}</p>
-      {plan.code === "team_pro" ? <TeamProForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
-      {plan.code === "tournament_pro" ? <TournamentProForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
-      {plan.code === "sponsor" ? <SponsorForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
-      {plan.code === "featured_venue" ? <FeaturedVenueForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
-    </article>
-  );
-}
-
-function PaymentThread({
-  request,
-  messages,
-  userId,
-  onMessage
-}: {
-  request: PaymentRequest;
-  messages: PaymentMessage[];
-  userId: string;
-  onMessage: (message: PaymentMessage) => void;
-}) {
-  const [pending, setPending] = useState(false);
-  const [notice, setNotice] = useState("");
-  const meta = paymentStatusMeta[request.status];
-  const StatusIcon = statusIcons[request.status];
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setNotice("");
-    const formElement = event.currentTarget;
-    const form = new FormData(formElement);
-    const body = String(form.get("body") || "").trim();
-    if (!body) return;
-    setPending(true);
-    try {
-      const supabase = createSupabaseBrowserClient();
-      const { data, error } = await supabase
-        .from("payment_messages")
-        .insert({
-          payment_request_id: request.id,
-          sender_id: userId,
-          body
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      onMessage(data as PaymentMessage);
-      formElement.reset();
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "No se pudo enviar el mensaje.");
-    } finally {
-      setPending(false);
-    }
-  }
+  const [open, setOpen] = useState(false);
+  const pending = isRequestPending(existingRequest);
+  const statusLabel = pending ? "En revision" : "Tocar para abrir";
+  const statusTone = pending ? "is-pending" : "is-idle";
 
   return (
-    <article className="payment-thread">
-      <header>
-        <div>
-          <strong>{request.title}</strong>
-          <span>{formatPaymentMoney(request.amount)} / {formatDate(request.created_at)}</span>
+    <article className={`payment-plan-card creator-card ${open ? "is-open" : ""}`}>
+      <button
+        aria-expanded={open}
+        className="payment-plan-card__summary"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <span className="payment-plan-card__icon"><Sparkles size={18} /></span>
+        <span className="payment-plan-card__copy">
+          <small>{plan.kicker}</small>
+          <b>{plan.title}</b>
+          <em>{plan.description}</em>
+        </span>
+        <span className="payment-plan-card__price">{formatPaymentMoney(plan.amount)}</span>
+        <span className={`payment-plan-card__status ${statusTone}`}>{statusLabel}</span>
+        <ChevronDown className="payment-plan-card__chevron" size={20} />
+      </button>
+      {open ? (
+        <div className="payment-plan-card__body">
+          {plan.code === "team_pro" ? <TeamProForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
+          {plan.code === "tournament_pro" ? <TournamentProForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
+          {plan.code === "sponsor" ? <SponsorForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
+          {plan.code === "featured_venue" ? <FeaturedVenueForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
         </div>
-        <b className={`payment-status payment-status--${meta.tone}`}>
-          <StatusIcon size={15} />
-          {meta.label}
-        </b>
-      </header>
-      {request.proof_filename ? <small>Comprobante: {request.proof_filename}</small> : null}
-      <div className="payment-thread__messages">
-        {messages.length ? messages.map((item) => (
-          <p className={item.sender_id === userId ? "is-mine" : ""} key={item.id}>
-            <span>{item.body}</span>
-            <small>{formatDate(item.created_at)}</small>
-          </p>
-        )) : <p><span>Sin mensajes todavia.</span></p>}
-      </div>
-      <form onSubmit={submit}>
-        <input name="body" placeholder="Escribir mensaje al admin" />
-        <button disabled={pending} type="submit" aria-label="Enviar mensaje">
-          {pending ? <LoaderCircle className="button-spinner" size={16} /> : <Send size={16} />}
-        </button>
-      </form>
-      {request.admin_note ? <small>Admin: {request.admin_note}</small> : null}
-      {notice ? <small>{notice}</small> : null}
+      ) : null}
     </article>
   );
 }
 
 export function PaymentConsole({ data }: { data: ArenaData }) {
   const [requests, setRequests] = useState(data.paymentRequests);
-  const [messages, setMessages] = useState(data.paymentMessages);
-  const [copied, setCopied] = useState("");
   const plans = useMemo(() => mergePaymentPlans(data.billingPlans), [data.billingPlans]);
   const hasApprovedPro = data.entitlements.length > 0 || requests.some((request) => request.status === "approved");
-
-  const messagesByRequest = useMemo(() => {
-    return messages.reduce<Record<string, PaymentMessage[]>>((groups, item) => {
-      groups[item.payment_request_id] = groups[item.payment_request_id] ?? [];
-      groups[item.payment_request_id].push(item);
-      return groups;
-    }, {});
-  }, [messages]);
 
   const pendingRequestByPlan = useMemo(() => {
     return requests.reduce<Partial<Record<PaymentPlan["code"], PaymentRequest>>>((groups, request) => {
@@ -751,27 +665,12 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
     return requests.filter((request) => request.status === "approved" && request.target_type === "tournament");
   }, [requests]);
 
-  function onCreated(request: PaymentRequest, message?: PaymentMessage) {
+  function onCreated(request: PaymentRequest) {
     setRequests((current) => [request, ...current]);
-    if (message) setMessages((current) => [...current, message]);
-  }
-
-  function onMessage(message: PaymentMessage) {
-    setMessages((current) => [...current, message]);
-  }
-
-  async function copyValue(value: string, label: string) {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(`${label} copiado`);
-      window.setTimeout(() => setCopied(""), 1800);
-    } catch {
-      setCopied("No se pudo copiar");
-    }
+    window.dispatchEvent(new CustomEvent<PaymentRequest>("fulbito:payment-request-created", { detail: request }));
   }
 
   if (!data.user) return null;
-  const user = data.user;
 
   return (
     <section className="console-panel payment-console" id="pro">
@@ -781,27 +680,6 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
         <p>
           Crea la copa, elegi formato, invita equipos y deja que cada club cargue su plantel. El equipo basico es gratis; lo premium activa fotos, cartas y estadisticas.
         </p>
-      </div>
-
-      <div className="payment-account">
-        <article>
-          <Crown size={20} />
-          <div>
-            <strong>Transferencia Fulbito</strong>
-            <span>Copia alias o CVU, paga y adjunta el comprobante.</span>
-          </div>
-        </article>
-        <button onClick={() => copyValue(paymentAccount.alias, "Alias")} type="button">
-          <span>Alias</span>
-          <strong>{paymentAccount.alias}</strong>
-          <Clipboard size={16} />
-        </button>
-        <button onClick={() => copyValue(paymentAccount.cvu, "CVU")} type="button">
-          <span>CVU</span>
-          <strong>{paymentAccount.cvu}</strong>
-          <Clipboard size={16} />
-        </button>
-        {copied ? <small>{copied}</small> : null}
       </div>
 
       {hasApprovedPro ? (
@@ -843,25 +721,6 @@ export function PaymentConsole({ data }: { data: ArenaData }) {
           ))}
         </section>
       ) : null}
-
-      <section className="payment-inbox">
-        <header>
-          <MessageCircle size={18} />
-          <div>
-            <strong>Mensajes de activacion</strong>
-            <span>Seguimiento de comprobantes, copas, equipos y sponsors.</span>
-          </div>
-        </header>
-        {requests.length ? requests.map((request) => (
-          <PaymentThread
-            key={request.id}
-            messages={messagesByRequest[request.id] ?? []}
-            onMessage={onMessage}
-            request={request}
-            userId={user.id}
-          />
-        )) : <p className="empty-payment-state">Todavia no enviaste comprobantes.</p>}
-      </section>
     </section>
   );
 }
