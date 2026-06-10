@@ -2057,6 +2057,118 @@ body::after {
   transform: translateY(-1px);
 }
 
+.draw-live-teaser {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(52,201,255,.22);
+  border-radius: 14px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(52,201,255,.18), transparent 30%),
+    radial-gradient(circle at 100% 90%, rgba(241,199,91,.14), transparent 34%),
+    linear-gradient(180deg, rgba(7,23,36,.86), rgba(4,9,18,.9));
+  box-shadow: 0 20px 60px rgba(0,0,0,.34);
+}
+
+.draw-live-teaser__pot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  aspect-ratio: 1;
+  border: 1px solid rgba(241,199,91,.34);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255,255,255,.22), transparent 22%),
+    radial-gradient(circle at 50% 56%, rgba(52,201,255,.2), transparent 34%),
+    rgba(4,8,14,.82);
+  overflow: hidden;
+}
+
+.draw-live-teaser__pot::before {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 1px dashed rgba(255,255,255,.24);
+  border-radius: inherit;
+  animation: draw-pot-spin 8s linear infinite;
+}
+
+.draw-live-teaser__pot span {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ffe789, #c48921);
+  color: #07101a;
+  font-weight: 1000;
+  font-size: .72rem;
+  transform: rotate(var(--angle)) translateY(-22px);
+  animation: draw-ball-float 2.8s ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+
+.draw-live-teaser span,
+.draw-live-teaser strong,
+.draw-live-teaser p {
+  display: block;
+}
+
+.draw-live-teaser > div:nth-child(2) > span {
+  color: var(--gold);
+  font-size: .74rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.draw-live-teaser strong {
+  margin-top: 2px;
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+.draw-live-teaser p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.draw-live-teaser__actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.draw-live-teaser__actions button {
+  min-height: 40px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 11px;
+  background: rgba(255,255,255,.055);
+  color: var(--ink);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.draw-live-teaser__actions button:last-child {
+  border-color: rgba(52,201,255,.32);
+  background: rgba(52,201,255,.12);
+  color: #c8f6ff;
+}
+
+@keyframes draw-pot-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes draw-ball-float {
+  0%, 100% { margin-top: -3px; }
+  50% { margin-top: 5px; }
+}
+
 .screen-header {
   background:
     linear-gradient(120deg, rgba(241,199,91,.12), transparent 36%),
@@ -2067,6 +2179,54 @@ body::after {
 .role-console {
   display: grid;
   gap: 12px;
+}
+
+.role-console__toggle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 64px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 10px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(52,201,255,.14), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025));
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.role-console__toggle > svg:first-child {
+  color: var(--gold);
+}
+
+.role-console__toggle span,
+.role-console__toggle strong,
+.role-console__toggle small {
+  display: block;
+}
+
+.role-console__toggle span {
+  color: var(--gold);
+  font-size: .74rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.role-console__toggle small {
+  color: var(--muted);
+}
+
+.role-console__toggle > svg:last-child {
+  color: var(--muted);
+  transition: transform .18s ease;
+}
+
+.role-console.is-open .role-console__toggle > svg:last-child {
+  transform: rotate(180deg);
 }
 
 .role-console__roles {
@@ -5889,29 +6049,46 @@ body::after,
     linear-gradient(180deg, rgba(32,36,44,.78), rgba(8,12,20,.78));
 }
 
-.active-benefits-panel > header {
+.active-benefits-panel__toggle {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
+  width: 100%;
+  min-height: 58px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
 }
 
-.active-benefits-panel > header svg,
+.active-benefits-panel__toggle svg:first-child,
 .active-benefit-card > button svg:first-child {
   color: #b9ffd9;
 }
 
-.active-benefits-panel > header strong,
-.active-benefits-panel > header span,
+.active-benefits-panel__toggle strong,
+.active-benefits-panel__toggle span,
 .active-benefit-card b,
 .active-benefit-card small {
   display: block;
 }
 
-.active-benefits-panel > header span,
+.active-benefits-panel__toggle span,
 .active-benefit-card small,
 .active-benefit-card p {
   color: var(--muted);
+}
+
+.active-benefits-panel__toggle > svg:last-child {
+  color: var(--muted);
+  transition: transform .18s ease;
+}
+
+.active-benefits-panel.is-open .active-benefits-panel__toggle > svg:last-child {
+  transform: rotate(180deg);
 }
 
 .active-benefits-panel > div {
@@ -5974,7 +6151,7 @@ body::after,
     linear-gradient(180deg, rgba(8,24,36,.72), rgba(5,10,18,.78));
 }
 
-.my-tournaments-panel > header,
+.my-tournaments-panel__toggle,
 .my-tournaments-list article {
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 12px;
@@ -5982,15 +6159,28 @@ body::after,
   background: rgba(2, 6, 12, .45);
 }
 
-.my-tournaments-panel > header {
+.my-tournaments-panel__toggle {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
+  width: 100%;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
 }
 
-.my-tournaments-panel > header svg {
+.my-tournaments-panel__toggle svg:first-child {
   color: var(--gold);
+}
+
+.my-tournaments-panel__toggle svg:last-child {
+  color: var(--muted);
+  transition: transform .18s ease;
+}
+
+.my-tournaments-panel.is-open .my-tournaments-panel__toggle svg:last-child {
+  transform: rotate(180deg);
 }
 
 .my-tournaments-panel strong,
@@ -6014,6 +6204,20 @@ body::after,
   grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 9px;
+}
+
+.my-tournaments-new {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  border: 1px dashed rgba(241,199,91,.38);
+  border-radius: 12px;
+  background: rgba(241,199,91,.08);
+  color: var(--gold);
+  font-weight: 950;
+  cursor: pointer;
 }
 
 .my-tournament-stats {

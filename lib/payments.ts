@@ -20,7 +20,7 @@ export const paymentAccount = {
 export const paymentPlans: PaymentPlan[] = [
   {
     code: "tournament_pro",
-    title: "Crear Mundial barrial",
+    title: "Crear Torneo barrial",
     amount: 15000,
     targetType: "tournament",
     kicker: "Camino a la copa",

@@ -8,6 +8,7 @@ import {
   BadgeCheck,
   BellRing,
   CalendarDays,
+  ChevronDown,
   ChevronRight,
   CircleDollarSign,
   Crown,
@@ -420,6 +421,45 @@ function MiniStat({
   );
 }
 
+function DrawLiveTeaser({
+  tournament,
+  teamCount,
+  onOpenTournaments,
+  onOpenMatches
+}: {
+  tournament: ArenaTournament | null;
+  teamCount: number;
+  onOpenTournaments: () => void;
+  onOpenMatches: () => void;
+}) {
+  if (!tournament) return null;
+  const maxTeams = tournament.max_teams ?? Math.max(8, teamCount);
+  const isReady = teamCount >= maxTeams;
+  const groupLabels = ["A", "B", "C", "D"].slice(0, Math.max(2, Math.min(4, Math.ceil(maxTeams / 4))));
+
+  return (
+    <section className="draw-live-teaser">
+      <div className="draw-live-teaser__pot" aria-hidden="true">
+        {groupLabels.map((group, index) => (
+          <span key={group} style={{ "--angle": `${index * 88}deg`, "--delay": `${index * 120}ms` } as CSSProperties}>{group}</span>
+        ))}
+      </div>
+      <div>
+        <span>Sorteo Fulbito Live</span>
+        <strong>{isReady ? "Bolillero listo para fixture" : `${teamCount}/${maxTeams} equipos en el bolillero`}</strong>
+        <p>
+          Cuando se complete el cupo, el organizador puede hacer un sorteo de 2 a 3 minutos:
+          grupos A, B, C, D, bolillas por equipo y fixture auditado para compartir por YouTube.
+        </p>
+      </div>
+      <div className="draw-live-teaser__actions">
+        <button onClick={onOpenTournaments} type="button">Ver equipos</button>
+        <button onClick={onOpenMatches} type="button">{isReady ? "Preparar Live" : "Ver Fulbito Live"}</button>
+      </div>
+    </section>
+  );
+}
+
 function playApprovalWhistle() {
   try {
     const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -546,7 +586,7 @@ function UserMenu({
     const code = tournamentInviteCode(activeTournament, request);
     if (!code || !origin) return "";
     const joinUrl = `${origin}/?join=${encodeURIComponent(code)}`;
-    const text = `Te invito a jugar ${request.title.replace(/^Mundial barrial - /, "")} en Fulbito Arena. Entra a ${joinUrl}, crea o elegi tu equipo y carga el plantel para sumarte a la copa.`;
+    const text = `Te invito a jugar ${request.title.replace(/^(Mundial|Torneo) barrial - /, "")} en Fulbito Arena. Entra a ${joinUrl}, crea o elegi tu equipo y carga el plantel para sumarte a la copa.`;
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
   }
 
@@ -745,48 +785,62 @@ function RoleConsole({
   onAddRole: (role: AppRole) => void;
 }) {
   const info = roleCatalog[activeRole];
+  const [open, setOpen] = useState(false);
   return (
-    <section className="role-console">
-      <div className="role-guide">
-        <article>
-          <span>1</span>
-          <strong>Tu cuenta</strong>
-          <small>{user?.name ?? "Google"} activa roles sin crear otra cuenta.</small>
-        </article>
-        <article>
-          <span>2</span>
-          <strong>Tu equipo</strong>
-          <small>{team ? `${team.name} queda como acceso rapido.` : "Crea o elige un equipo como preferido."}</small>
-        </article>
-        <article>
-          <span>3</span>
-          <strong>Tu panel</strong>
-          <small>Cada rol muestra acciones distintas.</small>
-        </article>
-      </div>
-      <div className="role-console__roles" aria-label="Roles activos">
-        {playableRoles.map((role) => {
-          const owned = roles.includes(role);
-          return (
-            <button
-              className={activeRole === role ? "is-active" : owned ? "is-owned" : ""}
-              key={role}
-              onClick={() => (owned ? onChangeRole(role) : onAddRole(role))}
-              type="button"
-            >
-              {owned ? <ShieldCheck size={15} /> : <Plus size={15} />}
-              <span>{roleCatalog[role].label}</span>
-            </button>
-          );
-        })}
-      </div>
-      <article className="selected-role-card selected-role-card--game">
+    <section className={`role-console ${open ? "is-open" : ""}`}>
+      <button className="role-console__toggle" onClick={() => setOpen((current) => !current)} type="button">
         <ShieldCheck size={20} />
         <div>
-          <strong>{info.label}: {info.headline}</strong>
-          <span>{info.actions.slice(0, 3).join(" / ")}</span>
+          <span>Tu arena</span>
+          <strong>{info.label}</strong>
+          <small>{team ? `Equipo rapido: ${team.name}` : "Elegir participante"}</small>
         </div>
-      </article>
+        <ChevronDown size={18} />
+      </button>
+      {open ? (
+        <>
+          <div className="role-guide">
+            <article>
+              <span>1</span>
+              <strong>Tu cuenta</strong>
+              <small>{user?.name ?? "Google"} activa roles sin crear otra cuenta.</small>
+            </article>
+            <article>
+              <span>2</span>
+              <strong>Tu equipo</strong>
+              <small>{team ? `${team.name} queda como acceso rapido.` : "Crea o elige un equipo como preferido."}</small>
+            </article>
+            <article>
+              <span>3</span>
+              <strong>Tu panel</strong>
+              <small>Cada rol muestra acciones distintas.</small>
+            </article>
+          </div>
+          <div className="role-console__roles" aria-label="Roles activos">
+            {playableRoles.map((role) => {
+              const owned = roles.includes(role);
+              return (
+                <button
+                  className={activeRole === role ? "is-active" : owned ? "is-owned" : ""}
+                  key={role}
+                  onClick={() => (owned ? onChangeRole(role) : onAddRole(role))}
+                  type="button"
+                >
+                  {owned ? <ShieldCheck size={15} /> : <Plus size={15} />}
+                  <span>{roleCatalog[role].label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <article className="selected-role-card selected-role-card--game">
+            <ShieldCheck size={20} />
+            <div>
+              <strong>{info.label}: {info.headline}</strong>
+              <span>{info.actions.slice(0, 3).join(" / ")}</span>
+            </div>
+          </article>
+        </>
+      ) : null}
       {message ? <p className="console-message">{message}</p> : null}
     </section>
   );
@@ -1258,7 +1312,6 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   const selectedVenue = nearbyVenues.find((venue) => venue.id === selectedVenueId) ?? nearbyVenues[0];
   const selectedPlayers = data.players.filter((player) => player.team_id === selectedTeam?.id);
   const selectedPlayer = selectedPlayers.find((player) => player.id === selectedPlayerId) ?? null;
-  const totalPot = data.teams.length * (data.activeTournament?.registration_fee ?? 0);
   const groups = useMemo(() => groupTeams(data.standings.length ? data.standings : data.teams), [data.standings, data.teams]);
   const knockoutRounds = useMemo(() => buildKnockoutRounds(data.teams), [data.teams]);
   const currentFormation = getFormationPreset(formationMode, formationPresetId);
@@ -1336,6 +1389,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
     }
     setActive("home");
     window.setTimeout(() => {
+      window.dispatchEvent(new Event("fulbito:open-my-tournaments"));
       document.getElementById("my-tournaments")?.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 80);
   }
@@ -1385,16 +1439,15 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           </section>
         ) : null}
 
-        {!inviteMode ? (
+        {!inviteMode && !hasCreatedTournament ? (
           <section className="console-hero-panel console-hero-panel--2026">
             <img alt="" className="hero-mark" src="/assets/icon.svg" />
             <span>Fulbito Arena 2026</span>
-            <h1>{hasCreatedTournament ? "Tus copas entran en modo juego." : "Tu liga entra en modo juego."}</h1>
-            <p>{hasCreatedTournament ? "Administra tus torneos, invita equipos y revisa como se completan los planteles." : "Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur."}</p>
+            <h1>Tu liga entra en modo juego.</h1>
+            <p>Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur.</p>
             <div className="hero-actions">
               <InstallAppButton variant="hero" />
-              <button onClick={openTournamentStarter} type="button">Crear mundial</button>
-              <button onClick={openMyTournaments} type="button">Mis torneos</button>
+              <button onClick={openTournamentStarter} type="button">Crear torneo</button>
               <button onClick={() => setActive("matches")} type="button">Ver fecha</button>
             </div>
           </section>
@@ -1413,27 +1466,36 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
             <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActive("league")} value={data.activeTournament?.name ?? "Torneo"} />
             <MiniStat icon={<Users />} label="Equipos" onClick={() => setActive("squad")} value={data.teams.length} />
             <MiniStat icon={<CalendarDays />} label="Partidos" onClick={() => setActive("matches")} value={data.matches.length} />
-            <MiniStat icon={<CircleDollarSign />} label="Pozo estimado" onClick={() => setActive("venues")} value={money(totalPot)} />
+            <MiniStat icon={<Trophy />} label="Mis torneos" onClick={openMyTournaments} value={data.tournaments.length} />
           </section>
         ) : null}
 
+        {!inviteMode && data.user ? (
+          <DrawLiveTeaser
+            onOpenMatches={() => setActive("matches")}
+            onOpenTournaments={openMyTournaments}
+            teamCount={data.activeTournament ? data.tournamentTeams.filter((row) => row.tournament_id === data.activeTournament?.id).length : data.teams.length}
+            tournament={data.activeTournament}
+          />
+        ) : null}
+
         <section className="console-panel">
-          <ScreenHeader
-            eyebrow={inviteMode ? playerInviteMode ? "Entrada de jugador" : "Entrada de equipo" : data.user ? "Tu arena" : "Crear copa"}
-            title={inviteMode ? data.user ? playerInviteMode ? "Completa tu ficha" : "Carga tu club invitado" : "Entra para sumarte" : data.user ? roleCatalog[activeRole].label : "Crea tu Mundial barrial"}
-          >
-            {inviteMode
-              ? data.user
-                ? playerInviteMode
-                  ? "Carga tus datos como jugador para que el capitan te vea en el plantel."
-                  : "Completa o inscribi tu equipo en esta copa. Despues podes volver al inicio para crear otra arena."
-                : playerInviteMode
-                  ? "Primero entra con Google. Al volver, Fulbito te lleva directo a completar tu ficha."
-                  : "Primero entra con Google. Al volver, Fulbito te lleva directo a cargar el equipo para esta copa."
-              : data.user
-              ? "Elegi como participas hoy: jugador, capitan, cancha, organizador o veedor. Cada rol abre acciones distintas."
-              : "Entra con Google para armar una copa, elegir formato, invitar equipos y seguir el torneo desde el celular."}
-          </ScreenHeader>
+          {!data.user || inviteMode ? (
+            <ScreenHeader
+              eyebrow={inviteMode ? playerInviteMode ? "Entrada de jugador" : "Entrada de equipo" : "Crear torneo"}
+              title={inviteMode ? data.user ? playerInviteMode ? "Completa tu ficha" : "Carga tu club invitado" : "Entra para sumarte" : "Crea tu torneo barrial"}
+            >
+              {inviteMode
+                ? data.user
+                  ? playerInviteMode
+                    ? "Carga tus datos como jugador para que el capitan te vea en el plantel."
+                    : "Completa o inscribi tu equipo en esta copa. Despues podes volver al inicio para crear otra arena."
+                  : playerInviteMode
+                    ? "Primero entra con Google. Al volver, Fulbito te lleva directo a completar tu ficha."
+                    : "Primero entra con Google. Al volver, Fulbito te lleva directo a cargar el equipo para esta copa."
+                : "Entra con Google para armar una copa, elegir formato, invitar equipos y seguir el torneo desde el celular."}
+            </ScreenHeader>
+          ) : null}
           {inviteMode && data.user ? (
             <div className="join-focus-actions">
               <button className="join-focus-button" onClick={() => setActive("squad")} type="button">

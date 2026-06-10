@@ -219,6 +219,11 @@ function daysLeft(value: string | null) {
   return `${days} dias`;
 }
 
+function formatBenefitDate(value: string | null) {
+  if (!value) return "Sin vencimiento";
+  return new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+}
+
 function TournamentInviteLink({ tournament }: { tournament: ArenaTournament }) {
   const [href, setHref] = useState("");
 
@@ -230,20 +235,6 @@ function TournamentInviteLink({ tournament }: { tournament: ArenaTournament }) {
 
   if (!href) return null;
   return <a className="whatsapp-invite" href={href} rel="noreferrer" target="_blank">Invitar equipos por WhatsApp</a>;
-}
-
-function PlanActiveBanner({ entitlements }: { entitlements: AccountEntitlement[] }) {
-  if (!entitlements.length) return null;
-  return (
-    <div className="pro-active-banner">
-      <CheckCircle2 size={20} />
-      <span>
-        {entitlements.length === 1
-          ? `Beneficio activo por ${daysLeft(entitlements[0].expires_at)}.`
-          : `${entitlements.length} beneficios activos.`}
-      </span>
-    </div>
-  );
 }
 
 function entitlementTitle(entitlement: AccountEntitlement, data: ArenaData) {
@@ -272,14 +263,14 @@ function ActiveBenefitCard({ entitlement, data }: { entitlement: AccountEntitlem
         <CheckCircle2 size={17} />
         <span>
           <b>{title}</b>
-          <small>Activo por {daysLeft(entitlement.expires_at)}</small>
+          <small>{entitlement.expires_at ? `Quedan ${daysLeft(entitlement.expires_at)} / vence ${formatBenefitDate(entitlement.expires_at)}` : "Activo sin vencimiento"}</small>
         </span>
         <ChevronDown size={18} />
       </button>
       {open ? (
         <div>
           <p>Este beneficio ya esta comprado. No hace falta volver a pagarlo hasta que venza.</p>
-          <small>Se renueva por 30 dias desde cada comprobante aprobado.</small>
+          <small>Periodo mensual: 30 dias desde la aprobacion del comprobante.</small>
         </div>
       ) : null}
     </article>
@@ -287,21 +278,30 @@ function ActiveBenefitCard({ entitlement, data }: { entitlement: AccountEntitlem
 }
 
 function ActiveBenefitsPanel({ entitlements, data }: { entitlements: AccountEntitlement[]; data: ArenaData }) {
+  const [open, setOpen] = useState(false);
   if (!entitlements.length) return null;
+  const shortestBenefit = entitlements
+    .map((entitlement) => entitlement.expires_at)
+    .filter(Boolean)
+    .sort((a, b) => new Date(a as string).getTime() - new Date(b as string).getTime())[0] ?? null;
+
   return (
-    <section className="active-benefits-panel">
-      <header>
+    <section className={`active-benefits-panel ${open ? "is-open" : ""}`}>
+      <button className="active-benefits-panel__toggle" onClick={() => setOpen((current) => !current)} type="button">
         <CheckCircle2 size={18} />
         <div>
           <strong>Beneficios activos</strong>
-          <span>No se vuelven a mostrar como pago pendiente durante el periodo contratado.</span>
+          <span>{entitlements.length} activos{shortestBenefit ? ` / proximo vencimiento ${formatBenefitDate(shortestBenefit)}` : ""}</span>
         </div>
-      </header>
-      <div>
-        {entitlements.map((entitlement) => (
-          <ActiveBenefitCard data={data} entitlement={entitlement} key={entitlement.id} />
-        ))}
-      </div>
+        <ChevronDown size={18} />
+      </button>
+      {open ? (
+        <div>
+          {entitlements.map((entitlement) => (
+            <ActiveBenefitCard data={data} entitlement={entitlement} key={entitlement.id} />
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -467,7 +467,7 @@ function TournamentProForm({
         plan,
         targetType: "tournament",
         targetId: tournament.id,
-        title: `Mundial barrial - ${tournament.name}`,
+        title: `Torneo barrial - ${tournament.name}`,
         note,
         proofFile: form.get("proofFile")
       });
@@ -504,7 +504,7 @@ function TournamentProForm({
       <input name="payerNote" placeholder="Alias o comentario de la transferencia" />
       <InlinePaymentAccount amount={plan.amount} />
       <ProofField disabled={pending || sent} onReady={setProofReady} ready={proofReady} sent={sent} />
-      <SubmitButton disabled={!proofReady || sent} idle="Crear mundial" pending={pending} sent={sent} />
+      <SubmitButton disabled={!proofReady || sent} idle="Crear torneo" pending={pending} sent={sent} />
       {!proofReady && !sent ? <small>Adjunta el comprobante para crear la copa.</small> : null}
       {message ? <small>{message}</small> : null}
     </form>
@@ -736,11 +736,14 @@ function CreatorPaymentCard({
 
 function MyTournamentsPanel({
   activeEntitlements,
-  data
+  data,
+  onCreateTournament
 }: {
   activeEntitlements: AccountEntitlement[];
   data: ArenaData;
+  onCreateTournament: () => void;
 }) {
+  const [open, setOpen] = useState(false);
   const tournamentEntitlements = activeEntitlements.filter((entitlement) => entitlement.plan_code === "tournament_pro" && entitlement.target_id);
   const tournamentRows = data.tournaments.map((tournament) => {
     const entitlement = tournamentEntitlements.find((item) => item.target_id === tournament.id);
@@ -756,36 +759,52 @@ function MyTournamentsPanel({
     return { tournament, entitlement, pendingRequest, teamCount, playerCount };
   });
 
+  useEffect(() => {
+    function openPanel() {
+      setOpen(true);
+    }
+
+    window.addEventListener("fulbito:open-my-tournaments", openPanel);
+    return () => window.removeEventListener("fulbito:open-my-tournaments", openPanel);
+  }, []);
+
   if (!tournamentRows.length) return null;
 
   return (
-    <section className="my-tournaments-panel" id="my-tournaments">
-      <header>
+    <section className={`my-tournaments-panel ${open ? "is-open" : ""}`} id="my-tournaments">
+      <button className="my-tournaments-panel__toggle" onClick={() => setOpen((current) => !current)} type="button">
         <Trophy size={18} />
         <div>
           <strong>Mis torneos</strong>
           <span>Los equipos aparecen cuando se inscriben. El plantel puede completarse despues.</span>
         </div>
-      </header>
-      <div className="my-tournaments-list">
-        {tournamentRows.map(({ tournament, entitlement, pendingRequest, teamCount, playerCount }) => (
-          <article key={tournament.id}>
-            <div>
-              <strong>{tournament.name}</strong>
-              <span>{tournament.field_mode} / {tournament.status} / {tournament.max_teams ?? "sin limite"} equipos max.</span>
-              <small>Los equipos aparecen aca apenas se inscriben; el plantel puede completarse despues.</small>
-            </div>
-            <div className="my-tournament-stats">
-              <small><Users size={14} />{teamCount} equipos</small>
-              <small><CalendarDays size={14} />{playerCount} jugadores</small>
-              <b className={entitlement ? "is-active" : pendingRequest ? "is-pending" : ""}>
-                {entitlement ? `Pro ${daysLeft(entitlement.expires_at)}` : pendingRequest ? "Pago en revision" : "Basico"}
-              </b>
-            </div>
-            {entitlement ? <TournamentInviteLink tournament={tournament} /> : null}
-          </article>
-        ))}
-      </div>
+        <ChevronDown size={18} />
+      </button>
+      {open ? (
+        <div className="my-tournaments-list">
+          {tournamentRows.map(({ tournament, entitlement, pendingRequest, teamCount, playerCount }) => (
+            <article key={tournament.id}>
+              <div>
+                <strong>{tournament.name}</strong>
+                <span>{tournament.field_mode} / {tournament.status} / {tournament.max_teams ?? "sin limite"} equipos max.</span>
+                <small>Equipos visibles al inscribirse. Jugadores visibles cuando cada club completa su plantel.</small>
+              </div>
+              <div className="my-tournament-stats">
+                <small><Users size={14} />{teamCount} equipos</small>
+                <small><CalendarDays size={14} />{playerCount} jugadores</small>
+                <b className={entitlement ? "is-active" : pendingRequest ? "is-pending" : ""}>
+                  {entitlement ? `Pro ${daysLeft(entitlement.expires_at)}` : pendingRequest ? "Pago en revision" : "Basico"}
+                </b>
+              </div>
+              {entitlement ? <TournamentInviteLink tournament={tournament} /> : null}
+            </article>
+          ))}
+          <button className="my-tournaments-new" onClick={onCreateTournament} type="button">
+            <PlusCircle size={17} />
+            Agregar nuevo torneo
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -829,8 +848,8 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
   return (
     <section className="console-panel payment-console" id="pro">
       <div className="payment-console__head">
-        <span>{teamOnly ? "Equipo Pro" : "Crear copa"}</span>
-        <h2>{teamOnly ? "Activa identidad premium" : "Arma tu Mundial barrial"}</h2>
+        <span>{teamOnly ? "Equipo Pro" : "Crear torneo"}</span>
+        <h2>{teamOnly ? "Activa identidad premium" : "Arma tu torneo barrial"}</h2>
         <p>
           {teamOnly
             ? "El equipo gratis puede inscribirse con escudo y plantel. Equipo Pro habilita fotos de jugadores, cartas estilo juego y estadisticas premium."
@@ -838,11 +857,20 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
         </p>
       </div>
 
-      <PlanActiveBanner entitlements={activeEntitlements} />
-
       <ActiveBenefitsPanel data={data} entitlements={activeEntitlements} />
 
-      {!teamOnly ? <MyTournamentsPanel activeEntitlements={activeEntitlements} data={{ ...data, paymentRequests: requests }} /> : null}
+      {!teamOnly ? (
+        <MyTournamentsPanel
+          activeEntitlements={activeEntitlements}
+          data={{ ...data, paymentRequests: requests }}
+          onCreateTournament={() => {
+            setShowNewTournament(true);
+            window.setTimeout(() => {
+              document.getElementById("pro")?.scrollIntoView({ block: "center", behavior: "smooth" });
+            }, 40);
+          }}
+        />
+      ) : null}
 
       {hasActiveTournamentPro && tournamentPlan && !teamOnly ? (
         <button className="create-another-tournament" onClick={() => setShowNewTournament((current) => !current)} type="button">
