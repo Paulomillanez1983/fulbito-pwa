@@ -1343,39 +1343,133 @@ function FormationPanel({
   );
 }
 
-function CompetitionBracket({ rounds, teams }: { rounds: Array<{ label: string; slots: number }>; teams: ArenaTeam[] }) {
+function getCupRoundLabel(label: string) {
+  const labels: Record<string, string> = {
+    Final: "Finalistas",
+    Semis: "Semifinalistas",
+    Cuartos: "Cuartos",
+    Octavos: "Octavos",
+    "16avos": "Dieciseisavos"
+  };
+  return labels[label] ?? label;
+}
+
+function getCupSlotTeam(teams: ArenaTeam[], side: "left" | "right", roundIndex: number, slotIndex: number) {
+  if (!teams.length) return null;
+  const base = side === "left" ? 0 : 1;
+  return teams[(slotIndex * 2 + base + roundIndex) % teams.length] ?? null;
+}
+
+function CupBracketSide({
+  side,
+  rounds,
+  teams,
+  onTeamOpen
+}: {
+  side: "left" | "right";
+  rounds: Array<{ label: string; slots: number }>;
+  teams: ArenaTeam[];
+  onTeamOpen: (teamId: string) => void;
+}) {
+  const centerOutRounds = [...rounds].reverse();
+  return (
+    <div className={`cup-bracket-side cup-bracket-side--${side}`}>
+      {centerOutRounds.map((round, roundIndex) => {
+        const sideSlots = round.label === "Final" ? 1 : Math.max(1, Math.ceil(round.slots / 2));
+        const visibleSlots = Math.min(sideSlots, 8);
+        return (
+          <article className="cup-stage" key={`${side}-${round.label}`}>
+            <header>
+              <strong>{getCupRoundLabel(round.label)}</strong>
+              <span>{sideSlots} cupos</span>
+            </header>
+            <div>
+              {Array.from({ length: visibleSlots }).map((_, slotIndex) => {
+                const team = getCupSlotTeam(teams, side, roundIndex, slotIndex);
+                return (
+                  <button className="cup-slot" disabled={!team} key={`${side}-${round.label}-${slotIndex}`} onClick={() => team && onTeamOpen(team.id)} type="button">
+                    {team ? <TeamCrest team={team} /> : <i />}
+                    <span>{team?.short_name ?? "TBD"}</span>
+                  </button>
+                );
+              })}
+              {sideSlots > visibleSlots ? <small>+{sideSlots - visibleSlots} cruces</small> : null}
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+function ChampionCard({
+  champion,
+  players,
+  isChampion,
+  onTeamOpen
+}: {
+  champion?: ArenaTeam | null;
+  players: ArenaPlayer[];
+  isChampion: boolean;
+  onTeamOpen: (teamId: string) => void;
+}) {
+  const championPlayers = champion ? players.filter((player) => player.team_id === champion.id) : [];
+  return (
+    <button className="champion-card" disabled={!champion} onClick={() => champion && onTeamOpen(champion.id)} type="button">
+      <TeamCrest team={champion} size="large" />
+      <div>
+        <span>{isChampion ? "Campeon de la copa" : "Candidato actual"}</span>
+        <strong>{champion?.name ?? "Campeon por definir"}</strong>
+        <p>{champion ? `${champion.neighborhood ?? "Barrio"} / ${championPlayers.length} jugadores cargados` : "Cuando termine la final, el campeon queda historico aca."}</p>
+        <div className="champion-card__roster">
+          {championPlayers.slice(0, 7).map((player) => (
+            <span key={player.id} title={player.display_name}>
+              <PlayerAvatar player={player} />
+            </span>
+          ))}
+          {!championPlayers.length ? <small>Plantel pendiente</small> : null}
+        </div>
+      </div>
+      <ChevronRight />
+    </button>
+  );
+}
+
+function CompetitionBracket({
+  rounds,
+  teams,
+  players,
+  tournament,
+  onTeamOpen
+}: {
+  rounds: Array<{ label: string; slots: number }>;
+  teams: ArenaTeam[];
+  players: ArenaPlayer[];
+  tournament?: ArenaTournament | null;
+  onTeamOpen: (teamId: string) => void;
+}) {
   const seededTeams = teams.length ? teams : [];
+  const champion = seededTeams[0] ?? null;
+  const isChampion = tournament?.status === "completed" || tournament?.status === "finished" || tournament?.status === "closed";
   return (
     <section className="competition-bracket">
       <header>
         <span>Eliminatorias</span>
         <strong>Camino a la final</strong>
       </header>
-      <div className="competition-bracket__scroll">
-        {rounds.map((round, roundIndex) => {
-          const pairCount = Math.max(1, Math.ceil(round.slots / 2));
-          return (
-            <article className="competition-round" key={round.label}>
-              <header>
-                <strong>{round.label}</strong>
-                <span>{round.slots} clasificados</span>
-              </header>
-              <div>
-                {Array.from({ length: Math.min(pairCount, 8) }).map((_, slot) => {
-                  const home = seededTeams[(slot * 2 + roundIndex) % Math.max(seededTeams.length, 1)];
-                  const away = seededTeams[(slot * 2 + 1 + roundIndex) % Math.max(seededTeams.length, 1)];
-                  return (
-                    <div className="competition-match-slot" key={`${round.label}-${slot}`}>
-                      <small>{slot + 1 < 10 ? `P0${slot + 1}` : `P${slot + 1}`}</small>
-                      <span>{home?.short_name ?? "TBD"}</span>
-                      <span>{roundIndex === 0 ? away?.short_name ?? "TBD" : `W${slot + 1}`}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </article>
-          );
-        })}
+      <div className="competition-cup-bracket">
+        <div className="competition-cup-bracket__field">
+          <CupBracketSide onTeamOpen={onTeamOpen} rounds={rounds} side="left" teams={seededTeams} />
+          <div className="cup-trophy" aria-label="Copa Fulbito">
+            <div className="cup-trophy__halo" />
+            <div className="cup-trophy__icon">
+              <Trophy />
+            </div>
+            <span>Fulbito Cup</span>
+          </div>
+          <CupBracketSide onTeamOpen={onTeamOpen} rounds={rounds} side="right" teams={seededTeams} />
+        </div>
+        <ChampionCard champion={champion} isChampion={isChampion} onTeamOpen={onTeamOpen} players={players} />
       </div>
     </section>
   );
@@ -2003,7 +2097,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
                 <ClassificationTables groups={groups} onTeamOpen={openTeam} />
               </>
             ) : (
-              <CompetitionBracket rounds={knockoutRounds} teams={rankingTeams} />
+              <CompetitionBracket onTeamOpen={openTeam} players={data.players} rounds={knockoutRounds} teams={rankingTeams} tournament={data.activeTournament} />
             )}
           </>
         ) : (
