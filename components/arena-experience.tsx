@@ -45,6 +45,12 @@ import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 type LeagueView = "classification" | "bracket";
 type CupTier = "local" | "regional" | "provincial" | "world";
+type DrawReveal = {
+  team: DrawResult["teams"][number];
+  destination: string;
+  index: number;
+  total: number;
+} | null;
 
 const tabs: Array<{ id: TabId; label: string; icon: typeof Gamepad2 }> = [
   { id: "home", label: "Inicio", icon: Gamepad2 },
@@ -611,7 +617,9 @@ function DrawLiveTeaser({
   const [demoRunning, setDemoRunning] = useState(false);
   const [demoProgress, setDemoProgress] = useState(0);
   const [currentBall, setCurrentBall] = useState("");
+  const [currentReveal, setCurrentReveal] = useState<DrawReveal>(null);
   const [drawEvents, setDrawEvents] = useState<string[]>([]);
+  const [revealedTeamIds, setRevealedTeamIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [youtubeWatchUrl, setYoutubeWatchUrl] = useState("");
@@ -641,9 +649,19 @@ function DrawLiveTeaser({
   const groupLabels = ["A", "B", "C", "D"].slice(0, Math.max(2, Math.min(4, Math.ceil(maxTeams / 4))));
   const savedDraw = officialDraw ?? data.tournamentDraws.find((draw) => draw.tournament_id === activeDrawTournament.id && draw.mode === "official") ?? null;
   const canManage = Boolean(data.user && data.user.id === activeDrawTournament.organizer_id);
-  const visibleGroups = savedDraw?.groups ?? demoDraw?.groups ?? [];
-  const visibleBracket = savedDraw?.bracket ?? demoDraw?.bracket ?? [];
+  const revealedTeamSet = new Set(revealedTeamIds);
+  const boardGroups = savedDraw?.groups ?? (demoDraw ? demoDraw.groups.map((group) => ({
+    ...group,
+    teams: demoRunning ? group.teams.filter((team) => revealedTeamSet.has(team.id)) : group.teams
+  })) : []);
+  const boardBracket = savedDraw?.bracket ?? (demoDraw && !demoRunning ? demoDraw.bracket : []);
   const demoSecondsLeft = Math.max(0, 120 - Math.round(demoProgress * 120 / 100));
+  const broadcastBalls = (demoDraw?.teams.length ? demoDraw.teams : enrolledTeams.map((team) => ({
+    id: team.id,
+    name: team.name,
+    shortName: team.short_name,
+    badgeUrl: team.badge_url
+  }))).slice(0, 10);
 
   function runDemoDraw() {
     clearDemoTimers();
@@ -659,9 +677,11 @@ function DrawLiveTeaser({
     setDemoRunning(true);
     setDemoProgress(0);
     setCurrentBall("");
+    setCurrentReveal(null);
     setDrawEvents([]);
-    setStage("Bolillero oficial en simulacion");
-    setMessage("Demo visual de 2 minutos: completa cupos con equipos demo, no guarda resultado y se puede repetir.");
+    setRevealedTeamIds([]);
+    setStage("Camara uno / bombos preparados");
+    setMessage("Show demo de 2 minutos: completa cupos con equipos demo, simula transmision y no guarda resultado.");
 
     const durationMs = 120000;
     const progressInterval = window.setInterval(() => {
@@ -678,8 +698,10 @@ function DrawLiveTeaser({
       const timer = window.setTimeout(() => {
         const destination = findDrawDestination(result, team);
         setCurrentBall(team.shortName);
+        setCurrentReveal({ team, destination, index: index + 1, total: result.teams.length });
+        setRevealedTeamIds((current) => current.includes(team.id) ? current : [...current, team.id]);
         setDrawEvents((current) => [`${team.shortName} -> ${destination}`, ...current].slice(0, 6));
-        setStage(index === result.teams.length - 1 ? "Ultimas bolillas" : `Bolilla ${index + 1} de ${result.teams.length}`);
+        setStage(index === result.teams.length - 1 ? "Ultima extraccion / cierre de fixture" : `Extraccion ${index + 1} de ${result.teams.length}`);
       }, delay);
       demoTimersRef.current.push(timer);
     });
@@ -688,6 +710,8 @@ function DrawLiveTeaser({
       setDemoProgress(100);
       setDemoRunning(false);
       setCurrentBall("");
+      setCurrentReveal(null);
+      setRevealedTeamIds(result.teams.map((team) => team.id));
       setStage(activeDrawTournament.format === "knockout" ? "Llave demo generada" : "Grupos demo generados");
     }, durationMs);
     demoTimersRef.current.push(finishTimer);
@@ -718,21 +742,35 @@ function DrawLiveTeaser({
 
   return (
     <section className={`draw-live-teaser ${demoRunning ? "is-running" : ""}`}>
-      <div className="draw-live-teaser__hero">
-        <div className="draw-live-teaser__pot" aria-hidden="true">
-          <span className="draw-live-teaser__gate" />
-          {groupLabels.map((group, index) => (
-            <span className="draw-live-teaser__ball" key={group} style={{ "--angle": `${index * 88}deg`, "--delay": `${index * 120}ms` } as CSSProperties}>{group}</span>
-          ))}
-          {currentBall ? <span className="draw-live-teaser__exit-ball">{currentBall}</span> : null}
+      <div className="draw-broadcast">
+        <div className="draw-broadcast__mast">
+          <span>Fulbito Live Draw</span>
+          <strong>{activeDrawTournament.name}</strong>
+          <small>{savedDraw ? "Sorteo oficial auditado" : demoRunning ? "En vivo simulado" : "Listo para ensayo de transmision"}</small>
         </div>
-        <div>
-          <span>Sorteo Fulbito Live</span>
-          <strong>{savedDraw ? "Sorteo oficial auditado" : isReady ? "Bolillero listo para fixture" : `${teamCount}/${maxTeams} equipos reales`}</strong>
-          <p>
-            Demo de 2 minutos con bolillas, grupos y llave visual. El oficial queda auditado y no se repite.
-          </p>
-          {stage ? <small className="draw-live-teaser__stage">{stage}</small> : null}
+        <div className="draw-broadcast__stage">
+          <span className="draw-broadcast__beam draw-broadcast__beam--left" />
+          <span className="draw-broadcast__beam draw-broadcast__beam--right" />
+          <div className="draw-live-teaser__pot" aria-hidden="true">
+            <span className="draw-live-teaser__gate" />
+            <span className="draw-live-teaser__glass" />
+            {(broadcastBalls.length ? broadcastBalls : groupLabels.map((group) => ({ id: group, name: `Grupo ${group}`, shortName: group, badgeUrl: null }))).map((ball, index) => (
+              <span className="draw-live-teaser__ball" key={`${ball.id}-${index}`} style={{ "--angle": `${index * 47}deg`, "--delay": `${index * 90}ms`, "--depth": `${(index % 4) * 5}px` } as CSSProperties}>{ball.shortName.slice(0, 3)}</span>
+            ))}
+            {currentBall ? <span className="draw-live-teaser__exit-ball">{currentBall}</span> : null}
+          </div>
+          <div className="draw-reveal-card">
+            <span>{currentReveal ? `Extraccion ${currentReveal.index}/${currentReveal.total}` : "Proxima bolilla"}</span>
+            <div className="draw-reveal-card__crest">
+              {currentReveal?.team.badgeUrl ? <img alt="" src={currentReveal.team.badgeUrl} /> : <b>{currentReveal?.team.shortName ?? "FA"}</b>}
+            </div>
+            <strong>{currentReveal?.team.name ?? "Equipo por revelar"}</strong>
+            <p>{currentReveal ? `Destino: ${currentReveal.destination}` : "Cuando empiece el show, cada bolilla revela equipo y grupo o llave."}</p>
+          </div>
+          <div className="draw-broadcast__lower-third">
+            <span>{stage || "Escenario listo"}</span>
+            <b>{demoRunning ? `Tiempo restante ${String(Math.floor(demoSecondsLeft / 60)).padStart(2, "0")}:${String(demoSecondsLeft % 60).padStart(2, "0")}` : `${teamCount}/${maxTeams} equipos reales`}</b>
+          </div>
         </div>
       </div>
       <div className="draw-show">
@@ -746,6 +784,26 @@ function DrawLiveTeaser({
         <div className="draw-show__events">
           {drawEvents.length ? drawEvents.map((event) => <span key={event}>{event}</span>) : <span>Esperando primera extraccion</span>}
         </div>
+      </div>
+      <div className="draw-live-board">
+        {boardGroups.length ? boardGroups.slice(0, 8).map((group) => (
+          <article key={group.code}>
+            <strong>Grupo {group.code}</strong>
+            <span>{group.teams.map((team) => team.shortName).join(" / ") || "Pendiente"}</span>
+          </article>
+        )) : boardBracket.length ? boardBracket.slice(0, 8).map((slot) => (
+          <article key={`${slot.round}-${slot.label}`}>
+            <strong>{slot.round}</strong>
+            <span>{slot.home} vs {slot.away}</span>
+          </article>
+        )) : (
+          groupLabels.map((group) => (
+            <article key={group}>
+              <strong>Grupo {group}</strong>
+              <span>Esperando sorteo</span>
+            </article>
+          ))
+        )}
       </div>
       <div className="draw-live-teaser__actions">
         <button onClick={onOpenTournaments} type="button">Ver equipos</button>
@@ -775,22 +833,6 @@ function DrawLiveTeaser({
       ) : null}
       {savedDraw?.youtube_watch_url ? (
         <a className="draw-youtube-link" href={savedDraw.youtube_watch_url} rel="noreferrer" target="_blank">Ver sorteo en YouTube</a>
-      ) : null}
-      {visibleGroups.length || visibleBracket.length ? (
-        <div className="draw-result-preview">
-          {visibleGroups.map((group) => (
-            <article key={group.code}>
-              <strong>Grupo {group.code}</strong>
-              <span>{group.teams.map((team) => team.shortName).join(" / ") || "Pendiente"}</span>
-            </article>
-          ))}
-          {visibleBracket.slice(0, 4).map((slot) => (
-            <article key={`${slot.round}-${slot.label}`}>
-              <strong>{slot.round}</strong>
-              <span>{slot.home} vs {slot.away}</span>
-            </article>
-          ))}
-        </div>
       ) : null}
       {message ? <p className="draw-live-teaser__message">{message}</p> : null}
     </section>
