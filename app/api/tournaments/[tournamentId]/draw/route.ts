@@ -65,7 +65,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
     teams,
     format: (tournament as ArenaTournament).format,
     maxTeams: (tournament as ArenaTournament).max_teams,
-    seed
+    seed,
+    scope: "groups"
   });
   const youtubeWatchUrl = normalizeLiveWatchUrl(String(body.youtubeWatchUrl || "")) || null;
 

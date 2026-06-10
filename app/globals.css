@@ -9836,3 +9836,271 @@ body::after,
     flex: 1 1 140px;
   }
 }
+
+/* Group draw, brand presence and venue discovery polish */
+.game-topbar {
+  min-height: 84px;
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.game-brand {
+  gap: 13px;
+  min-width: 0;
+}
+
+.game-brand img {
+  width: 64px;
+  height: 64px;
+  border: 1px solid rgba(241,199,91,.42);
+  border-radius: 17px;
+  padding: 5px;
+  background:
+    radial-gradient(circle at 35% 20%, rgba(85,246,255,.22), transparent 32%),
+    linear-gradient(145deg, rgba(241,199,91,.16), rgba(4,8,16,.85));
+  box-shadow:
+    0 0 0 1px rgba(85,246,255,.14),
+    0 14px 36px rgba(0,0,0,.36),
+    0 0 24px rgba(241,199,91,.18);
+}
+
+.game-brand span {
+  min-width: 0;
+}
+
+.game-brand strong {
+  overflow: hidden;
+  font-size: 1.06rem;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-brand small {
+  margin-top: 3px;
+  letter-spacing: 0;
+}
+
+.team-carousel {
+  display: grid;
+  gap: 10px;
+}
+
+.team-carousel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.team-carousel > header span,
+.team-carousel > header strong {
+  display: block;
+}
+
+.team-carousel > header span {
+  color: var(--gold);
+  font-size: .75rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.team-carousel > header strong {
+  color: #eef6ff;
+  font-size: .9rem;
+}
+
+.team-carousel__track {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 1px 2px 8px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+
+.team-switch-card {
+  position: relative;
+  display: grid;
+  flex: 0 0 178px;
+  justify-items: start;
+  gap: 7px;
+  min-height: 190px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 16px;
+  padding: 13px;
+  background:
+    radial-gradient(circle at 78% 14%, rgba(85,246,255,.14), transparent 32%),
+    linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.024)),
+    rgba(7, 12, 22, .78);
+  color: var(--ink);
+  cursor: pointer;
+  scroll-snap-align: start;
+  text-align: left;
+  box-shadow: 0 22px 52px rgba(0,0,0,.28);
+}
+
+.team-switch-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(241,199,91,.18), transparent 34%, rgba(85,246,255,.12));
+  opacity: 0;
+  pointer-events: none;
+}
+
+.team-switch-card.is-active {
+  border-color: rgba(241,199,91,.62);
+  box-shadow:
+    inset 0 0 0 1px rgba(241,199,91,.16),
+    0 0 34px rgba(241,199,91,.16),
+    0 22px 52px rgba(0,0,0,.3);
+}
+
+.team-switch-card.is-active::after {
+  opacity: 1;
+}
+
+.team-switch-card .team-crest {
+  width: 58px;
+  height: 64px;
+}
+
+.team-switch-card span {
+  border: 1px solid rgba(85,246,255,.24);
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(85,246,255,.08);
+  color: #c9f9ff;
+  font-size: .64rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.team-switch-card strong {
+  overflow: hidden;
+  max-width: 100%;
+  color: #fff8ec;
+  font-size: 1.06rem;
+  line-height: 1.08;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-switch-card small {
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.team-switch-card b {
+  align-self: end;
+  border: 1px solid rgba(241,199,91,.34);
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: rgba(241,199,91,.1);
+  color: var(--gold);
+}
+
+.venue-register-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 90% 0, rgba(85,246,255,.1), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.02)),
+    rgba(6, 11, 20, .78);
+  box-shadow: 0 22px 56px rgba(0,0,0,.26);
+}
+
+.venue-register-panel > button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 50px;
+  border: 1px solid rgba(241,199,91,.24);
+  border-radius: 13px;
+  padding: 10px 12px;
+  background: rgba(241,199,91,.08);
+  color: var(--ink);
+  cursor: pointer;
+  font-weight: 1000;
+}
+
+.venue-register-panel > button span {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.venue-register-panel > button svg:first-child {
+  color: var(--gold);
+}
+
+.venue-register-panel > button .is-open {
+  transform: rotate(180deg);
+}
+
+.venue-register-panel > p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.42;
+}
+
+.venue-register-panel .action-console {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+@media (max-width: 760px) {
+  .game-topbar {
+    min-height: 78px;
+    border-radius: 17px;
+    padding: 9px 10px;
+  }
+
+  .game-brand {
+    gap: 9px;
+  }
+
+  .game-brand img {
+    width: 54px;
+    height: 54px;
+    border-radius: 15px;
+    padding: 4px;
+  }
+
+  .game-brand strong {
+    font-size: .92rem;
+  }
+
+  .top-team-pill {
+    max-width: 96px;
+  }
+
+  .team-carousel__track {
+    margin-right: -10px;
+    padding-right: 10px;
+  }
+
+  .team-switch-card {
+    flex-basis: 158px;
+    min-height: 178px;
+    padding: 12px;
+  }
+
+  .team-switch-card .team-crest {
+    width: 52px;
+    height: 58px;
+  }
+
+  .venue-register-panel {
+    padding: 10px;
+  }
+}

@@ -26,6 +26,8 @@ export type DrawResult = {
   bracket: DrawMatchSlot[];
 };
 
+type DrawScope = "full" | "groups";
+
 const groupCodes = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
 function hashSeed(seed: string) {
@@ -75,10 +77,10 @@ function teamToDrawTeam(team: ArenaTeam): DrawTeam {
   };
 }
 
-function buildGroups(teams: DrawTeam[], format: TournamentFormat, maxTeams?: number | null) {
-  if (format === "knockout") return [];
+function buildGroups(teams: DrawTeam[], format: TournamentFormat, maxTeams?: number | null, scope: DrawScope = "full") {
+  if (format === "knockout" && scope === "full") return [];
   const plannedTeams = Math.max(teams.length, maxTeams ?? 0, 4);
-  const groupCount = format === "league" ? 1 : Math.max(1, Math.ceil(plannedTeams / 4));
+  const groupCount = format === "league" && scope === "full" ? 1 : Math.max(1, Math.ceil(plannedTeams / 4));
   const groups: DrawGroup[] = Array.from({ length: groupCount }, (_, index) => ({
     code: groupCodes[index] ?? String(index + 1),
     teams: []
@@ -89,7 +91,8 @@ function buildGroups(teams: DrawTeam[], format: TournamentFormat, maxTeams?: num
   return groups;
 }
 
-function buildBracket(teams: DrawTeam[], format: TournamentFormat, groups: DrawGroup[]) {
+function buildBracket(teams: DrawTeam[], format: TournamentFormat, groups: DrawGroup[], scope: DrawScope = "full") {
+  if (scope === "groups") return [];
   if (format === "league") return [];
 
   if (format === "world_cup" && groups.length > 1) {
@@ -118,16 +121,18 @@ export function buildTournamentDraw({
   teams,
   format,
   maxTeams,
-  seed
+  seed,
+  scope = "full"
 }: {
   teams: ArenaTeam[];
   format: TournamentFormat;
   maxTeams?: number | null;
   seed: string;
+  scope?: DrawScope;
 }): DrawResult {
   const drawTeams = shuffle(teams.map(teamToDrawTeam), seed);
-  const groups = buildGroups(drawTeams, format, maxTeams);
-  const bracket = buildBracket(drawTeams, format, groups);
+  const groups = buildGroups(drawTeams, format, maxTeams, scope);
+  const bracket = buildBracket(drawTeams, format, groups, scope);
   return {
     seed,
     teams: drawTeams,

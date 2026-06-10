@@ -454,8 +454,7 @@ function buildSimulatedDrawTeams(teams: ArenaTeam[], maxTeams: number) {
 function findDrawDestination(draw: DrawResult, team: DrawResult["teams"][number]) {
   const group = draw.groups.find((item) => item.teams.some((groupTeam) => groupTeam.id === team.id));
   if (group) return `Grupo ${group.code}`;
-  const bracket = draw.bracket.find((slot) => slot.home === team.shortName || slot.away === team.shortName);
-  return bracket?.label ?? "Llave principal";
+  return "Bombo principal";
 }
 
 function TeamCrest({ team, size = "normal" }: { team?: ArenaTeam | null; size?: "normal" | "large" }) {
@@ -646,7 +645,7 @@ function DrawLiveTeaser({
   const teamCount = enrolledTeams.length;
   const maxTeams = activeDrawTournament.max_teams ?? Math.max(8, teamCount);
   const isReady = teamCount >= maxTeams;
-  const groupLabels = ["A", "B", "C", "D"].slice(0, Math.max(2, Math.min(4, Math.ceil(maxTeams / 4))));
+  const groupLabels = Array.from({ length: Math.min(26, Math.max(1, Math.ceil(maxTeams / 4))) }, (_, index) => String.fromCharCode(65 + index));
   const savedDraw = officialDraw ?? data.tournamentDraws.find((draw) => draw.tournament_id === activeDrawTournament.id && draw.mode === "official") ?? null;
   const canManage = Boolean(data.user && data.user.id === activeDrawTournament.organizer_id);
   const revealedTeamSet = new Set(revealedTeamIds);
@@ -654,7 +653,6 @@ function DrawLiveTeaser({
     ...group,
     teams: demoRunning ? group.teams.filter((team) => revealedTeamSet.has(team.id)) : group.teams
   })) : []);
-  const boardBracket = savedDraw?.bracket ?? (demoDraw && !demoRunning ? demoDraw.bracket : []);
   const demoSecondsLeft = Math.max(0, 120 - Math.round(demoProgress * 120 / 100));
   const broadcastBalls = (demoDraw?.teams.length ? demoDraw.teams : enrolledTeams.map((team) => ({
     id: team.id,
@@ -671,7 +669,8 @@ function DrawLiveTeaser({
       teams: simulatedTeams,
       format: activeDrawTournament.format,
       maxTeams,
-      seed
+      seed,
+      scope: "groups"
     });
     setDemoDraw(result);
     setDemoRunning(true);
@@ -680,8 +679,8 @@ function DrawLiveTeaser({
     setCurrentReveal(null);
     setDrawEvents([]);
     setRevealedTeamIds([]);
-    setStage("Camara uno / bombos preparados");
-    setMessage("Show demo de 2 minutos: completa cupos con equipos demo, simula transmision y no guarda resultado.");
+    setStage("Camara uno / grupos preparados");
+    setMessage("Show demo de 2 minutos: completa cupos con equipos demo, simula el sorteo de grupos y no guarda resultado.");
 
     const durationMs = 120000;
     const progressInterval = window.setInterval(() => {
@@ -701,7 +700,7 @@ function DrawLiveTeaser({
         setCurrentReveal({ team, destination, index: index + 1, total: result.teams.length });
         setRevealedTeamIds((current) => current.includes(team.id) ? current : [...current, team.id]);
         setDrawEvents((current) => [`${team.shortName} -> ${destination}`, ...current].slice(0, 6));
-        setStage(index === result.teams.length - 1 ? "Ultima extraccion / cierre de fixture" : `Extraccion ${index + 1} de ${result.teams.length}`);
+        setStage(index === result.teams.length - 1 ? "Ultima extraccion / grupos completos" : `Extraccion ${index + 1} de ${result.teams.length}`);
       }, delay);
       demoTimersRef.current.push(timer);
     });
@@ -712,7 +711,7 @@ function DrawLiveTeaser({
       setCurrentBall("");
       setCurrentReveal(null);
       setRevealedTeamIds(result.teams.map((team) => team.id));
-      setStage(activeDrawTournament.format === "knockout" ? "Llave demo generada" : "Grupos demo generados");
+      setStage("Grupos demo generados");
     }, durationMs);
     demoTimersRef.current.push(finishTimer);
   }
@@ -746,7 +745,7 @@ function DrawLiveTeaser({
         <div className="draw-broadcast__mast">
           <span>Fulbito Live Draw</span>
           <strong>{activeDrawTournament.name}</strong>
-          <small>{savedDraw ? "Sorteo oficial auditado" : demoRunning ? "En vivo simulado" : "Listo para ensayo de transmision"}</small>
+          <small>{savedDraw ? "Sorteo oficial auditado" : demoRunning ? "En vivo simulado" : isReady ? "Cupo completo para sorteo oficial" : "Oficial al completar cupo"}</small>
         </div>
         <div className="draw-broadcast__stage">
           <span className="draw-broadcast__beam draw-broadcast__beam--left" />
@@ -765,7 +764,7 @@ function DrawLiveTeaser({
               {currentReveal?.team.badgeUrl ? <img alt="" src={currentReveal.team.badgeUrl} /> : <b>{currentReveal?.team.shortName ?? "FA"}</b>}
             </div>
             <strong>{currentReveal?.team.name ?? "Equipo por revelar"}</strong>
-            <p>{currentReveal ? `Destino: ${currentReveal.destination}` : "Cuando empiece el show, cada bolilla revela equipo y grupo o llave."}</p>
+            <p>{currentReveal ? `Destino: ${currentReveal.destination}` : "Cuando empiece el show, cada bolilla revela el grupo del equipo."}</p>
           </div>
           <div className="draw-broadcast__lower-third">
             <span>{stage || "Escenario listo"}</span>
@@ -779,7 +778,7 @@ function DrawLiveTeaser({
         </div>
         <div className="draw-show__meta">
           <b>{demoRunning ? `Demo en curso ${String(Math.floor(demoSecondsLeft / 60)).padStart(2, "0")}:${String(demoSecondsLeft % 60).padStart(2, "0")}` : savedDraw ? "Resultado oficial guardado" : "Listo para probar el show"}</b>
-          <small>{currentBall ? `Sale bolilla ${currentBall}` : "Las bolillas van cayendo en grupos o llaves."}</small>
+          <small>{currentBall ? `Sale bolilla ${currentBall}` : "Las bolillas van cayendo en grupos."}</small>
         </div>
         <div className="draw-show__events">
           {drawEvents.length ? drawEvents.map((event) => <span key={event}>{event}</span>) : <span>Esperando primera extraccion</span>}
@@ -790,11 +789,6 @@ function DrawLiveTeaser({
           <article key={group.code}>
             <strong>Grupo {group.code}</strong>
             <span>{group.teams.map((team) => team.shortName).join(" / ") || "Pendiente"}</span>
-          </article>
-        )) : boardBracket.length ? boardBracket.slice(0, 8).map((slot) => (
-          <article key={`${slot.round}-${slot.label}`}>
-            <strong>{slot.round}</strong>
-            <span>{slot.home} vs {slot.away}</span>
           </article>
         )) : (
           groupLabels.map((group) => (
@@ -823,7 +817,7 @@ function DrawLiveTeaser({
         <div className="draw-official-console">
           <input
             onChange={(event) => setYoutubeWatchUrl(event.target.value)}
-            placeholder="Pegá el vivo de YouTube del sorteo si ya lo creaste"
+            placeholder="Pega el vivo de YouTube del sorteo oficial si ya lo creaste"
             value={youtubeWatchUrl}
           />
           <button disabled={!isReady || busy} onClick={createOfficialDraw} type="button">
@@ -1193,16 +1187,43 @@ function liveEventStatusLabel(event?: LiveStreamEvent | null) {
   return "No disponible";
 }
 
-function TeamRow({ team, onOpen }: { team: ArenaTeam; onOpen: () => void }) {
+function TeamCarousel({
+  teams,
+  selectedTeamId,
+  onSelect
+}: {
+  teams: ArenaTeam[];
+  selectedTeamId?: string;
+  onSelect: (teamId: string) => void;
+}) {
+  if (!teams.length) return null;
   return (
-    <button className="team-row team-row--button" onClick={onOpen} type="button">
-      <TeamCrest team={team} />
-      <div>
-        <strong>{team.name}</strong>
-        <span>{team.neighborhood ?? "Barrio"} / {team.points ?? 0} pts / DG {team.goalDiff ?? 0}</span>
+    <section className="team-carousel" aria-label="Selector de equipos">
+      <header>
+        <span>Equipos</span>
+        <strong>{teams.length} clubes</strong>
+      </header>
+      <div className="team-carousel__track">
+        {teams.map((team) => {
+          const selected = team.id === selectedTeamId;
+          return (
+            <button
+              aria-pressed={selected}
+              className={`team-switch-card ${selected ? "is-active" : ""}`}
+              key={team.id}
+              onClick={() => onSelect(team.id)}
+              type="button"
+            >
+              <TeamCrest team={team} size="large" />
+              <span>{selected ? "Seleccionado" : "Ver club"}</span>
+              <strong>{team.name}</strong>
+              <small>{team.neighborhood ?? "Barrio"} / {team.played ?? 0} PJ</small>
+              <b>{team.points ?? 0} pts</b>
+            </button>
+          );
+        })}
       </div>
-      <ChevronRight size={18} />
-    </button>
+    </section>
   );
 }
 
@@ -2013,6 +2034,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   const [venueLocation, setVenueLocation] = useState<GeoPoint | null>(null);
   const [venueLocationAsked, setVenueLocationAsked] = useState(false);
   const [venueLocationStatus, setVenueLocationStatus] = useState("Mostrando canchas registradas.");
+  const [showVenueForm, setShowVenueForm] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowSplash(false), 2600);
@@ -2438,9 +2460,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
             <p>Toca un jugador cargado para ver su card. Solo el dueno del club u organizador puede modificar el plantel.</p>
           )}
         </section>
-        <section className="team-stack team-stack--selector" aria-label="Selector de equipos">
-          {data.teams.map((team) => <TeamRow key={team.id} onOpen={() => setSelectedTeamId(team.id)} team={team} />)}
-        </section>
+        <TeamCarousel onSelect={setSelectedTeamId} selectedTeamId={selectedTeam.id} teams={data.teams} />
         <TeamProfile isManager={isTeamManager} players={selectedPlayers} team={selectedTeam} />
         <section className="player-strip">
           {selectedPlayers.map((player) => (
@@ -2470,15 +2490,14 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
         <section className="venue-nearby-toolbar">
           <button onClick={requestVenueLocation} type="button">
             <LocateFixed size={16} />
-            Usar mi ubicacion
+            {venueLocation ? "Actualizar ubicacion" : "Usar mi ubicacion"}
           </button>
           <span>{venueLocationStatus}</span>
         </section>
-        <ArenaActions data={data} mode="venue" />
         <section className="venues-marketplace">
           <header>
             <span>Sedes activas</span>
-            <strong>{venueLocation ? "Radio 50 km" : "Mapa y precios cargados"}</strong>
+            <strong>{venueLocation ? `${nearbyVenues.length} a 50 km` : "Primero ubicate"}</strong>
           </header>
           <VenueMap onSelectVenue={openVenue} selectedVenueId={selectedVenue?.id} userLocation={venueLocation} venues={nearbyVenues} />
           {nearbyVenues.length ? (
@@ -2490,6 +2509,18 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
             <EmptyState icon={<MapPinned />} title="No hay canchas registradas cerca">
               Se muestran solo sedes reales cargadas por usuarios. Registra la tuya para que aparezca en el mapa.
             </EmptyState>
+          )}
+        </section>
+        <section className="venue-register-panel">
+          <button aria-expanded={showVenueForm} onClick={() => setShowVenueForm((current) => !current)} type="button">
+            <span>
+              <MapPinned size={18} />
+              Registrar una cancha
+            </span>
+            <ChevronDown className={showVenueForm ? "is-open" : ""} size={18} />
+          </button>
+          {showVenueForm ? <ArenaActions data={data} mode="venue" /> : (
+            <p>Cuando quieras sumar una sede, abri este panel. Vas a marcar el punto en el mapa, completar precio, contacto y foto.</p>
           )}
         </section>
         <section className="console-panel money-console">
