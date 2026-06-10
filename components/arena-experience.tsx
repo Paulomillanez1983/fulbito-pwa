@@ -61,6 +61,39 @@ const formatLabels = {
 };
 
 const fulbitoLiveChannelUrl = "https://www.youtube.com/@FulbitoLIVE?sub_confirmation=1";
+const youtubeFollowStorageKey = "fulbito-youtube-followed";
+
+function useYouTubeFollowState() {
+  const [followed, setFollowed] = useState(false);
+
+  useEffect(() => {
+    setFollowed(window.localStorage.getItem(youtubeFollowStorageKey) === "1");
+
+    function syncFollowState() {
+      setFollowed(window.localStorage.getItem(youtubeFollowStorageKey) === "1");
+    }
+
+    window.addEventListener("fulbito:youtube-followed", syncFollowState);
+    return () => window.removeEventListener("fulbito:youtube-followed", syncFollowState);
+  }, []);
+
+  function markFollowed() {
+    window.localStorage.setItem(youtubeFollowStorageKey, "1");
+    setFollowed(true);
+    window.dispatchEvent(new Event("fulbito:youtube-followed"));
+  }
+
+  return { followed, markFollowed };
+}
+
+function YouTubeLogo({ size = 22 }: { size?: number }) {
+  return (
+    <svg aria-hidden="true" className="youtube-logo" height={size} viewBox="0 0 28 20" width={Math.round(size * 1.4)}>
+      <path d="M27.4 3.1A3.5 3.5 0 0 0 25 .6C22.8 0 14 0 14 0S5.2 0 3 .6A3.5 3.5 0 0 0 .6 3.1 36.5 36.5 0 0 0 0 10a36.5 36.5 0 0 0 .6 6.9A3.5 3.5 0 0 0 3 19.4c2.2.6 11 .6 11 .6s8.8 0 11-.6a3.5 3.5 0 0 0 2.4-2.5A36.5 36.5 0 0 0 28 10a36.5 36.5 0 0 0-.6-6.9Z" fill="#ff0033" />
+      <path d="M11.2 14.3V5.7L18.5 10l-7.3 4.3Z" fill="#fff" />
+    </svg>
+  );
+}
 
 const positionLabels: Record<string, string> = {
   ARQ: "Arquero",
@@ -441,6 +474,7 @@ function DrawLiveTeaser({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [youtubeWatchUrl, setYoutubeWatchUrl] = useState("");
+  const { followed: youtubeFollowed, markFollowed: markYouTubeFollowed } = useYouTubeFollowState();
   if (!tournament) return null;
   const activeDrawTournament = tournament;
   const tournamentTeamIds = new Set(
@@ -519,8 +553,16 @@ function DrawLiveTeaser({
       <div className="draw-live-teaser__actions">
         <button onClick={onOpenTournaments} type="button">Ver equipos</button>
         <button onClick={runDemoDraw} type="button">Demo sorteo</button>
-        <a href={fulbitoLiveChannelUrl} rel="noreferrer" target="_blank">Seguir Fulbito TV</a>
-        <button onClick={onOpenMatches} type="button">Ver Fulbito Live</button>
+        {!youtubeFollowed ? (
+          <a href={fulbitoLiveChannelUrl} onClick={markYouTubeFollowed} rel="noreferrer" target="_blank">
+            <YouTubeLogo size={18} />
+            Seguir Fulbito TV
+          </a>
+        ) : null}
+        <button onClick={onOpenMatches} type="button">
+          <YouTubeLogo size={18} />
+          Ver Fulbito Live
+        </button>
       </div>
       {canManage && !savedDraw ? (
         <div className="draw-official-console">
@@ -559,18 +601,39 @@ function DrawLiveTeaser({
 }
 
 function YouTubeFollowStrip() {
+  const { followed, markFollowed } = useYouTubeFollowState();
   return (
     <section className="youtube-follow-strip">
-      <RadioTower size={18} />
+      <YouTubeLogo size={24} />
       <div>
         <strong>Fulbito TV en YouTube</strong>
         <span>Sorteos, vivos, finales y repeticiones quedan en el canal oficial.</span>
       </div>
-      <a href={fulbitoLiveChannelUrl} rel="noreferrer" target="_blank">
-        Seguir
-        <ExternalLink size={15} />
-      </a>
+      {!followed ? (
+        <a href={fulbitoLiveChannelUrl} onClick={markFollowed} rel="noreferrer" target="_blank">
+          <YouTubeLogo size={16} />
+          Seguir
+          <ExternalLink size={15} />
+        </a>
+      ) : null}
     </section>
+  );
+}
+
+function ArenaAdBoards() {
+  return (
+    <div aria-hidden="true" className="arena-ad-boards">
+      <div className="arena-ad-boards__lane arena-ad-boards__lane--left">
+        <span><YouTubeLogo size={14} /> Segui Fulbito TV</span>
+        <span>TikTok @FulbitoArena</span>
+        <span>Sponsor local</span>
+      </div>
+      <div className="arena-ad-boards__lane arena-ad-boards__lane--right">
+        <span>Fulbito Arena</span>
+        <span><YouTubeLogo size={14} /> Sorteos en vivo</span>
+        <span>Tu marca aca</span>
+      </div>
+    </div>
   );
 }
 
@@ -1856,6 +1919,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   return (
     <div className="game-app-shell">
       {showSplash ? <SplashScreen /> : null}
+      <ArenaAdBoards />
       <header className="game-topbar">
         <button className="game-brand" onClick={() => setActive("home")} type="button">
           <img alt="" src="/assets/icon.svg" />

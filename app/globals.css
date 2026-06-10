@@ -2149,6 +2149,7 @@ body::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 7px;
   min-height: 40px;
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 11px;
@@ -2263,8 +2264,10 @@ body::after {
     linear-gradient(180deg, rgba(20,26,36,.86), rgba(5,9,17,.9));
 }
 
-.youtube-follow-strip > svg {
-  color: #ff6b6b;
+.youtube-logo {
+  flex: 0 0 auto;
+  display: inline-block;
+  filter: drop-shadow(0 4px 10px rgba(255,0,51,.24));
 }
 
 .youtube-follow-strip strong,
@@ -2288,6 +2291,88 @@ body::after {
   color: #fff2f2;
   font-weight: 950;
   text-decoration: none;
+}
+
+.arena-ad-boards {
+  pointer-events: none;
+  position: fixed;
+  left: 50%;
+  bottom: 98px;
+  z-index: 1;
+  width: min(1120px, 100vw);
+  transform: translateX(-50%);
+  opacity: .78;
+}
+
+.arena-ad-boards__lane {
+  position: absolute;
+  display: flex;
+  gap: 10px;
+  width: 46%;
+  overflow: hidden;
+  transform: perspective(720px) rotateX(58deg);
+  filter: drop-shadow(0 8px 24px rgba(0,0,0,.42));
+}
+
+.arena-ad-boards__lane--left {
+  left: -4%;
+  bottom: 64px;
+  transform: perspective(720px) rotateX(58deg) rotateZ(2deg);
+}
+
+.arena-ad-boards__lane--right {
+  right: -4%;
+  bottom: 64px;
+  justify-content: flex-end;
+  transform: perspective(720px) rotateX(58deg) rotateZ(-2deg);
+}
+
+.arena-ad-boards span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 148px;
+  min-height: 28px;
+  border: 1px solid rgba(241,199,91,.4);
+  border-radius: 4px;
+  padding: 0 10px;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.1), rgba(255,255,255,.02)),
+    rgba(3,8,15,.84);
+  color: #ffe799;
+  font-size: .64rem;
+  font-weight: 1000;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  animation: arena-board-glow 3.8s ease-in-out infinite alternate;
+}
+
+.arena-ad-boards span:nth-child(2) {
+  border-color: rgba(52,201,255,.36);
+  color: #c8f6ff;
+}
+
+.arena-ad-boards span:nth-child(3) {
+  border-color: rgba(255,255,255,.18);
+  color: #f8f3e6;
+}
+
+.game-topbar,
+.game-screen,
+.game-tabbar {
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes arena-board-glow {
+  from {
+    box-shadow: inset 0 0 0 rgba(241,199,91,0), 0 0 10px rgba(241,199,91,.06);
+  }
+  to {
+    box-shadow: inset 0 0 18px rgba(241,199,91,.12), 0 0 18px rgba(52,201,255,.1);
+  }
 }
 
 @keyframes draw-pot-spin {
@@ -6425,6 +6510,33 @@ body::after,
 }
 
 @media (max-width: 520px) {
+  .arena-ad-boards {
+    bottom: 82px;
+    opacity: .62;
+  }
+
+  .arena-ad-boards__lane {
+    width: 58%;
+    gap: 6px;
+  }
+
+  .arena-ad-boards__lane--left {
+    left: -18%;
+    bottom: 38px;
+  }
+
+  .arena-ad-boards__lane--right {
+    right: -18%;
+    bottom: 38px;
+  }
+
+  .arena-ad-boards span {
+    min-width: 112px;
+    min-height: 22px;
+    padding: 0 7px;
+    font-size: .52rem;
+  }
+
   .draw-live-teaser {
     grid-template-columns: 72px minmax(0, 1fr);
   }
