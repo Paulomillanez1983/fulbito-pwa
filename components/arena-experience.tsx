@@ -75,28 +75,28 @@ const startJourneyCatalog: Array<{
 }> = [
   {
     id: "organizer",
-    label: "Crear torneo",
+    label: "Torneo",
     eyebrow: "Organizador",
-    title: "Arma la copa e invita equipos",
+    title: "Crear torneo e invitar equipos",
     icon: Trophy
   },
   {
     id: "captain",
-    label: "Cargar club",
+    label: "Club",
     eyebrow: "Capitan / DT",
-    title: "Inscribe tu equipo y plantel",
+    title: "Crear o asociar tu equipo",
     icon: Shield
   },
   {
     id: "player",
-    label: "Soy jugador",
+    label: "Jugador",
     eyebrow: "Jugador",
-    title: "Completa tu ficha y segui partidos",
+    title: "Ver tu equipo y completar ficha",
     icon: UserCheck
   },
   {
     id: "venue",
-    label: "Tengo cancha",
+    label: "Cancha",
     eyebrow: "Cancha",
     title: "Registra sede y contacto",
     icon: MapPinned
@@ -1490,6 +1490,13 @@ function StartGuidePanel({
   const signedIn = Boolean(data.user);
   const playerProfile = data.user ? data.players.find((player) => player.profile_id === data.user?.id) : null;
   const ownedVenue = data.user ? data.venues.find((venue) => venue.owner_id === data.user?.id) : null;
+  const ownedTournaments = signedIn ? data.tournaments.filter((tournament) => tournament.organizer_id === data.user?.id) : [];
+  const ownedTournamentIds = new Set(ownedTournaments.map((tournament) => tournament.id));
+  const ownedTournamentTeamCount = data.tournamentTeams.filter((row) => ownedTournamentIds.has(row.tournament_id)).length;
+  const userTeam = memberTeam ?? ownedTeam ?? null;
+  const userTeamMatchCount = userTeam
+    ? data.matches.filter((match) => match.home_team_id === userTeam.id || match.away_team_id === userTeam.id).length
+    : 0;
   const tournamentProActive = data.entitlements.some((entitlement) => {
     if (entitlement.plan_code !== "tournament_pro") return false;
     return !entitlement.expires_at || new Date(entitlement.expires_at).getTime() > Date.now();
@@ -1509,28 +1516,28 @@ function StartGuidePanel({
 
   const stepsByJourney: Record<StartJourneyId, Array<{ label: string; done: boolean }>> = {
     organizer: [
-      { label: "Google conectado", done: signedIn },
-      { label: "Torneo creado", done: hasCreatedTournament },
-      { label: "Pro aprobado", done: tournamentProActive },
-      { label: data.matches.length ? "Fixture activo" : "Invitar equipos", done: data.matches.length > 0 }
+      { label: "Entrar con Google", done: signedIn },
+      { label: "Crear torneo", done: signedIn && hasCreatedTournament },
+      { label: "Aprobar Pro", done: signedIn && tournamentProActive },
+      { label: "Invitar equipos", done: signedIn && ownedTournamentTeamCount > 0 }
     ],
     captain: [
-      { label: "Google conectado", done: signedIn },
-      { label: "Club creado", done: Boolean(ownedTeam) },
-      { label: data.activeTournament ? "Inscripto en copa" : "Elegir copa", done: ownedTeamEnrolled },
-      { label: "Jugadores invitados", done: ownedTeamPlayers.length > 0 }
+      { label: "Entrar con Google", done: signedIn },
+      { label: "Crear o elegir club", done: signedIn && Boolean(ownedTeam) },
+      { label: "Inscribir en copa", done: signedIn && ownedTeamEnrolled },
+      { label: "Invitar jugadores", done: signedIn && ownedTeamPlayers.length > 0 }
     ],
     player: [
-      { label: "Google conectado", done: signedIn },
-      { label: "Equipo asignado", done: Boolean(memberTeam || ownedTeam) },
-      { label: "Ficha cargada", done: Boolean(playerProfile) },
-      { label: "Partidos visibles", done: data.matches.length > 0 }
+      { label: "Entrar con Google", done: signedIn },
+      { label: "Equipo asignado", done: signedIn && Boolean(userTeam) },
+      { label: "Ficha cargada", done: signedIn && Boolean(playerProfile) },
+      { label: "Ver partidos", done: signedIn && userTeamMatchCount > 0 }
     ],
     venue: [
-      { label: "Google conectado", done: signedIn },
-      { label: "Sede ubicada", done: Boolean(ownedVenue?.latitude && ownedVenue?.longitude) },
-      { label: "WhatsApp cargado", done: Boolean(ownedVenue?.phone) },
-      { label: "Cancha Pro opcional", done: venueProActive }
+      { label: "Entrar con Google", done: signedIn },
+      { label: "Marcar ubicacion", done: signedIn && Boolean(ownedVenue?.latitude && ownedVenue?.longitude) },
+      { label: "WhatsApp visible", done: signedIn && Boolean(ownedVenue?.phone) },
+      { label: "Destacar Pro", done: signedIn && venueProActive }
     ]
   };
   const steps = stepsByJourney[selectedJourney];
@@ -1570,8 +1577,8 @@ function StartGuidePanel({
       <header>
         <span>Plan de juego</span>
         <div>
-          <h2 id="start-guide-title">Empeza por el camino correcto</h2>
-          <p>{signedIn ? "Fulbito ordena tus proximas acciones segun lo que ya cargaste." : "Elegí una ruta y Google te devuelve al paso que corresponde."}</p>
+          <h2 id="start-guide-title">Que queres hacer hoy?</h2>
+          <p>{signedIn ? "Te mostramos el siguiente paso segun tu cuenta." : "Elegi una opcion y entra con Google una sola vez."}</p>
         </div>
       </header>
       <div className="start-guide-tabs" aria-label="Elegir camino inicial">
