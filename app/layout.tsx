@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
 const siteUrl = "https://fulbito-pwa.vercel.app";
+const socialImageUrl = `${siteUrl}/og-image.jpg?v=2`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     description: "Roles, canchas, equipos, fixture, tabla, grupos, eliminatorias y resultado oficial validado.",
     images: [
       {
-        url: "/opengraph-image",
+        url: socialImageUrl,
         width: 1200,
         height: 630,
         alt: "Fulbito Arena, app de torneos barriales con estilo deportivo premium."
@@ -31,7 +32,12 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Fulbito Arena | El barrio entra en modo torneo",
     description: "PWA para crear mundiales barriales con acceso Google, roles, canchas, equipos, fixture, tabla y resultados validados.",
-    images: ["/twitter-image"]
+    images: [socialImageUrl]
+  },
+  other: {
+    "og:image:secure_url": socialImageUrl,
+    "og:image:type": "image/jpeg",
+    "twitter:image:alt": "Fulbito Arena, app de torneos barriales con logo oficial."
   },
   icons: {
     icon: "/assets/icon.svg",
