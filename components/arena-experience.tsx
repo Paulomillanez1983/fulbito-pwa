@@ -2495,20 +2495,6 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           </section>
         ) : null}
 
-        {!inviteMode && !hasCreatedTournament ? (
-          <section className="console-hero-panel console-hero-panel--2026">
-            <img alt="" className="hero-mark" src="/assets/icon.svg" />
-            <span>Fulbito Arena 2026</span>
-            <h1>Tu liga entra en modo juego.</h1>
-            <p>Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur.</p>
-            <div className="hero-actions">
-              <InstallAppButton variant="hero" />
-              <button onClick={openTournamentStarter} type="button">Crear torneo</button>
-              <button onClick={() => setActiveTab("matches")} type="button">Ver fecha</button>
-            </div>
-          </section>
-        ) : null}
-
         {!inviteMode ? (
           <StartGuidePanel
             data={data}
@@ -2528,6 +2514,20 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
             }}
             ownedTeam={ownedTeam}
           />
+        ) : null}
+
+        {!inviteMode && !hasCreatedTournament ? (
+          <section className="console-hero-panel console-hero-panel--2026">
+            <img alt="" className="hero-mark" src="/assets/icon.svg" />
+            <span>Fulbito Arena 2026</span>
+            <h1>Tu liga entra en modo juego.</h1>
+            <p>Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur.</p>
+            <div className="hero-actions">
+              <InstallAppButton variant="hero" />
+              <button onClick={openTournamentStarter} type="button">Crear torneo</button>
+              <button onClick={() => setActiveTab("matches")} type="button">Ver fecha</button>
+            </div>
+          </section>
         ) : null}
 
         {!inviteMode && nextMatch ? (
