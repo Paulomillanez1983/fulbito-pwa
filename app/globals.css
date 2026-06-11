@@ -8351,6 +8351,70 @@ body::after,
   color: #ffe39a;
 }
 
+.team-count-picker {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(85,246,255,.16);
+  border-radius: 13px;
+  padding: 10px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(85,246,255,.1), transparent 30%),
+    rgba(4,10,18,.68);
+}
+
+.team-count-picker > span {
+  color: #ffe39a;
+  font-size: .78rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.team-count-picker > small {
+  color: rgba(219,232,245,.78);
+  line-height: 1.28;
+}
+
+.team-count-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.team-count-picker__grid button {
+  display: grid;
+  place-items: center;
+  min-height: 54px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  padding: 7px 5px;
+  background: linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.03));
+  color: #dbe7f4;
+  cursor: pointer;
+}
+
+.team-count-picker__grid button.is-active {
+  border-color: rgba(241,199,91,.64);
+  background: linear-gradient(135deg, rgba(255,230,142,.98), rgba(196,119,23,.95));
+  color: #071018;
+  box-shadow: 0 0 22px rgba(241,199,91,.18);
+}
+
+.team-count-picker__grid b,
+.team-count-picker__grid small {
+  display: block;
+}
+
+.team-count-picker__grid b {
+  font-size: 1.18rem;
+  line-height: 1;
+}
+
+.team-count-picker__grid small {
+  color: currentColor;
+  font-size: .62rem;
+  opacity: .82;
+}
+
 .inline-payment-account {
   display: grid;
   gap: 7px;

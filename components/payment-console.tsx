@@ -20,6 +20,34 @@ const tournamentFormatLabels: Record<TournamentFormat, string> = {
   knockout: "Eliminacion directa"
 };
 
+type TournamentTeamCountOption = {
+  value: number;
+  label: string;
+  detail: string;
+};
+
+const tournamentTeamCountOptions: Record<"world_cup" | "knockout", TournamentTeamCountOption[]> = {
+  world_cup: [
+    { value: 8, label: "8", detail: "2 grupos de 4. Pasan 2 por grupo y arranca en semifinales." },
+    { value: 16, label: "16", detail: "4 grupos de 4. Pasan 2 por grupo y arranca en cuartos." },
+    { value: 32, label: "32", detail: "8 grupos de 4. Pasan 2 por grupo y arranca en octavos." }
+  ],
+  knockout: [
+    { value: 4, label: "4", detail: "Llave directa desde semifinales." },
+    { value: 8, label: "8", detail: "Llave directa desde cuartos." },
+    { value: 16, label: "16", detail: "Llave directa desde octavos." },
+    { value: 32, label: "32", detail: "Llave directa desde dieciseisavos." }
+  ]
+};
+
+function getTournamentTeamCountOptions(format: TournamentFormat) {
+  return format === "knockout" ? tournamentTeamCountOptions.knockout : tournamentTeamCountOptions.world_cup;
+}
+
+function getDefaultMaxTeams(format: TournamentFormat) {
+  return format === "knockout" ? 16 : 16;
+}
+
 const weekdayOptions = [
   { value: 1, label: "Lun" },
   { value: 2, label: "Mar" },
@@ -455,7 +483,16 @@ function TournamentProForm({
   const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
   const [sent, setSent] = useState(isRequestPending(existingRequest));
+  const [tournamentFormat, setTournamentFormat] = useState<TournamentFormat>("world_cup");
+  const [selectedMaxTeams, setSelectedMaxTeams] = useState(getDefaultMaxTeams("world_cup"));
   const submitLockedRef = useRef(false);
+  const teamCountOptions = useMemo(() => getTournamentTeamCountOptions(tournamentFormat), [tournamentFormat]);
+  const selectedTeamCountOption = teamCountOptions.find((option) => option.value === selectedMaxTeams) ?? teamCountOptions[0];
+
+  useEffect(() => {
+    if (teamCountOptions.some((option) => option.value === selectedMaxTeams)) return;
+    setSelectedMaxTeams(getDefaultMaxTeams(tournamentFormat));
+  }, [selectedMaxTeams, teamCountOptions, tournamentFormat]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -472,7 +509,10 @@ function TournamentProForm({
       const supabase = createSupabaseBrowserClient();
       const fieldMode = String(form.get("fieldMode") || "7v7") as FieldMode;
       const tournamentFormat = String(form.get("tournamentFormat") || "world_cup") as TournamentFormat;
-      const maxTeams = Number(form.get("maxTeams") || 8);
+      const maxTeams = Number(form.get("maxTeams") || getDefaultMaxTeams(tournamentFormat));
+      const validTeamCount = getTournamentTeamCountOptions(tournamentFormat).some((option) => option.value === maxTeams);
+      if (!validTeamCount) throw new Error("Elegi una cantidad de equipos compatible con el formato.");
+      const teamCountDetail = getTournamentTeamCountOptions(tournamentFormat).find((option) => option.value === maxTeams)?.detail ?? "";
       const { data: tournament, error } = await supabase
         .from("tournaments")
         .insert({
@@ -490,7 +530,7 @@ function TournamentProForm({
           playable_end_time: String(form.get("playableEndTime") || "") || null,
           schedule_notes: String(form.get("scheduleNotes") || "").trim() || null,
           registration_fee: 0,
-          rules: `Copa creada en Fulbito Arena. Formato: ${tournamentFormatLabels[tournamentFormat]}. Los equipos pueden sumarse gratis o activar identidad premium.`
+          rules: `Copa creada en Fulbito Arena. Formato: ${tournamentFormatLabels[tournamentFormat]}. Cupo: ${maxTeams} equipos. ${teamCountDetail} Los equipos pueden sumarse gratis o activar identidad premium.`
         })
         .select("id,name,slug")
         .single();
@@ -523,13 +563,40 @@ function TournamentProForm({
   return (
     <form className="creator-form" onSubmit={submit}>
       <input name="tournamentName" placeholder="Nombre de la copa" />
-      <select name="tournamentFormat" defaultValue="world_cup">
+      <select
+        disabled={pending || sent}
+        name="tournamentFormat"
+        onChange={(event) => {
+          const nextFormat = event.target.value as TournamentFormat;
+          setTournamentFormat(nextFormat);
+          setSelectedMaxTeams(getDefaultMaxTeams(nextFormat));
+        }}
+        value={tournamentFormat}
+      >
         {tournamentFormatOptions.map((option) => (
           <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </select>
+      <div className="team-count-picker">
+        <span>Cantidad de equipos</span>
+        <input name="maxTeams" readOnly type="hidden" value={selectedMaxTeams} />
+        <div className="team-count-picker__grid">
+          {teamCountOptions.map((option) => (
+            <button
+              className={selectedMaxTeams === option.value ? "is-active" : ""}
+              disabled={pending || sent}
+              key={option.value}
+              onClick={() => setSelectedMaxTeams(option.value)}
+              type="button"
+            >
+              <b>{option.label}</b>
+              <small>equipos</small>
+            </button>
+          ))}
+        </div>
+        <small>{selectedTeamCountOption?.detail}</small>
+      </div>
       <div className="creator-inline">
-        <input name="maxTeams" inputMode="numeric" placeholder="Cantidad de equipos" />
         <select name="fieldMode" defaultValue="7v7">
           <option value="5v5">5v5</option>
           <option value="7v7">7v7</option>
