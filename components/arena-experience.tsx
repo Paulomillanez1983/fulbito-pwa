@@ -44,6 +44,7 @@ import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 type LeagueView = "classification" | "bracket";
 type CupTier = "local" | "regional" | "provincial" | "world";
+type StartJourneyId = "organizer" | "captain" | "player" | "venue";
 type DrawReveal = {
   team: DrawResult["teams"][number];
   destination: string;
@@ -64,6 +65,43 @@ function isTabId(value: unknown): value is TabId {
 }
 
 const playableRoles: AppRole[] = ["player", "captain", "venue_owner", "organizer", "referee"];
+
+const startJourneyCatalog: Array<{
+  id: StartJourneyId;
+  label: string;
+  eyebrow: string;
+  title: string;
+  icon: typeof Trophy;
+}> = [
+  {
+    id: "organizer",
+    label: "Crear torneo",
+    eyebrow: "Organizador",
+    title: "Arma la copa e invita equipos",
+    icon: Trophy
+  },
+  {
+    id: "captain",
+    label: "Cargar club",
+    eyebrow: "Capitan / DT",
+    title: "Inscribe tu equipo y plantel",
+    icon: Shield
+  },
+  {
+    id: "player",
+    label: "Soy jugador",
+    eyebrow: "Jugador",
+    title: "Completa tu ficha y segui partidos",
+    icon: UserCheck
+  },
+  {
+    id: "venue",
+    label: "Tengo cancha",
+    eyebrow: "Cancha",
+    title: "Registra sede y contacto",
+    icon: MapPinned
+  }
+];
 
 const formatLabels = {
   league: "Liga todos contra todos",
@@ -1416,6 +1454,162 @@ function RoleConsole({
   );
 }
 
+function StartGuidePanel({
+  data,
+  ownedTeam,
+  memberTeam,
+  myTeam,
+  hasCreatedTournament,
+  onCreateTournament,
+  onLogin,
+  onOpenTeam,
+  onOpenSquad,
+  onOpenVenues
+}: {
+  data: ArenaData;
+  ownedTeam?: ArenaTeam | null;
+  memberTeam?: ArenaTeam | null;
+  myTeam?: ArenaTeam | null;
+  hasCreatedTournament: boolean;
+  onCreateTournament: () => void;
+  onLogin: (nextTarget?: string) => void;
+  onOpenTeam: (teamId: string) => void;
+  onOpenSquad: () => void;
+  onOpenVenues: () => void;
+}) {
+  const suggestedJourney: StartJourneyId = data.user
+    ? hasCreatedTournament
+      ? "organizer"
+      : myTeam
+        ? "player"
+        : data.venues.some((venue) => venue.owner_id === data.user?.id)
+          ? "venue"
+          : "organizer"
+    : "organizer";
+  const [selectedJourney, setSelectedJourney] = useState<StartJourneyId>(suggestedJourney);
+  const signedIn = Boolean(data.user);
+  const playerProfile = data.user ? data.players.find((player) => player.profile_id === data.user?.id) : null;
+  const ownedVenue = data.user ? data.venues.find((venue) => venue.owner_id === data.user?.id) : null;
+  const tournamentProActive = data.entitlements.some((entitlement) => {
+    if (entitlement.plan_code !== "tournament_pro") return false;
+    return !entitlement.expires_at || new Date(entitlement.expires_at).getTime() > Date.now();
+  });
+  const venueProActive = data.entitlements.some((entitlement) => {
+    if (entitlement.plan_code !== "featured_venue") return false;
+    return !entitlement.expires_at || new Date(entitlement.expires_at).getTime() > Date.now();
+  });
+  const ownedTeamEnrolled = Boolean(
+    ownedTeam &&
+    data.activeTournament &&
+    data.tournamentTeams.some((row) => row.tournament_id === data.activeTournament?.id && row.team_id === ownedTeam.id)
+  );
+  const ownedTeamPlayers = ownedTeam ? data.players.filter((player) => player.team_id === ownedTeam.id) : [];
+  const selectedConfig = startJourneyCatalog.find((item) => item.id === selectedJourney) ?? startJourneyCatalog[0];
+  const SelectedIcon = selectedConfig.icon;
+
+  const stepsByJourney: Record<StartJourneyId, Array<{ label: string; done: boolean }>> = {
+    organizer: [
+      { label: "Google conectado", done: signedIn },
+      { label: "Torneo creado", done: hasCreatedTournament },
+      { label: "Pro aprobado", done: tournamentProActive },
+      { label: data.matches.length ? "Fixture activo" : "Invitar equipos", done: data.matches.length > 0 }
+    ],
+    captain: [
+      { label: "Google conectado", done: signedIn },
+      { label: "Club creado", done: Boolean(ownedTeam) },
+      { label: data.activeTournament ? "Inscripto en copa" : "Elegir copa", done: ownedTeamEnrolled },
+      { label: "Jugadores invitados", done: ownedTeamPlayers.length > 0 }
+    ],
+    player: [
+      { label: "Google conectado", done: signedIn },
+      { label: "Equipo asignado", done: Boolean(memberTeam || ownedTeam) },
+      { label: "Ficha cargada", done: Boolean(playerProfile) },
+      { label: "Partidos visibles", done: data.matches.length > 0 }
+    ],
+    venue: [
+      { label: "Google conectado", done: signedIn },
+      { label: "Sede ubicada", done: Boolean(ownedVenue?.latitude && ownedVenue?.longitude) },
+      { label: "WhatsApp cargado", done: Boolean(ownedVenue?.phone) },
+      { label: "Cancha Pro opcional", done: venueProActive }
+    ]
+  };
+  const steps = stepsByJourney[selectedJourney];
+  const currentIndex = steps.findIndex((step) => !step.done);
+
+  function runPrimaryAction() {
+    if (selectedJourney === "organizer") {
+      onCreateTournament();
+      return;
+    }
+    if (selectedJourney === "captain") {
+      if (!signedIn) return onLogin("/?start=squad");
+      if (ownedTeam) return onOpenTeam(ownedTeam.id);
+      onOpenSquad();
+      return;
+    }
+    if (selectedJourney === "player") {
+      if (!signedIn) return onLogin("/?start=squad");
+      if (myTeam?.id) return onOpenTeam(myTeam.id);
+      onOpenSquad();
+      return;
+    }
+    if (!signedIn) return onLogin("/?start=venues");
+    onOpenVenues();
+  }
+
+  function primaryLabel() {
+    if (!signedIn && selectedJourney !== "organizer") return "Entrar con Google";
+    if (selectedJourney === "organizer") return hasCreatedTournament ? "Ver mis torneos" : "Crear torneo";
+    if (selectedJourney === "captain") return ownedTeam ? "Gestionar club" : "Crear club";
+    if (selectedJourney === "player") return myTeam ? "Ver mi equipo" : "Buscar equipo";
+    return ownedVenue ? "Ver mis canchas" : "Registrar cancha";
+  }
+
+  return (
+    <section className="start-guide-panel" aria-labelledby="start-guide-title">
+      <header>
+        <span>Plan de juego</span>
+        <div>
+          <h2 id="start-guide-title">Empeza por el camino correcto</h2>
+          <p>{signedIn ? "Fulbito ordena tus proximas acciones segun lo que ya cargaste." : "Elegí una ruta y Google te devuelve al paso que corresponde."}</p>
+        </div>
+      </header>
+      <div className="start-guide-tabs" aria-label="Elegir camino inicial">
+        {startJourneyCatalog.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button className={selectedJourney === item.id ? "is-active" : ""} key={item.id} onClick={() => setSelectedJourney(item.id)} type="button">
+              <Icon size={17} />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <article className="start-guide-card">
+        <div className="start-guide-card__head">
+          <SelectedIcon size={22} />
+          <div>
+            <span>{selectedConfig.eyebrow}</span>
+            <strong>{selectedConfig.title}</strong>
+          </div>
+        </div>
+        <ol className="start-guide-steps">
+          {steps.map((step, index) => (
+            <li className={step.done ? "is-done" : index === currentIndex ? "is-current" : ""} key={step.label}>
+              <span>{step.done ? <BadgeCheck size={14} /> : index + 1}</span>
+              <b>{step.label}</b>
+            </li>
+          ))}
+        </ol>
+        <button className="start-guide-primary" onClick={runPrimaryAction} type="button">
+          {primaryLabel()}
+          <ArrowRight size={17} />
+        </button>
+      </article>
+    </section>
+  );
+}
+
 function TeamProfile({ team, players, isManager }: { team?: ArenaTeam; players: ArenaPlayer[]; isManager: boolean }) {
   if (!team) return null;
   const goals = players.reduce((total, player) => total + player.goals, 0);
@@ -2103,7 +2297,9 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
     }, new Map());
   }, [data.liveEvents]);
   const selectedMatchLiveEvent = selectedMatch ? liveEventByMatch.get(selectedMatch.id) ?? null : null;
-  const selectedTeam = data.teams.find((team) => team.id === selectedTeamId) ?? (inviteMode && !inferredTeam ? undefined : data.teams[0]);
+  const selectedTeam = selectedTeamId === "__new__"
+    ? undefined
+    : data.teams.find((team) => team.id === selectedTeamId) ?? (inviteMode && !inferredTeam ? undefined : data.teams[0]);
   const nearbyVenues = useMemo(() => {
     if (!venueLocation) return data.venues;
     return data.venues
@@ -2202,15 +2398,26 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   useEffect(() => {
     if (!data.user || inviteMode) return;
     const params = new URLSearchParams(window.location.search);
-    const shouldOpenTournament = params.get("start") === "tournament" || window.location.hash === "#pro";
-    if (!shouldOpenTournament) return;
-    activeRef.current = "home";
-    setActive("home");
-    window.setTimeout(() => {
-      window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "tournament_pro" }));
-      document.getElementById("pro")?.scrollIntoView({ block: "center", behavior: "smooth" });
-    }, 140);
-    window.history.replaceState({ ...(window.history.state ?? {}), fulbitoTab: "home" }, "", "/");
+    const startTarget = params.get("start");
+    if (startTarget === "tournament" || window.location.hash === "#pro") {
+      activeRef.current = "home";
+      setActive("home");
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "tournament_pro" }));
+        document.getElementById("pro")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 140);
+    } else if (startTarget === "squad") {
+      activeRef.current = "squad";
+      if (!ownedTeam && !memberTeam) setSelectedTeamId("__new__");
+      setActive("squad");
+    } else if (startTarget === "venues") {
+      activeRef.current = "venues";
+      setActive("venues");
+      setShowVenueForm(true);
+    } else {
+      return;
+    }
+    window.history.replaceState({ ...(window.history.state ?? {}), fulbitoTab: activeRef.current }, "", "/");
   }, [data.user, inviteMode]);
 
   function openLoginPanel(nextTarget = "/") {
@@ -2300,6 +2507,27 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
               <button onClick={() => setActiveTab("matches")} type="button">Ver fecha</button>
             </div>
           </section>
+        ) : null}
+
+        {!inviteMode ? (
+          <StartGuidePanel
+            data={data}
+            hasCreatedTournament={hasCreatedTournament}
+            memberTeam={memberTeam}
+            myTeam={myTeam}
+            onCreateTournament={hasCreatedTournament ? openMyTournaments : openTournamentStarter}
+            onLogin={openLoginPanel}
+            onOpenSquad={() => {
+              if (!ownedTeam && !memberTeam) setSelectedTeamId("__new__");
+              setActiveTab("squad");
+            }}
+            onOpenTeam={openTeam}
+            onOpenVenues={() => {
+              setActiveTab("venues");
+              setShowVenueForm(true);
+            }}
+            ownedTeam={ownedTeam}
+          />
         ) : null}
 
         {!inviteMode && nextMatch ? (

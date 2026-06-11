@@ -6250,6 +6250,200 @@ body::after {
   line-height: 1.25;
 }
 
+.start-guide-panel {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(85,246,255,.22);
+  border-radius: 16px;
+  padding: 13px;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(85,246,255,.14), transparent 30%),
+    radial-gradient(circle at 8% 0, rgba(241,199,91,.14), transparent 28%),
+    linear-gradient(180deg, rgba(15, 25, 40, .9), rgba(5, 9, 18, .82));
+  box-shadow: 0 24px 70px rgba(0,0,0,.34);
+}
+
+.start-guide-panel > header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 11px;
+}
+
+.start-guide-panel > header > span {
+  width: max-content;
+  border: 1px solid rgba(241,199,91,.42);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: rgba(241,199,91,.12);
+  color: #ffe39a;
+  font-size: .7rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.start-guide-panel h2,
+.start-guide-panel p {
+  margin: 0;
+}
+
+.start-guide-panel h2 {
+  color: #fff8ec;
+  font-size: clamp(1.15rem, 4vw, 1.72rem);
+  line-height: 1.04;
+  text-transform: uppercase;
+}
+
+.start-guide-panel p {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.start-guide-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.start-guide-tabs button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  padding: 0 12px;
+  background: rgba(255,255,255,.055);
+  color: #dbe6f5;
+  cursor: pointer;
+  font-weight: 950;
+}
+
+.start-guide-tabs button.is-active {
+  border-color: rgba(241,199,91,.56);
+  background: linear-gradient(135deg, rgba(241,199,91,.2), rgba(85,246,255,.08));
+  color: #ffe7a0;
+  box-shadow: 0 0 22px rgba(241,199,91,.12);
+}
+
+.start-guide-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.025)),
+    rgba(3, 7, 14, .62);
+}
+
+.start-guide-card__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.start-guide-card__head > svg {
+  color: var(--gold);
+}
+
+.start-guide-card__head span,
+.start-guide-card__head strong {
+  display: block;
+}
+
+.start-guide-card__head span {
+  color: #7df7ff;
+  font-size: .68rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.start-guide-card__head strong {
+  overflow: hidden;
+  color: #fffdf4;
+  font-size: 1.03rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.start-guide-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.start-guide-steps li {
+  display: grid;
+  gap: 6px;
+  min-height: 76px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 11px;
+  padding: 8px;
+  background: rgba(255,255,255,.045);
+}
+
+.start-guide-steps li > span {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 8px;
+  background: rgba(255,255,255,.06);
+  color: #dce8f5;
+  font-size: .72rem;
+  font-weight: 1000;
+}
+
+.start-guide-steps b {
+  color: #dce8f5;
+  font-size: .78rem;
+  line-height: 1.18;
+}
+
+.start-guide-steps li.is-current {
+  border-color: rgba(241,199,91,.44);
+  background: rgba(241,199,91,.09);
+}
+
+.start-guide-steps li.is-current > span {
+  background: linear-gradient(135deg, #ffe38a, #c47717);
+  color: #07080d;
+}
+
+.start-guide-steps li.is-done {
+  border-color: rgba(66,230,140,.22);
+  background: rgba(66,230,140,.07);
+}
+
+.start-guide-steps li.is-done > span {
+  border-color: rgba(66,230,140,.36);
+  color: #9dffbf;
+}
+
+.start-guide-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 13px;
+  padding: 0 14px;
+  background: linear-gradient(135deg, #ffe38a, #c47717);
+  color: #07080d;
+  cursor: pointer;
+  font-weight: 1000;
+}
+
 .venue-picker small {
   color: rgba(202, 215, 235, .72);
   font-size: .72rem;
@@ -6355,6 +6549,42 @@ body::after {
 
   .role-guide small {
     grid-column: 2;
+  }
+
+  .start-guide-panel {
+    padding: 11px;
+  }
+
+  .start-guide-panel > header {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .start-guide-panel > header > span {
+    font-size: .64rem;
+  }
+
+  .start-guide-panel p {
+    font-size: .9rem;
+  }
+
+  .start-guide-tabs {
+    margin-right: -8px;
+    padding-right: 8px;
+  }
+
+  .start-guide-tabs button {
+    min-height: 39px;
+    padding: 0 10px;
+    font-size: .78rem;
+  }
+
+  .start-guide-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .start-guide-steps li {
+    min-height: 68px;
   }
 
   .game-app-shell::before {
