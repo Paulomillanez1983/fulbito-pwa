@@ -66,6 +66,15 @@ function isTabId(value: unknown): value is TabId {
 
 const playableRoles: AppRole[] = ["player", "captain", "venue_owner", "organizer", "referee"];
 
+function uniqueRoles(roles: AppRole[]) {
+  return Array.from(new Set(roles));
+}
+
+function sameRoles(left: AppRole[], right: AppRole[]) {
+  if (left.length !== right.length) return false;
+  return left.every((role, index) => role === right[index]);
+}
+
 const startJourneyCatalog: Array<{
   id: StartJourneyId;
   label: string;
@@ -1401,9 +1410,9 @@ function RoleConsole({
       <button className="role-console__toggle" onClick={() => setOpen((current) => !current)} type="button">
         <ShieldCheck size={20} />
         <div>
-          <span>Tu arena</span>
+          <span>Rol activo</span>
           <strong>{info.label}</strong>
-          <small>{team ? `Equipo rapido: ${team.name}` : "Elegir participante"}</small>
+          <small>{team ? `Equipo rapido: ${team.name}` : "Una cuenta puede tener varios roles"}</small>
         </div>
         <ChevronDown size={18} />
       </button>
@@ -1412,18 +1421,18 @@ function RoleConsole({
           <div className="role-guide">
             <article>
               <span>1</span>
-              <strong>Tu cuenta</strong>
-              <small>{user?.name ?? "Google"} activa roles sin crear otra cuenta.</small>
+              <strong>Cuenta unica</strong>
+              <small>{user?.name ?? "Google"} puede organizar, jugar y gestionar club sin otro login.</small>
             </article>
             <article>
               <span>2</span>
-              <strong>Tu equipo</strong>
-              <small>{team ? `${team.name} queda como acceso rapido.` : "Crea o elige un equipo como preferido."}</small>
+              <strong>Club y jugador</strong>
+              <small>{team ? `${team.name} queda como acceso rapido.` : "Desde Equipo podes crear club y despues cargar tu ficha."}</small>
             </article>
             <article>
               <span>3</span>
-              <strong>Tu panel</strong>
-              <small>Cada rol muestra acciones distintas.</small>
+              <strong>Acciones</strong>
+              <small>El rol activo solo ordena botones; no limita lo que puede hacer tu cuenta.</small>
             </article>
           </div>
           <div className="role-console__roles" aria-label="Roles activos">
@@ -1515,28 +1524,29 @@ function StartGuidePanel({
   const ownedTeamPlayers = ownedTeam ? data.players.filter((player) => player.team_id === ownedTeam.id) : [];
   const selectedConfig = startJourneyCatalog.find((item) => item.id === selectedJourney) ?? startJourneyCatalog[0];
   const SelectedIcon = selectedConfig.icon;
+  const accountStepLabel = signedIn ? "Cuenta activa" : "Entrar con Google";
 
   const stepsByJourney: Record<StartJourneyId, Array<{ label: string; done: boolean }>> = {
     organizer: [
-      { label: "Entrar con Google", done: signedIn },
+      { label: accountStepLabel, done: signedIn },
       { label: "Crear torneo", done: signedIn && hasCreatedTournament },
       { label: "Aprobar Pro", done: signedIn && tournamentProActive },
       { label: "Invitar equipos", done: signedIn && ownedTournamentTeamCount > 0 }
     ],
     captain: [
-      { label: "Entrar con Google", done: signedIn },
+      { label: accountStepLabel, done: signedIn },
       { label: "Crear o elegir club", done: signedIn && Boolean(ownedTeam) },
       { label: "Inscribir en copa", done: signedIn && ownedTeamEnrolled },
       { label: "Invitar jugadores", done: signedIn && ownedTeamPlayers.length > 0 }
     ],
     player: [
-      { label: "Entrar con Google", done: signedIn },
+      { label: accountStepLabel, done: signedIn },
       { label: "Equipo asignado", done: signedIn && Boolean(userTeam) },
       { label: "Ficha cargada", done: signedIn && Boolean(playerProfile) },
       { label: "Ver partidos", done: signedIn && userTeamMatchCount > 0 }
     ],
     venue: [
-      { label: "Entrar con Google", done: signedIn },
+      { label: accountStepLabel, done: signedIn },
       { label: "Marcar ubicacion", done: signedIn && Boolean(ownedVenue?.latitude && ownedVenue?.longitude) },
       { label: "WhatsApp visible", done: signedIn && Boolean(ownedVenue?.phone) },
       { label: "Destacar Pro", done: signedIn && venueProActive }
@@ -2238,6 +2248,26 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
     : inviteMode
       ? ownedTeam ?? null
       : ownedTeam ?? memberTeam ?? data.teams[0] ?? null;
+  const inferredAccountRoles = useMemo<AppRole[]>(() => {
+    const roles: AppRole[] = data.user?.roles.length ? [...data.user.roles] : ["player"];
+    if (!data.user) return uniqueRoles(roles);
+    if (data.tournaments.some((tournament) => tournament.organizer_id === data.user?.id)) roles.push("organizer");
+    if (ownedTeam) roles.push("captain");
+    if (memberTeam) roles.push("player");
+    if (data.venues.some((venue) => venue.owner_id === data.user?.id)) roles.push("venue_owner");
+    if (inviteMode && !playerInviteMode) roles.push("captain");
+    if (playerInviteMode) roles.push("player");
+    return uniqueRoles(roles);
+  }, [data.tournaments, data.user, data.venues, inviteMode, memberTeam, ownedTeam, playerInviteMode]);
+  const preferredInitialRole = useMemo<AppRole>(() => {
+    if (!data.user) return "player";
+    if (inviteMode) return playerInviteMode ? "player" : "captain";
+    if (data.tournaments.some((tournament) => tournament.organizer_id === data.user?.id)) return "organizer";
+    if (ownedTeam) return "captain";
+    if (memberTeam) return "player";
+    if (data.venues.some((venue) => venue.owner_id === data.user?.id)) return "venue_owner";
+    return inferredAccountRoles[0] ?? "player";
+  }, [data.tournaments, data.user, data.venues, inferredAccountRoles, inviteMode, memberTeam, ownedTeam, playerInviteMode]);
 
   const [showSplash, setShowSplash] = useState(true);
   const [active, setActive] = useState<TabId>(() => inviteMode && data.user ? "squad" : "home");
@@ -2249,8 +2279,10 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   const [selectedMatchId, setSelectedMatchId] = useState(data.matches.find((match) => match.status !== "final")?.id ?? data.matches[0]?.id ?? "");
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].slots.length - 1);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [userRoles, setUserRoles] = useState<AppRole[]>(() => data.user?.roles.length ? data.user.roles : ["player"]);
-  const [activeRole, setActiveRole] = useState<AppRole>(() => data.user?.roles[0] ?? "player");
+  const [userRoles, setUserRoles] = useState<AppRole[]>(() => inferredAccountRoles);
+  const [activeRole, setActiveRole] = useState<AppRole>(() => preferredInitialRole);
+  const inferredRoleKey = inferredAccountRoles.join("|");
+  const effectiveUserRoles = useMemo(() => uniqueRoles([...userRoles, ...inferredAccountRoles]), [inferredAccountRoles, userRoles]);
   const [roleMessage, setRoleMessage] = useState("");
   const [venueLocation, setVenueLocation] = useState<GeoPoint | null>(null);
   const [venueLocationAsked, setVenueLocationAsked] = useState(false);
@@ -2268,6 +2300,16 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   useEffect(() => {
     activeRef.current = active;
   }, [active]);
+
+  useEffect(() => {
+    if (!data.user) return;
+    const nextRoles = uniqueRoles([...userRoles, ...inferredAccountRoles]);
+    setUserRoles((current) => sameRoles(current, nextRoles) ? current : nextRoles);
+    setActiveRole((current) => {
+      if (current !== "player" && nextRoles.includes(current)) return current;
+      return preferredInitialRole;
+    });
+  }, [data.user, inferredAccountRoles, inferredRoleKey, preferredInitialRole, userRoles]);
 
   const setActiveTab = useCallback((next: TabId) => {
     if (activeRef.current === next) return;
@@ -2378,7 +2420,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   const rosterRule = getRosterRule(data.activeTournament?.field_mode);
   const isTeamManager = Boolean(
     data.user &&
-    (selectedTeam?.owner_id === data.user.id || userRoles.includes("organizer") || userRoles.includes("admin"))
+    (selectedTeam?.owner_id === data.user.id || effectiveUserRoles.includes("organizer") || effectiveUserRoles.includes("admin"))
   );
   const myTeam = ownedTeam ?? memberTeam ?? selectedTeam;
   const hasCreatedTournament = Boolean(data.user && data.tournaments.some((tournament) => tournament.organizer_id === data.user?.id));
@@ -2387,7 +2429,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
     selectedMatch &&
     data.activeTournament &&
     selectedMatch.tournament_id === data.activeTournament.id &&
-    (data.activeTournament.organizer_id === data.user.id || userRoles.includes("admin") || userRoles.includes("venue_owner"))
+    (data.activeTournament.organizer_id === data.user.id || effectiveUserRoles.includes("admin") || effectiveUserRoles.includes("venue_owner"))
   );
 
   useEffect(() => {
@@ -2624,7 +2666,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
               team={myTeam}
               onAddRole={addRole}
               onChangeRole={setActiveRole}
-              roles={userRoles}
+              roles={effectiveUserRoles}
               user={data.user}
             />
           ) : (
@@ -2732,7 +2774,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
             Empeza por crear tu club. Despues vas a poder cargar jugadores desde la canchita.
           </EmptyState>
           <ArenaActions data={data} mode="squad" />
-          {inviteMode ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}
+          {data.user ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}
         </>
       );
     }
@@ -2809,7 +2851,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           ))}
         </section>
         {isTeamManager ? <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} /> : null}
-        {inviteMode && isTeamManager ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}
+        {data.user && isTeamManager ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}
         {selectedPlayer ? <PlayerCardModal onClose={() => setSelectedPlayerId(null)} player={selectedPlayer} team={selectedTeam} /> : null}
       </>
     );
