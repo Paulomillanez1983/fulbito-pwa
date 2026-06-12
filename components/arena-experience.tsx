@@ -2021,11 +2021,13 @@ function TeamPlayerInvitePanel({
   players,
   rosterRule,
   team,
+  teamProActive,
   tournament
 }: {
   players: ArenaPlayer[];
   rosterRule: ReturnType<typeof getRosterRule>;
   team: ArenaTeam;
+  teamProActive: boolean;
   tournament: ArenaTournament | null;
 }) {
   const [href, setHref] = useState("");
@@ -2034,16 +2036,20 @@ function TeamPlayerInvitePanel({
   useEffect(() => {
     if (!tournament?.slug || !team.slug) return;
     const joinUrl = `${window.location.origin}/?join=${encodeURIComponent(tournament.slug)}&team=${encodeURIComponent(team.slug)}`;
-    const text = `Te invito a sumarte a ${team.name} en ${tournament.name}. Entra a ${joinUrl}, carga tu nombre, dorsal, apodo y foto para quedar en el plantel.`;
+    const premiumCopy = teamProActive ? " Tambien podes subir foto para tu carta Fulbito." : " En modo gratis cargas nombre, dorsal y apodo; la foto se habilita si el club activa Equipo Pro.";
+    const text = `Te invito a sumarte a ${team.name} en ${tournament.name}. Entra a ${joinUrl}, carga tu ficha y queda en el plantel.${premiumCopy}`;
     setHref(`https://wa.me/?text=${encodeURIComponent(text)}`);
-  }, [team.name, team.slug, tournament?.name, tournament?.slug]);
+  }, [team.name, team.slug, teamProActive, tournament?.name, tournament?.slug]);
 
   return (
     <section className="player-invite-panel">
       <div>
         <span>Invitar plantel</span>
         <strong>{players.length}/{rosterRule.maxPlayers} jugadores</strong>
-        <p>Compartile este link a los jugadores. Cada uno entra con Google y completa su propia ficha dentro de {team.name}.</p>
+        <p>
+          Compartile este link a los jugadores. Cada uno entra con Google y completa su ficha dentro de {team.name}.
+          {teamProActive ? " Equipo Pro activo: fotos y cartas disponibles." : " Equipo gratis: sin fotos para cuidar storage."}
+        </p>
       </div>
       {href && !rosterFull ? (
         <a href={href} rel="noreferrer" target="_blank">Invitar jugadores por WhatsApp</a>
@@ -2225,7 +2231,11 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
     ? data.teams.find((team) => team.slug === inviteTeamCode || team.id === inviteTeamCode || team.short_name.toLowerCase() === inviteTeamCode.toLowerCase())
     : null;
   const playerInviteMode = Boolean(inviteMode && inviteTeamCode && invitedTeam);
-  const inferredTeam = invitedTeam ?? ownedTeam ?? memberTeam ?? (inviteMode ? null : data.teams[0] ?? null);
+  const inferredTeam = playerInviteMode
+    ? invitedTeam
+    : inviteMode
+      ? ownedTeam ?? null
+      : ownedTeam ?? memberTeam ?? data.teams[0] ?? null;
 
   const [showSplash, setShowSplash] = useState(true);
   const [active, setActive] = useState<TabId>(() => inviteMode && data.user ? "squad" : "home");
@@ -2345,6 +2355,19 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
   const selectedVenue = nearbyVenues.find((venue) => venue.id === selectedVenueId) ?? nearbyVenues[0];
   const selectedPlayers = data.players.filter((player) => player.team_id === selectedTeam?.id);
   const selectedPlayer = selectedPlayers.find((player) => player.id === selectedPlayerId) ?? null;
+  const selectedTeamEnrolledInActiveTournament = Boolean(
+    selectedTeam &&
+    data.activeTournament &&
+    data.tournamentTeams.some((row) => row.tournament_id === data.activeTournament?.id && row.team_id === selectedTeam.id)
+  );
+  const selectedTeamProActive = Boolean(
+    selectedTeam &&
+    data.entitlements.some((entitlement) => {
+      if (entitlement.plan_code !== "team_pro" || entitlement.target_type !== "team") return false;
+      if (entitlement.target_id !== selectedTeam.id) return false;
+      return !entitlement.expires_at || new Date(entitlement.expires_at).getTime() > Date.now();
+    })
+  );
   const groups = useMemo(() => groupTeams(data.standings.length ? data.standings : data.teams), [data.standings, data.teams]);
   const tournamentMatches = useMemo(() => data.activeTournament ? data.matches.filter((match) => match.tournament_id === data.activeTournament?.id) : data.matches, [data.activeTournament, data.matches]);
   const knockoutRounds = useMemo(() => buildKnockoutRoundsBySize(data.activeTournament?.max_teams ?? data.teams.length), [data.activeTournament?.max_teams, data.teams.length]);
@@ -2719,8 +2742,17 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
             ? `${rosterRule.label}: hasta ${rosterRule.maxPlayers} jugadores (${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes).`
             : "Toca una posicion del campo para cargar jugador. Cambia de equipo desde el selector."}
         </ScreenHeader>
-        {isTeamManager && data.activeTournament ? (
-          <TeamPlayerInvitePanel players={selectedPlayers} rosterRule={rosterRule} team={selectedTeam} tournament={data.activeTournament} />
+        {isTeamManager && data.activeTournament && selectedTeamEnrolledInActiveTournament ? (
+          <TeamPlayerInvitePanel players={selectedPlayers} rosterRule={rosterRule} team={selectedTeam} teamProActive={selectedTeamProActive} tournament={data.activeTournament} />
+        ) : isTeamManager && data.activeTournament ? (
+          <section className="player-invite-panel player-invite-panel--locked">
+            <div>
+              <span>Invitacion bloqueada</span>
+              <strong>Primero inscribi {selectedTeam.name}</strong>
+              <p>El link de jugadores se habilita cuando este club queda asociado a {data.activeTournament.name}. Asi cada ficha cae en la copa correcta.</p>
+            </div>
+            <button disabled type="button">Inscribir equipo abajo</button>
+          </section>
         ) : null}
         {data.user && (playerInviteMode || (selectedTeam.owner_id === data.user.id && !selectedPlayers.some((player) => player.profile_id === data.user?.id))) ? (
           <PlayerSelfJoinPanel data={data} players={selectedPlayers} rosterRule={rosterRule} team={selectedTeam} />

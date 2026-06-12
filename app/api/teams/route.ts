@@ -10,14 +10,6 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-function getFileExtension(file: File) {
-  if (file.type === "image/webp") return "webp";
-  if (file.type === "image/jpeg") return "jpg";
-  if (file.type === "image/png") return "png";
-  if (file.type === "image/svg+xml") return "svg";
-  return file.name.split(".").pop()?.toLowerCase() || "png";
-}
-
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return NextResponse.json({ error: "Supabase no esta configurado." }, { status: 500 });
@@ -40,21 +32,6 @@ export async function POST(request: NextRequest) {
     avatar_url: auth.user.user_metadata?.avatar_url ?? null
   });
 
-  let badgePath: string | null = null;
-  let badgeUrl: string | null = null;
-  const badgeFile = formData.get("badgeFile");
-  if (badgeFile instanceof File && badgeFile.size > 0) {
-    const extension = getFileExtension(badgeFile);
-    badgePath = `${auth.user.id}/${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
-    const { error: uploadError } = await supabase.storage.from("team-badges").upload(badgePath, badgeFile, {
-      cacheControl: "31536000",
-      contentType: badgeFile.type || undefined,
-      upsert: false
-    });
-    if (uploadError) return NextResponse.json({ error: uploadError.message }, { status: 400 });
-    badgeUrl = supabase.storage.from("team-badges").getPublicUrl(badgePath).data.publicUrl;
-  }
-
   const { data: team, error: teamError } = await supabase
     .from("teams")
     .insert({
@@ -64,15 +41,12 @@ export async function POST(request: NextRequest) {
       short_name: shortName,
       neighborhood,
       primary_color: primaryColor,
-      badge_url: badgeUrl
+      badge_url: null
     })
     .select("id,name")
     .single();
 
-  if (teamError) {
-    if (badgePath) await supabase.storage.from("team-badges").remove([badgePath]);
-    return NextResponse.json({ error: teamError.message }, { status: 400 });
-  }
+  if (teamError) return NextResponse.json({ error: teamError.message }, { status: 400 });
 
   if (tournamentId) {
     const { error: enrollError } = await supabase

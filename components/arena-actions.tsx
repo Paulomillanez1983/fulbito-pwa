@@ -409,14 +409,7 @@ export function ArenaActions({
     setMessage("");
     const name = String(formData.get("teamName") || "").trim();
     if (!name) return setMessage("El equipo necesita nombre.");
-    try {
-      const badgeFile = formData.get("badgeFile");
-      if (badgeFile instanceof File && badgeFile.size > 0) {
-        formData.set("badgeFile", await optimizeImageFile(badgeFile, "team-badges"));
-      }
-    } catch (error) {
-      return setMessage(error instanceof Error ? error.message : "No se pudo optimizar el escudo.");
-    }
+    formData.delete("badgeFile");
     if (data.activeTournament?.id) formData.set("tournamentId", data.activeTournament.id);
     const response = await fetch("/api/teams", { method: "POST", body: formData });
     const result = (await response.json()) as { team?: { id: string; name: string }; error?: string; warning?: string };
@@ -428,6 +421,30 @@ export function ArenaActions({
     }
     window.setTimeout(() => window.location.reload(), 1000);
     setMessage("Equipo creado. Actualiza la pantalla para verlo en la arena.");
+  }
+
+  async function updateTeamBadge(formData: FormData) {
+    setMessage("");
+    const teamId = String(formData.get("teamId") || "");
+    const team = ownedTeams.find((item) => item.id === teamId);
+    if (!team) return setMessage("Solo podes editar un equipo propio.");
+    if (!hasTeamProAccess(team.id)) return setMessage("Activa Equipo Pro para subir escudo premium.");
+    const { supabase, userId } = await getUserId();
+    if (!userId) return setMessage("Entra con Google para continuar.");
+    let badgeUrl: string | null = null;
+    try {
+      badgeUrl = await uploadArenaMedia(supabase, "team-badges", userId, formData.get("badgeFile"));
+    } catch (error) {
+      return setMessage(error instanceof Error ? error.message : "No se pudo subir el escudo.");
+    }
+    if (!badgeUrl) return setMessage("Selecciona una imagen para el escudo.");
+    const primaryColor = String(formData.get("primaryColor") || team.primary_color || "#eec15c").trim();
+    const { error } = await supabase
+      .from("teams")
+      .update({ badge_url: badgeUrl, primary_color: primaryColor })
+      .eq("id", team.id);
+    if (!error) window.setTimeout(() => window.location.reload(), 800);
+    setMessage(error ? error.message : "Escudo premium actualizado.");
   }
 
   async function enrollOwnedTeam() {
@@ -585,15 +602,30 @@ export function ArenaActions({
 
         {showTeam ? <form action={createTeam} className={selectedOwnedTeam ? "action-card action-card--secondary" : "action-card"}>
           <ShieldPlus />
-          <h3>{selectedOwnedTeam ? "Crear otro equipo" : "Crear equipo"}</h3>
-          <p>{data.activeTournament ? `Este equipo queda inscripto en ${data.activeTournament.name}. ` : ""}Subi escudo, sigla y color base. La imagen se adapta al marco del club.</p>
+          <h3>{selectedOwnedTeam ? "Crear otro equipo gratis" : "Crear equipo gratis"}</h3>
+          <p>{data.activeTournament ? `Este equipo queda inscripto en ${data.activeTournament.name}. ` : ""}El alta gratis usa nombre, sigla y barrio. Escudo, fotos y cartas se activan con Equipo Pro.</p>
           <input name="teamName" placeholder="Nombre del club" />
           <input name="shortName" maxLength={4} placeholder="Sigla" />
           <input name="neighborhood" placeholder="Barrio" />
-          <MediaField accept="image/png,image/jpeg,image/webp,image/svg+xml" helper="PNG, JPG, WebP o SVG. Se ajusta al escudo." label="Escudo del equipo" name="badgeFile" variant="crest" />
           <input name="primaryColor" type="color" defaultValue="#eec15c" />
+          <div className="pro-lock-note">
+            <strong>Sin escudo en modo gratis</strong>
+            <span>Para cuidar Supabase, las imagenes del club quedan dentro de Equipo Pro.</span>
+          </div>
           <SubmitButton idle="Guardar equipo" pending="Creando equipo" />
         </form> : null}
+
+        {showTeam && selectedOwnedTeam && hasTeamProAccess(selectedOwnedTeam.id) ? (
+          <form action={updateTeamBadge} className="action-card action-card--premium">
+            <ShieldPlus />
+            <h3>Escudo premium</h3>
+            <p>{selectedOwnedTeam.name} tiene Equipo Pro activo. Subi un escudo optimizado para la app, links y cartas.</p>
+            <input name="teamId" type="hidden" value={selectedOwnedTeam.id} />
+            <MediaField accept="image/png,image/jpeg,image/webp,image/svg+xml" helper="PNG, JPG, WebP o SVG. Fulbito lo optimiza antes de subir." label="Escudo del equipo" name="badgeFile" variant="crest" />
+            <input name="primaryColor" type="color" defaultValue={selectedOwnedTeam.primary_color || "#eec15c"} />
+            <SubmitButton idle="Actualizar escudo" pending="Guardando escudo" />
+          </form>
+        ) : null}
 
         {showVenue ? <form action={createVenue} className="action-card action-card--venue">
           <MapPinned />

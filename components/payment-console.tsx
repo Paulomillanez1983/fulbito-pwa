@@ -6,8 +6,9 @@ import { CalendarDays, CheckCircle2, ChevronDown, Clipboard, PlusCircle, Sparkle
 import { SlideSubmitButton } from "@/components/slide-submit-button";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
+import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AccountEntitlement, ArenaData, ArenaTournament, FieldMode, PaymentMessage, PaymentRequest, TournamentFormat } from "@/lib/types";
+import type { AccountEntitlement, ArenaData, ArenaTeam, ArenaTournament, FieldMode, PaymentMessage, PaymentRequest, TournamentFormat } from "@/lib/types";
 
 const tournamentFormatOptions: Array<{ value: TournamentFormat; label: string; note: string }> = [
   { value: "world_cup", label: "Grupos + eliminatorias", note: "Ideal para Mundial barrial" },
@@ -374,7 +375,8 @@ function TeamProForm({
   existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
-  const [mode, setMode] = useState(data.teams.length ? "existing" : "new");
+  const ownedTeams = data.user ? data.teams.filter((team) => team.owner_id === data.user?.id) : [];
+  const [mode, setMode] = useState(ownedTeams.length ? "existing" : "new");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
@@ -393,7 +395,7 @@ function TeamProForm({
     try {
       const supabase = createSupabaseBrowserClient();
       let teamId = String(form.get("teamId") || "");
-      let teamName = data.teams.find((team) => team.id === teamId)?.name ?? "";
+      let teamName = ownedTeams.find((team) => team.id === teamId)?.name ?? "";
 
       if (mode === "new" || !teamId) {
         teamName = String(form.get("teamName") || "").trim();
@@ -441,15 +443,15 @@ function TeamProForm({
 
   return (
     <form className="creator-form" onSubmit={submit}>
-      {data.teams.length ? (
+      {ownedTeams.length ? (
         <div className="creator-toggle">
           <button className={mode === "existing" ? "is-active" : ""} onClick={() => setMode("existing")} type="button">Elegir equipo</button>
           <button className={mode === "new" ? "is-active" : ""} onClick={() => setMode("new")} type="button">Crear equipo</button>
         </div>
       ) : null}
-      {mode === "existing" && data.teams.length ? (
-        <select name="teamId" defaultValue={data.teams[0]?.id}>
-          {data.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+      {mode === "existing" && ownedTeams.length ? (
+        <select name="teamId" defaultValue={ownedTeams[0]?.id}>
+          {ownedTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
         </select>
       ) : (
         <>
@@ -968,11 +970,21 @@ function MyTournamentsPanel({
       request.target_id === tournament.id &&
       request.status === "pending_review"
     );
-    const teamCount = data.tournamentTeams.filter((row) => row.tournament_id === tournament.id).length;
-    const playerCount = data.players.filter((player) => {
-      return data.tournamentTeams.some((row) => row.tournament_id === tournament.id && row.team_id === player.team_id);
-    }).length;
-    return { tournament, entitlement, pendingRequest, teamCount, playerCount };
+    const rosterRule = getRosterRule(tournament.field_mode);
+    const enrolledTeamIds = data.tournamentTeams
+      .filter((row) => row.tournament_id === tournament.id)
+      .map((row) => row.team_id);
+    const enrolledTeams = enrolledTeamIds
+      .map((teamId) => data.teams.find((team) => team.id === teamId))
+      .filter((team): team is ArenaTeam => Boolean(team))
+      .map((team) => {
+        const playerCount = data.players.filter((player) => player.team_id === team.id).length;
+        const teamPro = activeEntitlements.some((item) => item.plan_code === "team_pro" && item.target_type === "team" && item.target_id === team.id);
+        return { team, playerCount, teamPro };
+      });
+    const teamCount = enrolledTeams.length;
+    const playerCount = enrolledTeams.reduce((total, row) => total + row.playerCount, 0);
+    return { tournament, entitlement, pendingRequest, teamCount, playerCount, enrolledTeams, rosterRule };
   });
 
   useEffect(() => {
@@ -998,7 +1010,7 @@ function MyTournamentsPanel({
       </button>
       {open ? (
         <div className="my-tournaments-list">
-          {tournamentRows.map(({ tournament, entitlement, pendingRequest, teamCount, playerCount }) => (
+          {tournamentRows.map(({ tournament, entitlement, pendingRequest, teamCount, playerCount, enrolledTeams, rosterRule }) => (
             <article key={tournament.id}>
               <div>
                 <strong>{tournament.name}</strong>
@@ -1013,6 +1025,20 @@ function MyTournamentsPanel({
                 </b>
               </div>
               {entitlement ? <TournamentInviteLink tournament={tournament} /> : null}
+              {enrolledTeams.length ? (
+                <div className="my-tournament-teams">
+                  {enrolledTeams.map(({ team, playerCount: teamPlayers, teamPro }) => (
+                    <div key={team.id}>
+                      <span>{team.short_name}</span>
+                      <strong>{team.name}</strong>
+                      <small>{teamPlayers}/{rosterRule.maxPlayers} jugadores</small>
+                      <b className={teamPro ? "is-active" : ""}>{teamPro ? "Equipo Pro" : "Gratis"}</b>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <small className="my-tournament-empty">Todavia no hay equipos inscriptos. Cuando un DT use tu link, aparece aca al instante.</small>
+              )}
               <TournamentScheduleForm canEdit={data.user?.id === tournament.organizer_id} tournament={tournament} />
             </article>
           ))}
