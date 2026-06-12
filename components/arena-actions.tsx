@@ -604,7 +604,7 @@ export function ArenaActions({
           <ShieldPlus />
           <h3>{selectedOwnedTeam ? "Crear otro equipo gratis" : "Crear equipo gratis"}</h3>
           <p>{data.activeTournament ? `Este equipo queda inscripto en ${data.activeTournament.name}. ` : ""}El alta gratis usa nombre, sigla y barrio. Escudo, fotos y cartas se activan con Equipo Pro.</p>
-          <input name="teamName" placeholder="Nombre del club" />
+          <input name="teamName" placeholder="Nombre del club" required />
           <input name="shortName" maxLength={4} placeholder="Sigla" />
           <input name="neighborhood" placeholder="Barrio" />
           <input name="primaryColor" type="color" defaultValue="#eec15c" />

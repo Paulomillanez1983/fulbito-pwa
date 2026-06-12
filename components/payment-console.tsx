@@ -376,7 +376,14 @@ function TeamProForm({
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
   const ownedTeams = data.user ? data.teams.filter((team) => team.owner_id === data.user?.id) : [];
-  const [mode, setMode] = useState(ownedTeams.length ? "existing" : "new");
+  const availableOwnedTeams = ownedTeams.filter((team) => {
+    return !data.entitlements.some((entitlement) => {
+      if (entitlement.plan_code !== "team_pro" || entitlement.target_type !== "team") return false;
+      if (entitlement.target_id !== team.id) return false;
+      return isEntitlementActive(entitlement);
+    });
+  });
+  const [mode, setMode] = useState(availableOwnedTeams.length ? "existing" : "new");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
@@ -395,7 +402,7 @@ function TeamProForm({
     try {
       const supabase = createSupabaseBrowserClient();
       let teamId = String(form.get("teamId") || "");
-      let teamName = ownedTeams.find((team) => team.id === teamId)?.name ?? "";
+      let teamName = availableOwnedTeams.find((team) => team.id === teamId)?.name ?? "";
 
       if (mode === "new" || !teamId) {
         teamName = String(form.get("teamName") || "").trim();
@@ -418,7 +425,17 @@ function TeamProForm({
         teamName = team.name;
       }
 
-      const note = String(form.get("payerNote") || "").trim() || `Equipo: ${teamName}`;
+      if (data.activeTournament?.id) {
+        const { error: enrollError } = await supabase
+          .from("tournament_teams")
+          .upsert(
+            { tournament_id: data.activeTournament.id, team_id: teamId, status: "approved" },
+            { onConflict: "tournament_id,team_id" }
+          );
+        if (enrollError) throw new Error(`Equipo creado, pero no se pudo inscribir en ${data.activeTournament.name}: ${enrollError.message}`);
+      }
+
+      const note = String(form.get("payerNote") || "").trim() || `Equipo: ${teamName}${data.activeTournament ? ` / Copa: ${data.activeTournament.name}` : ""}`;
       const created = await createPaymentRequest({
         userId: data.user.id,
         plan,
@@ -443,19 +460,19 @@ function TeamProForm({
 
   return (
     <form className="creator-form" onSubmit={submit}>
-      {ownedTeams.length ? (
+      {availableOwnedTeams.length ? (
         <div className="creator-toggle">
           <button className={mode === "existing" ? "is-active" : ""} onClick={() => setMode("existing")} type="button">Elegir equipo</button>
           <button className={mode === "new" ? "is-active" : ""} onClick={() => setMode("new")} type="button">Crear equipo</button>
         </div>
       ) : null}
-      {mode === "existing" && ownedTeams.length ? (
-        <select name="teamId" defaultValue={ownedTeams[0]?.id}>
-          {ownedTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+      {mode === "existing" && availableOwnedTeams.length ? (
+        <select name="teamId" defaultValue={availableOwnedTeams[0]?.id}>
+          {availableOwnedTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
         </select>
       ) : (
         <>
-          <input name="teamName" placeholder="Nombre del equipo" />
+          <input name="teamName" placeholder="Nombre del equipo" required />
           <input name="shortName" maxLength={4} placeholder="Sigla" />
           <input name="neighborhood" placeholder="Barrio" />
         </>
@@ -1055,6 +1072,10 @@ function MyTournamentsPanel({
 export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes?: PaymentPlan["code"][] }) {
   const [requests, setRequests] = useState(data.paymentRequests);
   const [showNewTournament, setShowNewTournament] = useState(false);
+  const ownedTeamIds = useMemo(() => {
+    if (!data.user) return new Set<string>();
+    return new Set(data.teams.filter((team) => team.owner_id === data.user?.id).map((team) => team.id));
+  }, [data.teams, data.user]);
   const plans = useMemo(() => {
     const merged = mergePaymentPlans(data.billingPlans);
     if (planCodes?.length) return merged.filter((plan) => planCodes.includes(plan.code));
@@ -1070,8 +1091,16 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
       return true;
     });
   }, [data.entitlements, planCodes]);
-  const activePlanCodes = useMemo(() => new Set(activeEntitlements.map((entitlement) => entitlement.plan_code)), [activeEntitlements]);
-  const hasActiveTournamentPro = activeEntitlements.some((entitlement) => entitlement.plan_code === "tournament_pro");
+  const userActiveEntitlements = useMemo(() => {
+    return activeEntitlements.filter((entitlement) => {
+      if (!data.user) return false;
+      if (entitlement.owner_id === data.user.id) return true;
+      if (entitlement.plan_code === "team_pro" && entitlement.target_id && ownedTeamIds.has(entitlement.target_id)) return true;
+      return false;
+    });
+  }, [activeEntitlements, data.user, ownedTeamIds]);
+  const activePlanCodes = useMemo(() => new Set(userActiveEntitlements.map((entitlement) => entitlement.plan_code)), [userActiveEntitlements]);
+  const hasActiveTournamentPro = userActiveEntitlements.some((entitlement) => entitlement.plan_code === "tournament_pro");
 
   const pendingRequestByPlan = useMemo(() => {
     return requests.reduce<Partial<Record<PaymentPlan["code"], PaymentRequest>>>((groups, request) => {
@@ -1084,6 +1113,7 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
     return plans.filter((plan) => {
       if (pendingRequestByPlan[plan.code]) return true;
       if (plan.code === "tournament_pro") return !hasActiveTournamentPro || showNewTournament;
+      if (plan.code === "team_pro") return true;
       return !activePlanCodes.has(plan.code);
     });
   }, [activePlanCodes, hasActiveTournamentPro, pendingRequestByPlan, plans, showNewTournament]);
@@ -1104,14 +1134,14 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
         <h2>{teamOnly ? "Activa identidad premium" : venueOnly ? "Destaca tu cancha" : "Crea tu torneo barrial"}</h2>
         <p>
           {teamOnly
-            ? "El equipo gratis puede inscribirse con escudo y plantel. Equipo Pro habilita fotos de jugadores, cartas estilo juego y estadisticas premium."
+            ? "El equipo gratis puede inscribirse con nombre, sigla y plantel. Equipo Pro habilita escudo, fotos de jugadores, cartas estilo juego y estadisticas premium."
             : venueOnly
               ? "Cancha gratis muestra ubicacion, nombre y WhatsApp. Cancha Pro habilita foto, precio, promo y visibilidad en mapa y carteleria LED."
               : "Arma la copa, elegi formato, envia invitaciones por WhatsApp y deja que cada club cargue su plantel. El equipo basico es gratis; lo premium activa fotos, cartas y estadisticas."}
         </p>
       </div>
 
-      <ActiveBenefitsPanel data={data} entitlements={activeEntitlements} />
+      <ActiveBenefitsPanel data={data} entitlements={userActiveEntitlements} />
 
       {showTournamentTools ? (
         <MyTournamentsPanel
