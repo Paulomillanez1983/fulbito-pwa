@@ -878,14 +878,16 @@ function YouTubeFollowStrip() {
   const { followed, markFollowed } = useYouTubeFollowState();
   return (
     <a className="youtube-follow-strip" href={fulbitoLiveChannelUrl} onClick={markFollowed} rel="noreferrer" target="_blank">
-      <YouTubeLogo size={24} />
-      <div>
+      <span className="youtube-follow-strip__icon" aria-hidden="true">
+        <YouTubeLogo size={26} />
+      </span>
+      <div className="youtube-follow-strip__copy">
         <strong>Fulbito TV en YouTube</strong>
         <span>Sorteos, vivos, finales y repeticiones quedan en el canal oficial.</span>
       </div>
       <span className="youtube-follow-strip__cta">
         <YouTubeLogo size={16} />
-        {followed ? "Abrir canal" : "Seguir"}
+        {followed ? "Canal abierto" : "Abrir YouTube"}
         <ExternalLink size={15} />
       </span>
     </a>
@@ -2525,7 +2527,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           </section>
         ) : null}
 
-        {!inviteMode ? (
+        {!inviteMode && data.user ? (
           <StartGuidePanel
             data={data}
             hasCreatedTournament={hasCreatedTournament}
@@ -2546,7 +2548,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           />
         ) : null}
 
-        {!inviteMode && !hasCreatedTournament ? (
+        {!inviteMode && !data.user && !hasCreatedTournament ? (
           <section className="console-hero-panel console-hero-panel--2026">
             <img alt="" className="hero-mark" src="/assets/icon.svg" />
             <span>Fulbito Arena 2026</span>

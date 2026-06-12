@@ -9,6 +9,39 @@ import type { AppRole } from "@/lib/types";
 
 const loginRoles: AppRole[] = ["player", "captain", "venue_owner", "organizer", "referee"];
 
+const roleEntryCopy: Record<AppRole, { action: string; body: string; cta: string }> = {
+  player: {
+    action: "Ver mi equipo y completar ficha",
+    body: "Para jugadores que quieren ver partidos, cargar dorsal, apodo y confirmar presencia.",
+    cta: "Entrar como jugador"
+  },
+  captain: {
+    action: "Cargar club e invitar jugadores",
+    body: "Para capitanes o DT que inscriben el equipo en una copa y ordenan el plantel.",
+    cta: "Entrar como capitan"
+  },
+  venue_owner: {
+    action: "Registrar cancha",
+    body: "Para duenos de sede que quieren publicar ubicacion, WhatsApp y precios.",
+    cta: "Entrar como cancha"
+  },
+  organizer: {
+    action: "Crear torneo e invitar equipos",
+    body: "Para quien arma la copa, define formato, fechas y comparte invitaciones por WhatsApp.",
+    cta: "Entrar y crear torneo"
+  },
+  referee: {
+    action: "Cargar resultados oficiales",
+    body: "Para veedores que cargan marcador, tarjetas, MVP y validan actas cuando esten habilitados.",
+    cta: "Entrar como veedor"
+  },
+  admin: {
+    action: "Administrar Fulbito",
+    body: "Panel interno para pagos, auditoria, usuarios y configuracion operativa.",
+    cta: "Entrar al panel"
+  }
+};
+
 export function LoginPanel({
   configured,
   joinCode,
@@ -23,8 +56,10 @@ export function LoginPanel({
   nextTarget?: string;
 }) {
   const inviteMode = Boolean(joinCode);
+  const playerInviteMode = Boolean(teamCode);
   const [role, setRole] = useState<AppRole>(inviteMode ? "captain" : "player");
   const selected = roleCatalog[role];
+  const selectedCopy = roleEntryCopy[role];
   const disabled = !configured;
 
   const redirectTo = useMemo(() => {
@@ -56,11 +91,13 @@ export function LoginPanel({
     <section className={`login-panel ${inviteMode ? "login-panel--invite" : ""}`} id="login">
       <div>
         <p className="eyebrow">{inviteMode ? "Invitacion recibida" : "Tu copa empieza aca"}</p>
-        <h2>{inviteMode ? "Entra para cargar tu equipo" : "Crear torneo o sumarte a uno"}</h2>
+        <h2>{inviteMode ? (playerInviteMode ? "Entra para ficharte" : "Entra para cargar tu equipo") : "Elegi tu rol inicial"}</h2>
         <p>
           {inviteMode
-            ? `Google confirma tu cuenta y te lleva a la carga del club para ${tournamentName ?? "esta copa"}.`
-            : "Elegi como vas a participar. Despues podes crear un mundial barrial, registrar tu equipo o entrar como jugador."}
+            ? playerInviteMode
+              ? `Google confirma tu cuenta y te lleva directo a tu ficha de jugador para ${tournamentName ?? "esta copa"}.`
+              : `Google confirma tu cuenta y te lleva a la carga del club para ${tournamentName ?? "esta copa"}.`
+            : "Una misma cuenta puede tener varios permisos. Elegi lo que queres hacer ahora; despues podes activar otros roles."}
         </p>
       </div>
 
@@ -82,14 +119,26 @@ export function LoginPanel({
       <article className="selected-role-card">
         <ShieldCheck size={20} />
         <div>
-          <strong>{inviteMode ? "Capitan / DT del equipo invitado" : selected.headline}</strong>
-          <span>{inviteMode ? "Crear club / Cargar plantel / Inscribirse en la copa" : selected.consumes.slice(0, 3).join(" / ")}</span>
+          <strong>
+            {inviteMode
+              ? playerInviteMode
+                ? "Jugador invitado"
+                : "Capitan / DT del equipo invitado"
+              : `${selected.label}: ${selectedCopy.action}`}
+          </strong>
+          <span>
+            {inviteMode
+              ? playerInviteMode
+                ? "Completar nombre, dorsal, posicion y apodo dentro del equipo correcto."
+                : "Crear o elegir club, cargar plantel e inscribirse en la copa correcta."
+              : selectedCopy.body}
+          </span>
         </div>
       </article>
 
       <button className="google-button" disabled={disabled} onClick={signInWithGoogle} type="button">
         <span>G</span>
-        {inviteMode ? "Entrar con Google y cargar equipo" : "Entrar con Google"}
+        {inviteMode ? (playerInviteMode ? "Entrar con Google y ficharme" : "Entrar con Google y cargar equipo") : selectedCopy.cta}
       </button>
       {!configured ? (
         <p className="login-warning">Supabase todavia no esta configurado en el entorno. La UI queda en modo demo.</p>

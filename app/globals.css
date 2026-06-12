@@ -442,13 +442,17 @@ h3 {
 }
 
 .role-picker {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin: 14px 0;
 }
 
 .role-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 9px 11px;
@@ -463,7 +467,8 @@ h3 {
 }
 
 .selected-role-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   border: 1px solid rgba(52,201,255,.32);
@@ -475,6 +480,11 @@ h3 {
 .selected-role-card strong,
 .selected-role-card span {
   display: block;
+}
+
+.selected-role-card span {
+  margin-top: 3px;
+  line-height: 1.32;
 }
 
 .selected-role-card svg {
@@ -3256,15 +3266,26 @@ body::after {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   border: 1px solid rgba(255,49,49,.22);
-  border-radius: 14px;
-  padding: 12px;
+  border-radius: 16px;
+  padding: 13px;
   background:
     radial-gradient(circle at 0 0, rgba(255,49,49,.16), transparent 32%),
+    radial-gradient(circle at 100% 100%, rgba(85,246,255,.09), transparent 34%),
     linear-gradient(180deg, rgba(20,26,36,.86), rgba(5,9,17,.9));
   color: var(--ink);
   text-decoration: none;
+}
+
+.youtube-follow-strip__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  background: rgba(255,255,255,.06);
 }
 
 .youtube-logo {
@@ -3273,27 +3294,36 @@ body::after {
   filter: drop-shadow(0 4px 10px rgba(255,0,51,.24));
 }
 
-.youtube-follow-strip strong,
-.youtube-follow-strip span {
+.youtube-follow-strip__copy strong,
+.youtube-follow-strip__copy span {
   display: block;
 }
 
-.youtube-follow-strip span {
+.youtube-follow-strip__copy strong {
+  color: #fff8ec;
+}
+
+.youtube-follow-strip__copy span {
   color: var(--muted);
+  line-height: 1.25;
 }
 
 .youtube-follow-strip__cta {
   display: inline-flex;
   align-items: center;
+  justify-self: end;
   gap: 6px;
-  min-height: 38px;
-  border: 1px solid rgba(255,255,255,.13);
+  min-height: 40px;
+  width: max-content;
+  border: 1px solid rgba(255,255,255,.16);
   border-radius: 999px;
-  padding: 0 12px;
-  background: rgba(255,49,49,.15);
+  padding: 0 13px;
+  background: linear-gradient(135deg, rgba(255,0,51,.28), rgba(255,0,51,.1));
   color: #fff2f2;
+  font-size: .86rem;
   font-weight: 950;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .arena-ad-boards {
@@ -8049,6 +8079,8 @@ body::after,
   .youtube-follow-strip__cta {
     grid-column: 1 / -1;
     justify-content: center;
+    justify-self: stretch;
+    width: 100%;
   }
 
   .weekday-picker > div {
