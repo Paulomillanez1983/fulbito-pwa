@@ -3912,8 +3912,9 @@ body::after {
   place-items: center;
   padding: 22px;
   background:
-    radial-gradient(circle at 50% 18%, rgba(241,199,91,.18), transparent 28%),
-    radial-gradient(circle at 14% 82%, rgba(52,201,255,.12), transparent 34%),
+    radial-gradient(circle at 50% 20%, rgba(255,216,93,.2), transparent 27%),
+    radial-gradient(circle at 14% 82%, rgba(52,201,255,.16), transparent 34%),
+    radial-gradient(circle at 86% 74%, rgba(255,72,72,.08), transparent 30%),
     rgba(1, 4, 10, .86);
   backdrop-filter: blur(16px);
 }
@@ -3939,6 +3940,7 @@ body::after {
   background:
     linear-gradient(145deg, rgba(255,255,255,.11), rgba(255,255,255,.03)),
     radial-gradient(circle at 50% 0, rgba(241,199,91,.16), transparent 40%),
+    radial-gradient(circle at 18% 100%, rgba(52,201,255,.1), transparent 36%),
     rgba(6, 10, 18, .94);
   box-shadow:
     0 26px 80px rgba(0,0,0,.62),
@@ -3963,34 +3965,72 @@ body::after {
   place-items: center;
   width: min(72vw, 250px);
   min-height: 252px;
+  perspective: 900px;
+}
+
+.sponsor-splash__stage::before {
+  content: "";
+  position: absolute;
+  inset: 18px -8px 0;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(255,210,72,.28), transparent 42%),
+    radial-gradient(circle, rgba(52,201,255,.14), transparent 58%);
+  filter: blur(22px);
+  opacity: .86;
+  transform: translateY(18px);
 }
 
 .sponsor-splash__wrist {
   position: absolute;
-  right: 2px;
-  bottom: 4px;
-  width: 108px;
-  height: 116px;
+  right: 0;
+  bottom: -4px;
+  width: 122px;
+  height: 130px;
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 46% 46% 34% 34%;
+  border-radius: 50% 48% 36% 38%;
   background:
-    radial-gradient(circle at 42% 16%, rgba(255,232,202,.96), transparent 22%),
-    linear-gradient(145deg, #b26f3b, #f0c49b 42%, #7c3d20);
-  box-shadow: 0 22px 38px rgba(0,0,0,.46);
-  transform: rotate(-14deg);
+    radial-gradient(circle at 34% 14%, rgba(255,238,216,.98), transparent 22%),
+    radial-gradient(circle at 84% 70%, rgba(122,59,29,.62), transparent 38%),
+    linear-gradient(145deg, #8e4d2a 0%, #edbf95 38%, #b36d3f 64%, #5f2c1d 100%);
+  box-shadow:
+    inset 10px 2px 18px rgba(255,255,255,.18),
+    inset -16px -16px 24px rgba(57,22,10,.42),
+    0 24px 42px rgba(0,0,0,.52);
+  transform: rotate(-12deg) translateZ(-20px);
 }
 
 .sponsor-splash__fingers {
   position: absolute;
-  right: 28px;
-  bottom: 98px;
-  width: 112px;
-  height: 42px;
+  right: 26px;
+  bottom: 105px;
+  width: 126px;
+  height: 48px;
   border-radius: 999px;
   background:
-    linear-gradient(90deg, #f2cda9 0 22%, #d89562 22% 24%, #f0c29a 24% 48%, #d89562 48% 50%, #efbd91 50% 74%, #c57b4c 74% 76%, #e8ad7f 76%);
-  box-shadow: 0 12px 22px rgba(0,0,0,.34);
-  transform: rotate(-17deg);
+    radial-gradient(circle at 12% 18%, rgba(255,238,219,.88), transparent 17%),
+    linear-gradient(90deg, #f5d3b0 0 20%, #c77c4e 20% 22%, #f0c49c 22% 45%, #b96e43 45% 47%, #efbd91 47% 70%, #b9693f 70% 72%, #e6a878 72% 100%);
+  box-shadow:
+    inset 0 -9px 14px rgba(99,38,18,.22),
+    0 12px 22px rgba(0,0,0,.38);
+  transform: rotate(-16deg) translateZ(12px);
+}
+
+.sponsor-splash__thumb {
+  position: absolute;
+  right: 38px;
+  bottom: 82px;
+  z-index: 2;
+  width: 34px;
+  height: 84px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 38% 14%, rgba(255,238,218,.94), transparent 22%),
+    linear-gradient(160deg, #f0c49c, #a65f38 66%, #5e2918);
+  box-shadow:
+    inset -8px -10px 16px rgba(72,28,12,.28),
+    0 16px 24px rgba(0,0,0,.38);
+  transform: rotate(19deg);
 }
 
 .sponsor-splash__brand {
@@ -4014,7 +4054,8 @@ body::after {
     0 0 0 6px rgba(255,211,72,.08),
     0 0 34px rgba(255,211,72,.24);
   overflow: hidden;
-  transform: rotate(-6deg);
+  transform: rotateX(7deg) rotateY(-10deg) rotate(-6deg);
+  animation: sponsor-card-enter .56s cubic-bezier(.2,.84,.32,1.22) both, sponsor-card-breathe 3.8s ease-in-out .7s infinite;
 }
 
 .sponsor-splash__brand::before {
@@ -4022,8 +4063,9 @@ body::after {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(115deg, transparent 0 28%, rgba(255,255,255,.34) 30%, transparent 44%),
+    linear-gradient(115deg, transparent 0 28%, rgba(255,255,255,.42) 30%, transparent 44%),
     repeating-linear-gradient(0deg, rgba(255,255,255,.08) 0 1px, transparent 1px 7px);
+  animation: sponsor-card-shine 3.8s ease-in-out 1s infinite;
   pointer-events: none;
 }
 
@@ -4099,6 +4141,70 @@ body::after {
   font-weight: 1000;
 }
 
+.sponsor-splash__cta span:not(.sponsor-social-icon) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sponsor-social-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 21px;
+  height: 21px;
+  border-radius: 6px;
+  box-shadow: 0 2px 7px rgba(0,0,0,.2);
+}
+
+.sponsor-social-icon--instagram {
+  background:
+    radial-gradient(circle at 32% 28%, #ffd86f 0 15%, transparent 16%),
+    radial-gradient(circle at 72% 78%, #7a39ff 0 21%, transparent 22%),
+    linear-gradient(135deg, #ffcf4f, #ff315d 48%, #7a39ff);
+}
+
+.sponsor-social-icon--instagram::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border: 2px solid #fff;
+  border-radius: 4px;
+}
+
+.sponsor-social-icon--instagram::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.sponsor-social-icon--facebook {
+  border-radius: 50%;
+  background: #1877f2;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 1000;
+  line-height: 1;
+}
+
+.sponsor-social-icon--tiktok {
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 62% 42%, rgba(255,0,80,.82), transparent 27%),
+    radial-gradient(circle at 38% 58%, rgba(0,242,234,.82), transparent 27%),
+    #05070b;
+  color: #fff;
+  font-size: .92rem;
+  font-weight: 1000;
+}
+
 .sponsor-splash__close {
   position: fixed;
   top: calc(18px + env(safe-area-inset-top));
@@ -4122,6 +4228,37 @@ body::after {
   color: #ffe39a;
   cursor: wait;
   opacity: .88;
+}
+
+@keyframes sponsor-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(.9) rotateX(14deg) rotateY(-18deg) rotate(-9deg);
+  }
+  to {
+    opacity: 1;
+    transform: rotateX(7deg) rotateY(-10deg) rotate(-6deg);
+  }
+}
+
+@keyframes sponsor-card-breathe {
+  0%,
+  100% {
+    transform: rotateX(7deg) rotateY(-10deg) rotate(-6deg) translateY(0);
+  }
+  50% {
+    transform: rotateX(8deg) rotateY(-8deg) rotate(-5deg) translateY(-4px);
+  }
+}
+
+@keyframes sponsor-card-shine {
+  0%,
+  64% {
+    transform: translateX(-72%);
+  }
+  100% {
+    transform: translateX(72%);
+  }
 }
 
 .arena-ad-boards {

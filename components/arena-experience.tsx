@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Flag,
   Gamepad2,
+  Globe2,
   LoaderCircle,
   LogIn,
   LogOut,
@@ -1126,8 +1127,87 @@ function canShowSponsorSplash(campaign: AdCampaign, userKey: string) {
   return Date.now() - lastShownAt >= frequencyHours * 60 * 60 * 1000;
 }
 
+function getSponsorSplashLastShownAt(campaign: AdCampaign, userKey: string) {
+  const raw = window.localStorage.getItem(`fulbito:sponsor-splash:${userKey}:${campaign.id}`);
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : 0;
+}
+
 function markSponsorSplashShown(campaign: AdCampaign, userKey: string) {
   window.localStorage.setItem(`fulbito:sponsor-splash:${userKey}:${campaign.id}`, String(Date.now()));
+}
+
+function pickSponsorSplashCampaign(campaigns: AdCampaign[], userKey: string) {
+  const eligible = campaigns.filter((item) => canShowSponsorSplash(item, userKey));
+  if (!eligible.length) return null;
+
+  return eligible
+    .map((item, index) => ({ item, index, lastShownAt: getSponsorSplashLastShownAt(item, userKey) }))
+    .sort((left, right) => left.lastShownAt - right.lastShownAt || left.index - right.index)[0]?.item ?? null;
+}
+
+function sponsorTargetKind(url?: string | null) {
+  const value = (url ?? "").toLowerCase();
+  if (value.includes("youtube.com") || value.includes("youtu.be")) return "youtube";
+  if (value.includes("instagram.com") || value.includes("instagr.am")) return "instagram";
+  if (value.includes("facebook.com") || value.includes("fb.com")) return "facebook";
+  if (value.includes("tiktok.com")) return "tiktok";
+  return "web";
+}
+
+function sponsorDefaultCta(url?: string | null) {
+  const kind = sponsorTargetKind(url);
+  if (kind === "youtube") return "Abrir canal";
+  if (kind === "instagram") return "Ver Instagram";
+  if (kind === "facebook") return "Ver Facebook";
+  if (kind === "tiktok") return "Ver TikTok";
+  return "Abrir web";
+}
+
+function SponsorTargetIcon({ url }: { url?: string | null }) {
+  const kind = sponsorTargetKind(url);
+  if (kind === "youtube") return <YouTubeLogo size={18} />;
+  if (kind === "instagram") return <span aria-hidden="true" className="sponsor-social-icon sponsor-social-icon--instagram" />;
+  if (kind === "facebook") return <span aria-hidden="true" className="sponsor-social-icon sponsor-social-icon--facebook">f</span>;
+  if (kind === "tiktok") return <span aria-hidden="true" className="sponsor-social-icon sponsor-social-icon--tiktok">♪</span>;
+  return <Globe2 aria-hidden="true" size={18} />;
+}
+
+function playSponsorWhistle() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audio = new AudioContextClass();
+    const now = audio.currentTime;
+    const master = audio.createGain();
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.09, now + 0.03);
+    master.gain.exponentialRampToValueAtTime(0.001, now + 0.78);
+    master.connect(audio.destination);
+
+    const main = audio.createOscillator();
+    main.type = "sine";
+    main.frequency.setValueAtTime(1920, now);
+    main.frequency.linearRampToValueAtTime(2380, now + 0.16);
+    main.frequency.linearRampToValueAtTime(2100, now + 0.38);
+    main.frequency.linearRampToValueAtTime(2520, now + 0.56);
+    main.connect(master);
+    main.start(now);
+    main.stop(now + 0.78);
+
+    const overtone = audio.createOscillator();
+    overtone.type = "triangle";
+    overtone.frequency.setValueAtTime(2820, now + 0.02);
+    overtone.frequency.linearRampToValueAtTime(3180, now + 0.18);
+    overtone.frequency.linearRampToValueAtTime(2740, now + 0.52);
+    overtone.connect(master);
+    overtone.start(now + 0.02);
+    overtone.stop(now + 0.64);
+
+    window.setTimeout(() => void audio.close(), 1100);
+  } catch {
+    // Browser audio permissions may block automatic sponsor sounds before user interaction.
+  }
 }
 
 function SponsorSplashOverlay({
@@ -1169,11 +1249,12 @@ function SponsorSplashOverlay({
     if (!splashCampaigns.length) return;
     const deviceId = getSponsorDeviceId();
     const userKey = userId ?? deviceId;
-    const eligible = splashCampaigns.find((item) => canShowSponsorSplash(item, userKey));
+    const eligible = pickSponsorSplashCampaign(splashCampaigns, userKey);
     if (!eligible) return;
     markSponsorSplashShown(eligible, userKey);
     setCampaign(eligible);
     setSecondsLeft(Math.max(0, eligible.splash_close_after_seconds ?? 5));
+    window.setTimeout(playSponsorWhistle, 120);
   }, [campaign, campaigns, enabled, userId]);
 
   useEffect(() => {
@@ -1213,6 +1294,7 @@ function SponsorSplashOverlay({
         <div className="sponsor-splash__stage" aria-hidden="true">
           <span className="sponsor-splash__wrist" />
           <span className="sponsor-splash__fingers" />
+          <span className="sponsor-splash__thumb" />
           <div className="sponsor-splash__brand">
             <span className="sponsor-splash__card-label">Sponsor</span>
             {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={46} />}
@@ -1225,7 +1307,8 @@ function SponsorSplashOverlay({
           {campaign.body ? <p>{campaign.body}</p> : null}
         </div>
         <button className="sponsor-splash__cta" onClick={visitSponsor} type="button">
-          {campaign.splash_cta_label || "Ver sponsor"}
+          <SponsorTargetIcon url={campaign.target_url} />
+          <span>{campaign.splash_cta_label || sponsorDefaultCta(campaign.target_url)}</span>
           <ExternalLink size={17} />
         </button>
         <small>{closeAllowed ? "Ya podes cerrar este sponsor." : `Podes cerrarlo en ${secondsLeft}s`}</small>
