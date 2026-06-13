@@ -93,8 +93,7 @@ const imageBudgets: Record<MediaBucket, { maxBytes: number; minQuality: number; 
 
 async function optimizeImageFile(file: File, bucket: MediaBucket) {
   if (file.type === "image/svg+xml") {
-    if (file.size > 180 * 1024) throw new Error("El SVG es demasiado pesado. Subi PNG, JPG o WebP para optimizarlo.");
-    return file;
+    throw new Error("Subi PNG, JPG o WebP. Fulbito convierte la imagen a WebP liviano antes de guardarla.");
   }
   if (!file.type.startsWith("image/")) return file;
 
@@ -623,7 +622,7 @@ export function ArenaActions({
             <h3>Escudo premium</h3>
             <p>{selectedOwnedTeam.name} tiene Equipo Pro activo. Subi un escudo optimizado para la app, links y cartas.</p>
             <input name="teamId" type="hidden" value={selectedOwnedTeam.id} />
-            <MediaField accept="image/png,image/jpeg,image/webp,image/svg+xml" helper="PNG, JPG, WebP o SVG. Fulbito lo optimiza antes de subir." label="Escudo del equipo" name="badgeFile" variant="crest" />
+            <MediaField accept="image/png,image/jpeg,image/webp" helper="PNG, JPG o WebP. Fulbito lo convierte a WebP liviano antes de subir." label="Escudo del equipo" name="badgeFile" variant="crest" />
             <input name="primaryColor" type="color" defaultValue={selectedOwnedTeam.primary_color || "#eec15c"} />
             <SubmitButton idle="Actualizar escudo" pending="Guardando escudo" />
           </form>

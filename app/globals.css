@@ -4369,7 +4369,7 @@ body::after {
   width: 20px;
   height: 20px;
   border-radius: 4px;
-  object-fit: cover;
+  object-fit: contain;
   filter: drop-shadow(0 1px 5px rgba(0,0,0,.55));
 }
 
@@ -10442,6 +10442,22 @@ body::after,
   color: #ffe39a;
 }
 
+.admin-floating-app-link {
+  position: fixed;
+  right: max(14px, calc((100vw - 1060px) / 2));
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  z-index: 30;
+  border: 1px solid rgba(241,199,91,.42);
+  border-radius: 999px;
+  padding: 10px 13px;
+  background: linear-gradient(135deg, rgba(255,231,134,.98), rgba(184,116,27,.96));
+  color: #05070b;
+  box-shadow: 0 14px 34px rgba(0,0,0,.38);
+  font-size: .82rem;
+  font-weight: 1000;
+  text-decoration: none;
+}
+
 .admin-hero--ops {
   position: relative;
   overflow: hidden;
@@ -10875,6 +10891,30 @@ body::after,
   display: none;
 }
 
+.admin-ad-check-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid rgba(52,201,255,.18);
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: rgba(52,201,255,.07);
+  color: #d7fbff;
+  font-size: .82rem;
+  font-weight: 950;
+}
+
+.admin-ad-check-field input {
+  width: 16px;
+  height: 16px;
+  min-height: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  accent-color: #f1c75b;
+}
+
 .admin-ad-form > button,
 .admin-ad-card button {
   display: inline-flex;
@@ -10940,7 +10980,7 @@ body::after,
   width: 34px;
   height: 34px;
   border-radius: 7px;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .admin-ad-card strong,
@@ -10963,10 +11003,19 @@ body::after,
   text-transform: uppercase;
 }
 
-.admin-ad-card > div {
+.admin-ad-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.admin-ad-edit-form {
+  margin-top: 4px;
+  background: rgba(2,6,12,.7);
+}
+
+.admin-ad-edit-form .admin-ad-form__grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .admin-ad-metrics {

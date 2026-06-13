@@ -1127,32 +1127,52 @@ function canShowSponsorSplash(campaign: AdCampaign, userKey: string) {
   return Date.now() - lastShownAt >= frequencyHours * 60 * 60 * 1000;
 }
 
-function getSponsorSplashLastShownAt(campaign: AdCampaign, userKey: string) {
-  const raw = window.localStorage.getItem(`fulbito:sponsor-splash:${userKey}:${campaign.id}`);
-  const value = Number(raw);
-  return Number.isFinite(value) ? value : 0;
-}
-
 function markSponsorSplashShown(campaign: AdCampaign, userKey: string) {
   window.localStorage.setItem(`fulbito:sponsor-splash:${userKey}:${campaign.id}`, String(Date.now()));
+}
+
+function shuffleSponsorIds(ids: string[], avoidFirstId?: string | null) {
+  const queue = [...ids];
+  for (let index = queue.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [queue[index], queue[randomIndex]] = [queue[randomIndex], queue[index]];
+  }
+  if (queue.length > 1 && avoidFirstId && queue[0] === avoidFirstId) {
+    const swapIndex = queue.findIndex((id) => id !== avoidFirstId);
+    if (swapIndex > 0) [queue[0], queue[swapIndex]] = [queue[swapIndex], queue[0]];
+  }
+  return queue;
 }
 
 function pickSponsorSplashCampaign(campaigns: AdCampaign[], userKey: string) {
   if (!campaigns.length) return null;
   const eligible = campaigns.filter((item) => canShowSponsorSplash(item, userKey));
   const candidates = eligible.length ? eligible : campaigns;
-  const ranked = candidates
-    .map((item, index) => ({ item, index, lastShownAt: getSponsorSplashLastShownAt(item, userKey) }))
-    .sort((left, right) => left.lastShownAt - right.lastShownAt || left.index - right.index);
-  const oldestShownAt = ranked[0]?.lastShownAt ?? 0;
-  const leastSeen = ranked.filter((entry) => entry.lastShownAt === oldestShownAt);
-  if (leastSeen.length <= 1) return leastSeen[0]?.item ?? ranked[0]?.item ?? null;
+  const ids = candidates.map((item) => item.id).sort();
+  const poolKey = ids.join("|");
+  const storageKey = `fulbito:sponsor-splash-rotation:${userKey}`;
+  const lastPickedKey = `fulbito:sponsor-splash-last-picked:${userKey}`;
+  const lastPickedId = window.sessionStorage.getItem(lastPickedKey);
+  let queue: string[] = [];
 
-  const lastPickedId = window.sessionStorage.getItem(`fulbito:sponsor-splash-last-picked:${userKey}`);
-  const pool = leastSeen.filter((entry) => entry.item.id !== lastPickedId);
-  const randomPool = pool.length ? pool : leastSeen;
-  const picked = randomPool[Math.floor(Math.random() * randomPool.length)]?.item ?? leastSeen[0]?.item ?? null;
-  if (picked) window.sessionStorage.setItem(`fulbito:sponsor-splash-last-picked:${userKey}`, picked.id);
+  try {
+    const raw = window.sessionStorage.getItem(storageKey);
+    const stored = raw ? JSON.parse(raw) as { poolKey?: string; queue?: string[] } : null;
+    if (stored?.poolKey === poolKey && Array.isArray(stored.queue)) {
+      const validIds = new Set(ids);
+      queue = stored.queue.filter((id) => validIds.has(id));
+    }
+  } catch {
+    queue = [];
+  }
+
+  if (!queue.length) queue = shuffleSponsorIds(ids, lastPickedId);
+  const pickedId = queue.shift() ?? ids[0];
+  const picked = candidates.find((item) => item.id === pickedId) ?? candidates[0] ?? null;
+  if (picked) {
+    window.sessionStorage.setItem(lastPickedKey, picked.id);
+    window.sessionStorage.setItem(storageKey, JSON.stringify({ poolKey, queue }));
+  }
   return picked;
 }
 
@@ -3792,7 +3812,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   return (
     <div className="game-app-shell">
       {showSplash ? <SplashScreen /> : null}
-      <SponsorSplashOverlay campaigns={sponsorSplashCampaigns} enabled={!showSplash && !inviteMode && !friendlyInvite} triggerKey={sponsorTriggerKey} userId={data.user?.id} />
+      <SponsorSplashOverlay campaigns={sponsorSplashCampaigns} enabled={!showSplash} triggerKey={sponsorTriggerKey} userId={data.user?.id} />
       <ArenaAdBoards campaigns={visibleAdCampaigns} />
       <header className="game-topbar">
         <button className="game-brand" onClick={() => setActiveTab("home")} type="button">
