@@ -303,6 +303,11 @@ export const demoArenaData: ArenaData = {
       starts_at: new Date().toISOString(),
       ends_at: null,
       sort_order: 10,
+      splash_enabled: true,
+      splash_cta_label: "Abrir canal",
+      splash_close_after_seconds: 5,
+      splash_frequency_hours: 12,
+      splash_creative_url: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     },
@@ -324,6 +329,11 @@ export const demoArenaData: ArenaData = {
       starts_at: new Date().toISOString(),
       ends_at: null,
       sort_order: 20,
+      splash_enabled: false,
+      splash_cta_label: "Ver sponsor",
+      splash_close_after_seconds: 5,
+      splash_frequency_hours: 12,
+      splash_creative_url: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }

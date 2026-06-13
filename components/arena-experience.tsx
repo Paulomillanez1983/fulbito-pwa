@@ -19,6 +19,7 @@ import {
   LogOut,
   LocateFixed,
   MapPinned,
+  Megaphone,
   Plus,
   RadioTower,
   Route,
@@ -1058,6 +1059,11 @@ function ArenaAdBoards({ campaigns }: { campaigns: AdCampaign[] }) {
       starts_at: new Date().toISOString(),
       ends_at: null,
       sort_order: 1,
+      splash_enabled: true,
+      splash_cta_label: "Abrir canal",
+      splash_close_after_seconds: 5,
+      splash_frequency_hours: 12,
+      splash_creative_url: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     },
@@ -1079,11 +1085,17 @@ function ArenaAdBoards({ campaigns }: { campaigns: AdCampaign[] }) {
       starts_at: new Date().toISOString(),
       ends_at: null,
       sort_order: 2,
+      splash_enabled: false,
+      splash_cta_label: "Ver sponsor",
+      splash_close_after_seconds: 5,
+      splash_frequency_hours: 12,
+      splash_creative_url: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
   ];
-  const visibleCampaigns = campaigns.length ? campaigns : fallbackCampaigns;
+  const ledCampaigns = campaigns.filter((campaign) => campaign.placement !== "sponsor_splash");
+  const visibleCampaigns = ledCampaigns.length ? ledCampaigns : fallbackCampaigns;
   const repeatedCampaigns = [...visibleCampaigns, ...visibleCampaigns, ...visibleCampaigns, ...visibleCampaigns];
 
   return (
@@ -1092,6 +1104,136 @@ function ArenaAdBoards({ campaigns }: { campaigns: AdCampaign[] }) {
         {repeatedCampaigns.map((campaign, index) => <AdBoardItem campaign={campaign} key={`${campaign.id}-${index}`} />)}
       </div>
     </div>
+  );
+}
+
+function getSponsorDeviceId() {
+  const key = "fulbito:sponsor-device-id";
+  const existing = window.localStorage.getItem(key);
+  if (existing) return existing;
+  const next = `device-${crypto.randomUUID()}`;
+  window.localStorage.setItem(key, next);
+  return next;
+}
+
+function canShowSponsorSplash(campaign: AdCampaign, userKey: string) {
+  const frequencyHours = campaign.splash_frequency_hours ?? 12;
+  if (frequencyHours <= 0) return true;
+  const raw = window.localStorage.getItem(`fulbito:sponsor-splash:${userKey}:${campaign.id}`);
+  if (!raw) return true;
+  const lastShownAt = Number(raw);
+  if (!Number.isFinite(lastShownAt)) return true;
+  return Date.now() - lastShownAt >= frequencyHours * 60 * 60 * 1000;
+}
+
+function markSponsorSplashShown(campaign: AdCampaign, userKey: string) {
+  window.localStorage.setItem(`fulbito:sponsor-splash:${userKey}:${campaign.id}`, String(Date.now()));
+}
+
+function SponsorSplashOverlay({
+  campaigns,
+  enabled,
+  userId
+}: {
+  campaigns: AdCampaign[];
+  enabled: boolean;
+  userId?: string | null;
+}) {
+  const [campaign, setCampaign] = useState<AdCampaign | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+  const loggedImpressionRef = useRef("");
+
+  const logEvent = useCallback(async (activeCampaign: AdCampaign, eventType: "impression" | "click" | "dismiss") => {
+    try {
+      const anonId = getSponsorDeviceId();
+      const supabase = createSupabaseBrowserClient();
+      await supabase.from("ad_campaign_events").insert({
+        campaign_id: activeCampaign.id,
+        anon_id: anonId,
+        event_type: eventType,
+        placement: "sponsor_splash",
+        source_path: `${window.location.pathname}${window.location.search}`,
+        metadata: {
+          advertiserName: activeCampaign.advertiser_name,
+          userLoggedIn: Boolean(userId)
+        }
+      });
+    } catch {
+      // Ad metrics must never block the product flow.
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (!enabled || campaign) return;
+    const splashCampaigns = campaigns.filter((item) => item.splash_enabled || item.placement === "sponsor_splash" || item.placement === "both");
+    if (!splashCampaigns.length) return;
+    const deviceId = getSponsorDeviceId();
+    const userKey = userId ?? deviceId;
+    const eligible = splashCampaigns.find((item) => canShowSponsorSplash(item, userKey));
+    if (!eligible) return;
+    markSponsorSplashShown(eligible, userKey);
+    setCampaign(eligible);
+    setSecondsLeft(Math.max(0, eligible.splash_close_after_seconds ?? 5));
+  }, [campaign, campaigns, enabled, userId]);
+
+  useEffect(() => {
+    if (!campaign || loggedImpressionRef.current === campaign.id) return;
+    loggedImpressionRef.current = campaign.id;
+    void logEvent(campaign, "impression");
+  }, [campaign, logEvent]);
+
+  useEffect(() => {
+    if (!campaign || secondsLeft <= 0) return;
+    const timer = window.setTimeout(() => setSecondsLeft((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [campaign, secondsLeft]);
+
+  if (!campaign) return null;
+
+  const logoUrl = campaign.splash_creative_url || campaign.logo_url;
+  const closeAllowed = secondsLeft <= 0;
+
+  function visitSponsor() {
+    if (!campaign) return;
+    void logEvent(campaign, "click");
+    if (campaign.target_url) window.open(campaign.target_url, "_blank", "noopener,noreferrer");
+  }
+
+  function closeSponsor() {
+    if (!campaign || !closeAllowed) return;
+    void logEvent(campaign, "dismiss");
+    setCampaign(null);
+  }
+
+  return (
+    <section className="sponsor-splash" aria-label={`Auspicia Fulbito Arena: ${campaign.advertiser_name}`} aria-modal="true" role="dialog">
+      <button className="sponsor-splash__hitbox" onClick={visitSponsor} type="button" aria-label={`Abrir sponsor ${campaign.advertiser_name}`} />
+      <article className="sponsor-splash__card">
+        <span className="sponsor-splash__eyebrow">Auspicia Fulbito Arena</span>
+        <div className="sponsor-splash__stage" aria-hidden="true">
+          <span className="sponsor-splash__wrist" />
+          <span className="sponsor-splash__fingers" />
+          <div className="sponsor-splash__brand">
+            <span className="sponsor-splash__card-label">Sponsor</span>
+            {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={46} />}
+            <span className="sponsor-splash__card-footer">Fulbito Arena</span>
+          </div>
+        </div>
+        <div className="sponsor-splash__copy">
+          <strong>{campaign.advertiser_name}</strong>
+          <h2>{campaign.headline}</h2>
+          {campaign.body ? <p>{campaign.body}</p> : null}
+        </div>
+        <button className="sponsor-splash__cta" onClick={visitSponsor} type="button">
+          {campaign.splash_cta_label || "Ver sponsor"}
+          <ExternalLink size={17} />
+        </button>
+        <small>{closeAllowed ? "Ya podes cerrar este sponsor." : `Podes cerrarlo en ${secondsLeft}s`}</small>
+      </article>
+      <button className="sponsor-splash__close" disabled={!closeAllowed} onClick={closeSponsor} type="button" aria-label="Cerrar publicidad">
+        {closeAllowed ? <X size={22} /> : secondsLeft}
+      </button>
+    </section>
   );
 }
 
@@ -2911,6 +3053,9 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
       }) <= campaign.radius_km;
     });
   }, [data.adCampaigns, venueLocation]);
+  const sponsorSplashCampaigns = useMemo(() => {
+    return visibleAdCampaigns.filter((campaign) => campaign.splash_enabled || campaign.placement === "sponsor_splash" || campaign.placement === "both");
+  }, [visibleAdCampaigns]);
   const selectedVenue = nearbyVenues.find((venue) => venue.id === selectedVenueId) ?? nearbyVenues[0];
   const selectedPlayers = data.players.filter((player) => player.team_id === selectedTeam?.id);
   const selectedPlayer = selectedPlayers.find((player) => player.id === selectedPlayerId) ?? null;
@@ -3544,6 +3689,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   return (
     <div className="game-app-shell">
       {showSplash ? <SplashScreen /> : null}
+      <SponsorSplashOverlay campaigns={sponsorSplashCampaigns} enabled={!showSplash && active === "home" && !inviteMode && !friendlyInvite} userId={data.user?.id} />
       <ArenaAdBoards campaigns={visibleAdCampaigns} />
       <header className="game-topbar">
         <button className="game-brand" onClick={() => setActiveTab("home")} type="button">

@@ -88,7 +88,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       user ? supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(80) : emptyResult,
       user ? supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }) : emptyResult,
       supabase.from("billing_plan_settings").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
-      supabase.from("ad_campaigns").select("*").eq("placement", "arena_led").order("sort_order", { ascending: true }).order("created_at", { ascending: false }).limit(24),
+      supabase.from("ad_campaigns").select("*").in("placement", ["arena_led", "sponsor_splash", "both"]).order("sort_order", { ascending: true }).order("created_at", { ascending: false }).limit(32),
       supabase.from("live_stream_channels").select("*").order("created_at", { ascending: true }),
       user ? supabase.from("live_stream_permissions").select("*").order("created_at", { ascending: false }) : emptyResult,
       supabase.from("live_stream_events").select("*").order("scheduled_start_at", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }),

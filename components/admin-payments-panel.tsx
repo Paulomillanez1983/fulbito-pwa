@@ -5,7 +5,7 @@ import type { CSSProperties, FormEvent } from "react";
 import { Ban, CheckCircle2, Clock3, ExternalLink, Flag, LoaderCircle, Megaphone, MessageCircle, RadioTower, Search, ShieldCheck, Trophy, Users, Send, Upload, Video, XCircle } from "lucide-react";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AccountEntitlement, AdCampaign, AdCampaignScope, AdCampaignStatus, AppRole, ArenaMatch, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, MatchResultSubmission, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
+import type { AccountEntitlement, AdCampaign, AdCampaignEvent, AdCampaignScope, AdCampaignStatus, AppRole, ArenaMatch, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, MatchResultSubmission, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
 
 const statusIcons: Record<PaymentRequest["status"], typeof Clock3> = {
   pending_review: Clock3,
@@ -473,14 +473,26 @@ function localDateTime(value?: string | null) {
 
 function AdminAdCampaignPanel({
   adminId,
-  initialCampaigns
+  initialCampaigns,
+  initialEvents
 }: {
   adminId: string;
   initialCampaigns: AdCampaign[];
+  initialEvents: AdCampaignEvent[];
 }) {
   const [campaigns, setCampaigns] = useState(initialCampaigns);
+  const [events] = useState(initialEvents);
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
+  const metricsByCampaign = useMemo(() => {
+    return events.reduce<Record<string, { impressions: number; clicks: number; dismisses: number }>>((groups, event) => {
+      groups[event.campaign_id] = groups[event.campaign_id] ?? { impressions: 0, clicks: 0, dismisses: 0 };
+      if (event.event_type === "impression") groups[event.campaign_id].impressions += 1;
+      if (event.event_type === "click") groups[event.campaign_id].clicks += 1;
+      if (event.event_type === "dismiss") groups[event.campaign_id].dismisses += 1;
+      return groups;
+    }, {});
+  }, [events]);
 
   async function uploadLogo(fileValue: FormDataEntryValue | null) {
     if (!(fileValue instanceof File) || fileValue.size === 0) return null;
@@ -510,12 +522,16 @@ function AdminAdCampaignPanel({
     const headline = String(form.get("headline") || "").trim();
     const startsAt = String(form.get("startsAt") || "");
     const endsAt = String(form.get("endsAt") || "");
+    const placement = String(form.get("placement") || "both");
+    const splashCloseAfterSeconds = Number(form.get("splashCloseAfterSeconds") || 5);
+    const splashFrequencyHours = Number(form.get("splashFrequencyHours") || 12);
 
     try {
-      if (!advertiserName || !headline) throw new Error("Carga nombre del comercio y texto del LED.");
+      if (!advertiserName || !headline) throw new Error("Carga nombre del comercio y texto del sponsor.");
       if (scope === "local" && (!Number.isFinite(latitude) || !Number.isFinite(longitude))) {
         throw new Error("Para publicidad local carga latitud y longitud del comercio.");
       }
+      const splashEnabled = placement === "sponsor_splash" || placement === "both" || form.get("splashEnabled") === "on";
       const logoUrl = await uploadLogo(form.get("logoFile"));
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
@@ -528,7 +544,7 @@ function AdminAdCampaignPanel({
           body: String(form.get("body") || "").trim() || null,
           logo_url: logoUrl,
           target_url: String(form.get("targetUrl") || "").trim() || null,
-          placement: "arena_led",
+          placement,
           scope,
           latitude: scope === "local" ? latitude : null,
           longitude: scope === "local" ? longitude : null,
@@ -536,14 +552,19 @@ function AdminAdCampaignPanel({
           status: String(form.get("status") || "active") as AdCampaignStatus,
           starts_at: startsAt ? new Date(startsAt).toISOString() : new Date().toISOString(),
           ends_at: endsAt ? new Date(endsAt).toISOString() : null,
-          sort_order: Number(form.get("sortOrder") || 100)
+          sort_order: Number(form.get("sortOrder") || 100),
+          splash_enabled: splashEnabled,
+          splash_cta_label: String(form.get("splashCtaLabel") || "").trim() || "Ver sponsor",
+          splash_close_after_seconds: Number.isFinite(splashCloseAfterSeconds) ? Math.max(3, Math.min(30, Math.round(splashCloseAfterSeconds))) : 5,
+          splash_frequency_hours: Number.isFinite(splashFrequencyHours) ? Math.max(0, Math.min(168, Math.round(splashFrequencyHours))) : 12,
+          splash_creative_url: null
         })
         .select()
         .single();
       if (error) throw error;
       setCampaigns((current) => [data as AdCampaign, ...current].sort((a, b) => a.sort_order - b.sort_order));
       event.currentTarget.reset();
-      setNotice("Publicidad cargada. Si esta activa, ya puede aparecer en la tira LED.");
+      setNotice("Publicidad cargada. Si esta activa, ya puede aparecer en LED y/o Sponsor Splash.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo guardar la publicidad.");
     } finally {
@@ -576,16 +597,21 @@ function AdminAdCampaignPanel({
     <section className="admin-ad-panel" id="publicidad">
       <header>
         <span>Publicidad</span>
-        <h2>Carteleria LED</h2>
-        <p>Administra sponsors que aparecen en la tira inferior. Local se filtra por radio; nacional se ve en todo el pais.</p>
+        <h2>Carteleria LED y Sponsor Splash</h2>
+        <p>Administra sponsors de la tira LED y pantalla completa. Local se filtra por radio; nacional se ve en todo el pais.</p>
       </header>
 
       <form className="admin-ad-form" onSubmit={createCampaign}>
         <div className="admin-ad-form__grid">
           <input name="advertiserName" placeholder="Nombre del comercio" />
-          <input name="headline" placeholder="Texto principal del LED" />
+          <input name="headline" placeholder="Texto principal del sponsor" />
           <input name="body" placeholder="Subtexto corto: promo, barrio o rubro" />
           <input name="targetUrl" placeholder="Link web / Instagram / WhatsApp" />
+          <select name="placement" defaultValue="both">
+            <option value="both">LED + pantalla completa</option>
+            <option value="arena_led">Solo LED</option>
+            <option value="sponsor_splash">Solo Sponsor Splash</option>
+          </select>
           <select name="scope" defaultValue="local">
             <option value="local">Local 50 km</option>
             <option value="national">Nacional / tienda online</option>
@@ -598,6 +624,9 @@ function AdminAdCampaignPanel({
           <input name="latitude" placeholder="Latitud local" />
           <input name="longitude" placeholder="Longitud local" />
           <input defaultValue="50" inputMode="numeric" name="radiusKm" placeholder="Radio km" />
+          <input defaultValue="12" inputMode="numeric" name="splashFrequencyHours" placeholder="Frecuencia horas (0 cada apertura)" />
+          <input defaultValue="5" inputMode="numeric" name="splashCloseAfterSeconds" placeholder="Cerrar despues de seg." />
+          <input defaultValue="Ver sponsor" name="splashCtaLabel" placeholder="Texto del boton" />
           <input defaultValue="100" inputMode="numeric" name="sortOrder" placeholder="Orden" />
           <label className="admin-ad-logo-field">
             <Upload size={16} />
@@ -609,31 +638,45 @@ function AdminAdCampaignPanel({
         </div>
         <button disabled={busyId === "new-ad"} type="submit">
           {busyId === "new-ad" ? <LoaderCircle className="button-spinner" size={16} /> : <Megaphone size={16} />}
-          Publicar en LED
+          Publicar sponsor
         </button>
       </form>
 
       <div className="admin-ad-list">
-        {campaigns.length ? campaigns.map((campaign) => (
-          <article className={`admin-ad-card is-${campaign.status}`} key={campaign.id}>
-            <header>
-              <span>{campaign.logo_url ? <img alt="" src={campaign.logo_url} /> : <Megaphone size={18} />}</span>
+        {campaigns.length ? campaigns.map((campaign) => {
+          const metrics = metricsByCampaign[campaign.id] ?? { impressions: 0, clicks: 0, dismisses: 0 };
+          const ctr = metrics.impressions ? Math.round((metrics.clicks / metrics.impressions) * 1000) / 10 : 0;
+          const isSplash = campaign.splash_enabled || campaign.placement === "sponsor_splash" || campaign.placement === "both";
+          const placementLabel = campaign.placement === "both" ? "LED + Splash" : campaign.placement === "sponsor_splash" ? "Splash" : "LED";
+          return (
+            <article className={`admin-ad-card is-${campaign.status}`} key={campaign.id}>
+              <header>
+                <span>{campaign.logo_url ? <img alt="" src={campaign.logo_url} /> : <Megaphone size={18} />}</span>
+                <div>
+                  <strong>{campaign.headline}</strong>
+                  <small>{campaign.advertiser_name} / {campaign.scope === "national" ? "Nacional" : `${campaign.radius_km} km`} / {placementLabel}</small>
+                </div>
+                <b>{campaign.status}</b>
+              </header>
+              {campaign.body ? <p>{campaign.body}</p> : null}
+              <small>
+                {localDateTime(campaign.starts_at) || "sin inicio"} / {localDateTime(campaign.ends_at) || "sin vencimiento"}
+              </small>
+              {isSplash ? (
+                <div className="admin-ad-metrics">
+                  <span><strong>{metrics.impressions}</strong> vistas</span>
+                  <span><strong>{metrics.clicks}</strong> clicks</span>
+                  <span><strong>{ctr}%</strong> CTR</span>
+                  <span><strong>{campaign.splash_frequency_hours ?? 12}h</strong> frecuencia</span>
+                </div>
+              ) : null}
               <div>
-                <strong>{campaign.headline}</strong>
-                <small>{campaign.advertiser_name} / {campaign.scope === "national" ? "Nacional" : `${campaign.radius_km} km`}</small>
+                <button disabled={busyId === campaign.id || campaign.status === "active"} onClick={() => updateCampaignStatus(campaign, "active")} type="button">Activar</button>
+                <button disabled={busyId === campaign.id || campaign.status === "paused"} onClick={() => updateCampaignStatus(campaign, "paused")} type="button">Pausar</button>
               </div>
-              <b>{campaign.status}</b>
-            </header>
-            {campaign.body ? <p>{campaign.body}</p> : null}
-            <small>
-              {localDateTime(campaign.starts_at) || "sin inicio"} / {localDateTime(campaign.ends_at) || "sin vencimiento"}
-            </small>
-            <div>
-              <button disabled={busyId === campaign.id || campaign.status === "active"} onClick={() => updateCampaignStatus(campaign, "active")} type="button">Activar</button>
-              <button disabled={busyId === campaign.id || campaign.status === "paused"} onClick={() => updateCampaignStatus(campaign, "paused")} type="button">Pausar</button>
-            </div>
-          </article>
-        )) : (
+            </article>
+          );
+        }) : (
           <article className="admin-empty">
             <Megaphone size={24} />
             <strong>No hay publicidades cargadas.</strong>
@@ -953,6 +996,7 @@ function AdminLivePanel({
 export function AdminPaymentsPanel({
   adminId,
   adCampaigns,
+  adCampaignEvents,
   requests: initialRequests,
   messages: initialMessages,
   profiles,
@@ -969,6 +1013,7 @@ export function AdminPaymentsPanel({
 }: {
   adminId: string;
   adCampaigns: AdCampaign[];
+  adCampaignEvents: AdCampaignEvent[];
   requests: PaymentRequest[];
   messages: PaymentMessage[];
   profiles: AdminProfile[];
@@ -1351,7 +1396,7 @@ export function AdminPaymentsPanel({
         tournaments={tournaments}
       />
 
-      <AdminAdCampaignPanel adminId={adminId} initialCampaigns={adCampaigns} />
+      <AdminAdCampaignPanel adminId={adminId} initialCampaigns={adCampaigns} initialEvents={adCampaignEvents} />
 
       <AdminPlanPrices adminId={adminId} initialPlans={billingPlans} />
 

@@ -2,7 +2,7 @@ import { AdminPaymentsPanel } from "@/components/admin-payments-panel";
 import { LoginPanel } from "@/components/login-panel";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AccountEntitlement, AdCampaign, AppRole, ArenaMatch, BillingPlanSetting, FieldMode, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, MatchResultSubmission, PaymentMessage, PaymentRequest, UserBlock } from "@/lib/types";
+import type { AccountEntitlement, AdCampaign, AdCampaignEvent, AppRole, ArenaMatch, BillingPlanSetting, FieldMode, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, MatchResultSubmission, PaymentMessage, PaymentRequest, UserBlock } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -106,11 +106,12 @@ export default async function AdminPage() {
     );
   }
 
-  const [requestsResult, messagesResult, billingPlansResult, adCampaignsResult, teamsResult, teamMembersResult, tournamentTeamsResult, tournamentsAuditResult, entitlementsAuditResult, userBlocksResult, liveChannelsResult, livePermissionsResult, liveEventsResult, matchResultsResult, matchesAuditResult] = await Promise.all([
+  const [requestsResult, messagesResult, billingPlansResult, adCampaignsResult, adCampaignEventsResult, teamsResult, teamMembersResult, tournamentTeamsResult, tournamentsAuditResult, entitlementsAuditResult, userBlocksResult, liveChannelsResult, livePermissionsResult, liveEventsResult, matchResultsResult, matchesAuditResult] = await Promise.all([
     supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(80),
     supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(300),
     supabase.from("billing_plan_settings").select("*").order("sort_order", { ascending: true }),
     supabase.from("ad_campaigns").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }).limit(200),
+    supabase.from("ad_campaign_events").select("*").order("created_at", { ascending: false }).limit(2000),
     supabase.from("teams").select("id,owner_id,name,slug,short_name,badge_url,primary_color,neighborhood,created_at").order("created_at", { ascending: false }).limit(160),
     supabase.from("team_members").select("id,team_id").limit(3000),
     supabase.from("tournament_teams").select("tournament_id,team_id,status,created_at").order("created_at", { ascending: false }).limit(600),
@@ -194,6 +195,7 @@ export default async function AdminPage() {
     <AdminPaymentsPanel
       adminId={user.id}
       adCampaigns={(adCampaignsResult.data ?? []) as AdCampaign[]}
+      adCampaignEvents={(adCampaignEventsResult.data ?? []) as AdCampaignEvent[]}
       billingPlans={(billingPlansResult.data ?? []) as BillingPlanSetting[]}
       liveChannels={liveChannels}
       liveEvents={liveEvents}
