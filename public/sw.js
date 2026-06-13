@@ -1,10 +1,11 @@
-const CACHE_NAME = "fulbito-arena-v10";
+const CACHE_NAME = "fulbito-arena-v11";
 const CORE_ASSETS = [
   "/",
   "/offline",
   "/manifest.webmanifest",
   "/assets/icon.svg",
   "/assets/arena-stadium-bg-v2.webp",
+  "/assets/sponsor-yellow-card-hand.webp",
   "/assets/soccer-panels.svg",
   "/assets/icon-192.png",
   "/assets/icon-512.png",

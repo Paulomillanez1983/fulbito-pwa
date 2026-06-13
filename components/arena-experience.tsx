@@ -1292,9 +1292,7 @@ function SponsorSplashOverlay({
       <article className="sponsor-splash__card">
         <span className="sponsor-splash__eyebrow">Auspicia Fulbito Arena</span>
         <div className="sponsor-splash__stage" aria-hidden="true">
-          <span className="sponsor-splash__wrist" />
-          <span className="sponsor-splash__fingers" />
-          <span className="sponsor-splash__thumb" />
+          <img alt="" className="sponsor-splash__photo" src="/assets/sponsor-yellow-card-hand.webp" />
           <div className="sponsor-splash__brand">
             <span className="sponsor-splash__card-label">Sponsor</span>
             {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={46} />}
