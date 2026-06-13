@@ -3966,6 +3966,8 @@ body::after {
   width: min(72vw, 250px);
   min-height: 292px;
   perspective: 900px;
+  transform-origin: 50% 100%;
+  animation: sponsor-card-raise 1.05s cubic-bezier(.14,.92,.22,1.08) both;
 }
 
 .sponsor-splash__stage::before {
@@ -3992,7 +3994,7 @@ body::after {
     drop-shadow(0 26px 34px rgba(0,0,0,.5))
     drop-shadow(0 0 20px rgba(255,211,72,.16));
   transform: rotate(-1deg);
-  animation: sponsor-card-enter .56s cubic-bezier(.2,.84,.32,1.22) both, sponsor-card-breathe 3.8s ease-in-out .7s infinite;
+  animation: sponsor-card-breathe 3.8s ease-in-out 1.15s infinite;
 }
 
 .sponsor-splash__wrist {
@@ -4264,6 +4266,24 @@ body::after {
   to {
     opacity: 1;
     transform: rotate(-1deg);
+  }
+}
+
+@keyframes sponsor-card-raise {
+  0% {
+    opacity: 0;
+    transform: translateY(120px) scale(.78) rotate(-10deg);
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(-14px) scale(1.03) rotate(2deg);
+  }
+  76% {
+    transform: translateY(5px) scale(.99) rotate(-1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0);
   }
 }
 

@@ -1140,10 +1140,19 @@ function markSponsorSplashShown(campaign: AdCampaign, userKey: string) {
 function pickSponsorSplashCampaign(campaigns: AdCampaign[], userKey: string) {
   const eligible = campaigns.filter((item) => canShowSponsorSplash(item, userKey));
   if (!eligible.length) return null;
-
-  return eligible
+  const ranked = eligible
     .map((item, index) => ({ item, index, lastShownAt: getSponsorSplashLastShownAt(item, userKey) }))
-    .sort((left, right) => left.lastShownAt - right.lastShownAt || left.index - right.index)[0]?.item ?? null;
+    .sort((left, right) => left.lastShownAt - right.lastShownAt || left.index - right.index);
+  const oldestShownAt = ranked[0]?.lastShownAt ?? 0;
+  const leastSeen = ranked.filter((entry) => entry.lastShownAt === oldestShownAt);
+  if (leastSeen.length <= 1) return leastSeen[0]?.item ?? ranked[0]?.item ?? null;
+
+  const lastPickedId = window.sessionStorage.getItem(`fulbito:sponsor-splash-last-picked:${userKey}`);
+  const pool = leastSeen.filter((entry) => entry.item.id !== lastPickedId);
+  const candidates = pool.length ? pool : leastSeen;
+  const picked = candidates[Math.floor(Math.random() * candidates.length)]?.item ?? leastSeen[0]?.item ?? null;
+  if (picked) window.sessionStorage.setItem(`fulbito:sponsor-splash-last-picked:${userKey}`, picked.id);
+  return picked;
 }
 
 function sponsorTargetKind(url?: string | null) {
@@ -1213,15 +1222,18 @@ function playSponsorWhistle() {
 function SponsorSplashOverlay({
   campaigns,
   enabled,
+  triggerKey,
   userId
 }: {
   campaigns: AdCampaign[];
   enabled: boolean;
+  triggerKey: number;
   userId?: string | null;
 }) {
   const [campaign, setCampaign] = useState<AdCampaign | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const loggedImpressionRef = useRef("");
+  const shownTriggerRef = useRef<number | null>(null);
 
   const logEvent = useCallback(async (activeCampaign: AdCampaign, eventType: "impression" | "click" | "dismiss") => {
     try {
@@ -1245,17 +1257,19 @@ function SponsorSplashOverlay({
 
   useEffect(() => {
     if (!enabled || campaign) return;
+    if (shownTriggerRef.current === triggerKey) return;
     const splashCampaigns = campaigns.filter((item) => item.splash_enabled || item.placement === "sponsor_splash" || item.placement === "both");
     if (!splashCampaigns.length) return;
     const deviceId = getSponsorDeviceId();
     const userKey = userId ?? deviceId;
     const eligible = pickSponsorSplashCampaign(splashCampaigns, userKey);
     if (!eligible) return;
+    shownTriggerRef.current = triggerKey;
     markSponsorSplashShown(eligible, userKey);
     setCampaign(eligible);
     setSecondsLeft(Math.max(0, eligible.splash_close_after_seconds ?? 5));
     window.setTimeout(playSponsorWhistle, 120);
-  }, [campaign, campaigns, enabled, userId]);
+  }, [campaign, campaigns, enabled, triggerKey, userId]);
 
   useEffect(() => {
     if (!campaign || loggedImpressionRef.current === campaign.id) return;
@@ -3027,8 +3041,10 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const [friendlyFocus, setFriendlyFocus] = useState(Boolean(friendlyCode));
   const [tournamentFocus, setTournamentFocus] = useState(false);
   const [loginNextTarget, setLoginNextTarget] = useState("/");
+  const [sponsorTriggerKey, setSponsorTriggerKey] = useState(0);
   const activeRef = useRef<TabId>(active);
   const historyReadyRef = useRef(false);
+  const sponsorTabSwitchCountRef = useRef(0);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setShowSplash(false), 2600);
@@ -3056,6 +3072,11 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     }
     activeRef.current = next;
     setActive(next);
+    sponsorTabSwitchCountRef.current += 1;
+    if (sponsorTabSwitchCountRef.current >= 3) {
+      sponsorTabSwitchCountRef.current = 0;
+      setSponsorTriggerKey((current) => current + 1);
+    }
   }, []);
 
   useEffect(() => {
@@ -3770,7 +3791,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   return (
     <div className="game-app-shell">
       {showSplash ? <SplashScreen /> : null}
-      <SponsorSplashOverlay campaigns={sponsorSplashCampaigns} enabled={!showSplash && active === "home" && !inviteMode && !friendlyInvite} userId={data.user?.id} />
+      <SponsorSplashOverlay campaigns={sponsorSplashCampaigns} enabled={!showSplash && !inviteMode && !friendlyInvite} triggerKey={sponsorTriggerKey} userId={data.user?.id} />
       <ArenaAdBoards campaigns={visibleAdCampaigns} />
       <header className="game-topbar">
         <button className="game-brand" onClick={() => setActiveTab("home")} type="button">
