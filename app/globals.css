@@ -1586,6 +1586,64 @@ th {
   overflow: hidden;
 }
 
+.mode-focus-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  border: 1px solid rgba(241,199,91,.42);
+  border-radius: 16px;
+  padding: 18px 16px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(241,199,91,.18), transparent 34%),
+    radial-gradient(circle at 0 100%, rgba(42,207,255,.12), transparent 34%),
+    linear-gradient(180deg, rgba(17, 27, 42, .94), rgba(5, 9, 18, .88));
+  box-shadow: 0 30px 90px rgba(0,0,0,.38), inset 0 0 0 1px rgba(255,255,255,.06);
+}
+
+.mode-focus-panel span,
+.mode-focus-panel h2,
+.mode-focus-panel p {
+  display: block;
+  margin: 0;
+}
+
+.mode-focus-panel span {
+  width: max-content;
+  border: 1px solid rgba(241,199,91,.42);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(241,199,91,.1);
+  color: var(--gold);
+  font-size: .68rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.mode-focus-panel h2 {
+  margin-top: 10px;
+  color: #fff8ec;
+  font-size: clamp(1.9rem, 9vw, 3.2rem);
+  line-height: .92;
+  text-transform: uppercase;
+}
+
+.mode-focus-panel p {
+  margin-top: 10px;
+  color: #c9d4e6;
+  line-height: 1.35;
+}
+
+.mode-focus-panel button {
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 12px;
+  padding: 9px 11px;
+  background: rgba(255,255,255,.06);
+  color: #fff8ec;
+  cursor: pointer;
+  font-weight: 900;
+}
+
 .friendly-panel--focus {
   border-color: rgba(241,199,91,.45);
   background:

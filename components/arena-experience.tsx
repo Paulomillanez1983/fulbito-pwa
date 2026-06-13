@@ -2044,7 +2044,7 @@ function FriendlyPanel({
                     </header>
                     {match.note ? <p>{match.note}</p> : null}
                     <div className="friendly-actions">
-                      {match.status === "open" ? <a className="inline-whatsapp-button" href={friendlyInviteHref(match)} rel="noreferrer" target="_blank">Compartir</a> : null}
+                      {match.status === "open" && !inviteHref ? <a className="inline-whatsapp-button" href={friendlyInviteHref(match)} rel="noreferrer" target="_blank">Invitar por WhatsApp</a> : null}
                       {canAccept ? <button disabled={pending} onClick={() => acceptFriendly(match)} type="button">Aceptar con mi equipo</button> : null}
                     </div>
                     {match.status === "final" ? (
@@ -2743,6 +2743,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const [venueLocationStatus, setVenueLocationStatus] = useState("Mostrando canchas registradas.");
   const [showVenueForm, setShowVenueForm] = useState(false);
   const [friendlyFocus, setFriendlyFocus] = useState(Boolean(friendlyCode));
+  const [tournamentFocus, setTournamentFocus] = useState(false);
   const [loginNextTarget, setLoginNextTarget] = useState("/");
   const activeRef = useRef<TabId>(active);
   const historyReadyRef = useRef(false);
@@ -2931,6 +2932,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     if (startTarget === "tournament" || window.location.hash === "#pro") {
       activeRef.current = "home";
       setActive("home");
+      setFriendlyFocus(false);
+      setTournamentFocus(true);
       window.setTimeout(() => {
         window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "tournament_pro" }));
         document.getElementById("pro")?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -2939,6 +2942,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
       activeRef.current = "home";
       setActive("home");
       setFriendlyFocus(true);
+      setTournamentFocus(false);
       window.setTimeout(() => {
         window.dispatchEvent(new Event("fulbito:open-friendly"));
         document.getElementById("friendly")?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -2968,6 +2972,10 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   function openTournamentStarter() {
     setLoginNextTarget("/?start=tournament#pro");
     setActiveTab("home");
+    if (data.user) {
+      setFriendlyFocus(false);
+      setTournamentFocus(true);
+    }
     window.setTimeout(() => {
       const target = data.user ? "pro" : "login";
       if (data.user) window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "tournament_pro" }));
@@ -2982,6 +2990,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     }
     setActiveTab("home");
     setFriendlyFocus(true);
+    setTournamentFocus(false);
     window.setTimeout(() => {
       window.dispatchEvent(new Event("fulbito:open-friendly"));
       document.getElementById("friendly")?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -3032,6 +3041,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
 
   function renderHome() {
     const showFriendlyFocus = !inviteMode && Boolean(data.user) && friendlyFocus;
+    const showTournamentFocus = !inviteMode && Boolean(data.user) && tournamentFocus && !showFriendlyFocus;
+    const showModeFocus = showFriendlyFocus || showTournamentFocus;
     return (
       <>
         {inviteMode ? (
@@ -3070,7 +3081,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           </section>
         ) : null}
 
-        {!inviteMode && data.user && !showFriendlyFocus ? (
+        {!inviteMode && data.user && !showModeFocus ? (
           <StartGuidePanel
             data={data}
             hasCreatedTournament={hasCreatedTournament}
@@ -3106,15 +3117,26 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           </section>
         ) : null}
 
-        {!inviteMode && !showFriendlyFocus && nextMatch ? (
+        {showTournamentFocus ? (
+          <section className="mode-focus-panel mode-focus-panel--tournament">
+            <div>
+              <span>Modo torneo</span>
+              <h2>Crear torneo</h2>
+              <p>Configura copa, formato, cantidad de equipos, fechas y comprobante. Cuando Fulbito aprueba el pago, se habilita la invitacion por WhatsApp.</p>
+            </div>
+            <button onClick={() => setTournamentFocus(false)} type="button">Inicio</button>
+          </section>
+        ) : null}
+
+        {!inviteMode && !showModeFocus && nextMatch ? (
           <MatchTile liveEvent={liveEventByMatch.get(nextMatch.id)} match={nextMatch} featured onOpen={() => openMatch(nextMatch)} />
-        ) : !inviteMode && data.user && !showFriendlyFocus ? (
+        ) : !inviteMode && data.user && !showModeFocus ? (
           <EmptyState icon={<CalendarDays />} title="Tu calendario empieza vacio">
             Crea un torneo, carga tu equipo o espera una invitacion. Cuando haya fixtures reales, aparecen aca.
           </EmptyState>
         ) : null}
 
-        {(!inviteMode || data.user) && !showFriendlyFocus ? (
+        {(!inviteMode || data.user) && !showModeFocus ? (
           <section className="mini-grid">
             <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActiveTab("league")} value={data.activeTournament?.name ?? "Torneo"} />
             <MiniStat icon={<Users />} label="Equipos" onClick={() => setActiveTab("squad")} value={data.teams.length} />
@@ -3123,7 +3145,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           </section>
         ) : null}
 
-        {!inviteMode && data.user ? (
+        {!inviteMode && data.user && !showTournamentFocus ? (
           <FriendlyPanel
             data={data}
             focusMode={showFriendlyFocus}
@@ -3145,9 +3167,9 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           />
         ) : null}
 
-        {!inviteMode && !showFriendlyFocus ? <YouTubeFollowStrip /> : null}
+        {!inviteMode && !showModeFocus ? <YouTubeFollowStrip /> : null}
 
-        {!inviteMode && data.user && !showFriendlyFocus ? (
+        {!inviteMode && data.user && !showModeFocus ? (
           <DrawLiveTeaser
             data={data}
             onOpenMatches={() => setActiveTab("matches")}
@@ -3156,7 +3178,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           />
         ) : null}
 
-        {!showFriendlyFocus ? <section className="console-panel">
+        {!showModeFocus ? <section className="console-panel">
           {!data.user || inviteMode ? (
             <ScreenHeader
               eyebrow={inviteMode ? playerInviteMode ? "Entrada de jugador" : "Entrada de equipo" : "Crear torneo"}
@@ -3197,7 +3219,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             <LoginPanel configured={data.configured} joinCode={joinCode} nextTarget={loginNextTarget} teamCode={inviteTeamCode} tournamentName={data.activeTournament?.name} />
           )}
         </section> : null}
-        {!inviteMode ? <PaymentConsole data={data} planCodes={showFriendlyFocus ? ["team_pro"] : undefined} /> : null}
+        {!inviteMode ? <PaymentConsole data={data} planCodes={showFriendlyFocus ? ["team_pro"] : showTournamentFocus ? ["tournament_pro"] : undefined} /> : null}
       </>
     );
   }
