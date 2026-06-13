@@ -443,21 +443,43 @@ function AdminPlanPrices({
 }
 
 async function optimizeAdLogo(file: File) {
-  if (file.type === "image/svg+xml") return file;
-  if (!file.type.startsWith("image/")) throw new Error("El logo debe ser PNG, JPG, WEBP o SVG.");
-  const bitmap = await createImageBitmap(file);
-  const maxSide = 360;
-  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) return file;
-  context.drawImage(bitmap, 0, 0, width, height);
+  if (file.type === "image/svg+xml") throw new Error("Para publicidad subi PNG, JPG o WebP. Fulbito lo convierte a WebP liviano.");
+  if (!file.type.startsWith("image/")) throw new Error("El logo debe ser PNG, JPG o WebP.");
+  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image", resizeQuality: "high" });
+  const maxSide = 320;
+  const maxBytes = 70 * 1024;
+  let scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  let bestBlob: Blob | null = null;
+
+  while (scale >= 0.54) {
+    const width = Math.max(96, Math.round(bitmap.width * scale));
+    const height = Math.max(96, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d", { alpha: true });
+    if (!context) break;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.clearRect(0, 0, width, height);
+    context.drawImage(bitmap, 0, 0, width, height);
+
+    for (let quality = 0.74; quality >= 0.42; quality -= 0.08) {
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", Number(quality.toFixed(2))));
+      if (!blob) continue;
+      if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
+      if (blob.size <= maxBytes) {
+        bitmap.close();
+        const filename = file.name.replace(/\.[^.]+$/, "") || "sponsor";
+        return new File([blob], `${filename}.webp`, { type: "image/webp" });
+      }
+    }
+
+    scale *= 0.82;
+  }
+
   bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.78));
+  const blob = bestBlob;
   if (!blob) return file;
   const filename = file.name.replace(/\.[^.]+$/, "") || "sponsor";
   return new File([blob], `${filename}.webp`, { type: "image/webp" });
@@ -498,7 +520,7 @@ function AdminAdCampaignPanel({
     if (!(fileValue instanceof File) || fileValue.size === 0) return null;
     const supabase = createSupabaseBrowserClient();
     const optimized = await optimizeAdLogo(fileValue);
-    const extension = optimized.type === "image/svg+xml" ? "svg" : optimized.type === "image/webp" ? "webp" : optimized.name.split(".").pop()?.toLowerCase() || "webp";
+    const extension = "webp";
     const path = `${adminId}/${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
     const { error } = await supabase.storage.from("ad-assets").upload(path, optimized, {
       cacheControl: "604800",
@@ -631,7 +653,7 @@ function AdminAdCampaignPanel({
           <label className="admin-ad-logo-field">
             <Upload size={16} />
             <span>Logo del sponsor</span>
-            <input accept="image/png,image/jpeg,image/webp,image/svg+xml" name="logoFile" type="file" />
+            <input accept="image/png,image/jpeg,image/webp" name="logoFile" type="file" />
           </label>
           <input name="startsAt" type="datetime-local" />
           <input name="endsAt" type="datetime-local" />
