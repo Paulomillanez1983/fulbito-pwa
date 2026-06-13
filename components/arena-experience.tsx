@@ -1031,11 +1031,32 @@ function YouTubeFollowStrip() {
 
 function AdBoardItem({ campaign }: { campaign: AdCampaign }) {
   const isYouTube = /youtube|youtu\.be/i.test(`${campaign.target_url ?? ""} ${campaign.advertiser_name} ${campaign.headline}`);
-  return (
-    <span>
-      {campaign.logo_url ? <img alt="" src={campaign.logo_url} /> : isYouTube ? <YouTubeLogo size={15} /> : null}
+  const ledText = `${campaign.headline} ${campaign.body ?? ""}`.trim();
+  const shouldScroll = ledText.length > 24;
+  const renderMessage = (suffix: string) => (
+    <span className="arena-ad-board__message" key={`${campaign.id}-${suffix}`}>
       <b>{campaign.headline}</b>
       {campaign.body ? <small>{campaign.body}</small> : null}
+    </span>
+  );
+  return (
+    <span className={`arena-ad-board ${shouldScroll ? "is-marquee" : ""}`}>
+      {campaign.logo_url || isYouTube ? (
+        <span className="arena-ad-board__icon">
+          {campaign.logo_url ? <img alt="" src={campaign.logo_url} /> : <YouTubeLogo size={15} />}
+        </span>
+      ) : null}
+      <span className="arena-ad-board__viewport">
+        <span className="arena-ad-board__track">
+          {renderMessage("primary")}
+          {shouldScroll ? (
+            <>
+              <i aria-hidden="true">/</i>
+              {renderMessage("loop")}
+            </>
+          ) : null}
+        </span>
+      </span>
     </span>
   );
 }
