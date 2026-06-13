@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { Ban, CheckCircle2, Clock3, ExternalLink, Flag, LoaderCircle, Megaphone, MessageCircle, RadioTower, ShieldCheck, Trophy, Users, Send, Upload, Video, XCircle } from "lucide-react";
+import { Ban, CheckCircle2, Clock3, ExternalLink, Flag, LoaderCircle, Megaphone, MessageCircle, RadioTower, Search, ShieldCheck, Trophy, Users, Send, Upload, Video, XCircle } from "lucide-react";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AccountEntitlement, AdCampaign, AdCampaignScope, AdCampaignStatus, AppRole, ArenaMatch, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, MatchResultSubmission, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
@@ -66,18 +66,108 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function isActiveEntitlement(entitlement: AccountEntitlement) {
+  return !entitlement.expires_at || new Date(entitlement.expires_at).getTime() >= Date.now();
+}
+
+function AdminOpsDashboard({
+  blocks,
+  liveEvents,
+  matchResults,
+  requests,
+  teams
+}: {
+  blocks: UserBlock[];
+  liveEvents: LiveStreamEvent[];
+  matchResults: MatchResultSubmission[];
+  requests: PaymentRequest[];
+  teams: AdminTeamAuditItem[];
+}) {
+  const pendingPayments = requests.filter((item) => item.status === "pending_review").length;
+  const pendingResults = matchResults.filter((item) => item.status === "pending").length;
+  const liveNow = liveEvents.filter((event) => event.lifecycle_status === "live" || event.lifecycle_status === "testing").length;
+  const approvedAmount = requests.reduce((total, item) => item.status === "approved" ? total + item.amount : total, 0);
+  const proTeams = teams.filter((item) => item.entitlements.some((entitlement) => entitlement.plan_code === "team_pro" && isActiveEntitlement(entitlement))).length;
+
+  return (
+    <section className="admin-ops-dashboard" aria-label="Resumen operativo">
+      <article className={pendingPayments ? "is-hot" : ""}>
+        <Clock3 size={19} />
+        <div>
+          <strong>{pendingPayments}</strong>
+          <span>Comprobantes pendientes</span>
+        </div>
+      </article>
+      <article className={pendingResults ? "is-hot" : ""}>
+        <Flag size={19} />
+        <div>
+          <strong>{pendingResults}</strong>
+          <span>Resultados por validar</span>
+        </div>
+      </article>
+      <article className={liveNow ? "is-live" : ""}>
+        <RadioTower size={19} />
+        <div>
+          <strong>{liveNow}</strong>
+          <span>Vivos o pruebas activas</span>
+        </div>
+      </article>
+      <article>
+        <ShieldCheck size={19} />
+        <div>
+          <strong>{proTeams}</strong>
+          <span>Clubes con Equipo Pro</span>
+        </div>
+      </article>
+      <article>
+        <Ban size={19} />
+        <div>
+          <strong>{blocks.length}</strong>
+          <span>Usuarios bloqueados</span>
+        </div>
+      </article>
+      <article>
+        <Trophy size={19} />
+        <div>
+          <strong>{formatPaymentMoney(approvedAmount)}</strong>
+          <span>Ingresos activados</span>
+        </div>
+      </article>
+    </section>
+  );
+}
+
+function AdminSectionNav({
+  items
+}: {
+  items: Array<{
+    href: string;
+    label: string;
+    meta: string;
+    Icon: typeof Clock3;
+  }>;
+}) {
+  return (
+    <nav className="admin-section-nav" aria-label="Areas del panel administrador">
+      {items.map(({ href, label, meta, Icon }) => (
+        <a href={href} key={href}>
+          <Icon size={18} />
+          <span>{label}</span>
+          <small>{meta}</small>
+        </a>
+      ))}
+    </nav>
+  );
+}
+
 function AdminTeamAudit({ teams }: { teams: AdminTeamAuditItem[] }) {
   const activeTeams = teams.filter((item) => item.tournaments.length > 0).length;
   const proTeams = teams.filter((item) =>
-    item.entitlements.some((entitlement) => {
-      if (entitlement.plan_code !== "team_pro") return false;
-      if (entitlement.expires_at && new Date(entitlement.expires_at).getTime() < Date.now()) return false;
-      return true;
-    })
+    item.entitlements.some((entitlement) => entitlement.plan_code === "team_pro" && isActiveEntitlement(entitlement))
   ).length;
 
   return (
-    <section className="admin-team-audit">
+    <section className="admin-team-audit" id="clubes">
       <header>
         <span>Auditoria de clubes</span>
         <h2>Equipos, usuarios e inscripciones</h2>
@@ -105,9 +195,7 @@ function AdminTeamAudit({ teams }: { teams: AdminTeamAuditItem[] }) {
       <div className="admin-team-grid">
         {teams.length ? teams.map((item) => {
           const hasTeamPro = item.entitlements.some((entitlement) => {
-            if (entitlement.plan_code !== "team_pro") return false;
-            if (entitlement.expires_at && new Date(entitlement.expires_at).getTime() < Date.now()) return false;
-            return true;
+            return entitlement.plan_code === "team_pro" && isActiveEntitlement(entitlement);
           });
           return (
             <article className="admin-team-card" key={item.team.id}>
@@ -210,7 +298,7 @@ function AdminResultsPanel({
   }
 
   return (
-    <section className="admin-team-audit admin-results-panel">
+    <section className="admin-team-audit admin-results-panel" id="resultados">
       <header>
         <span>Actas de partido</span>
         <h2>Resultados oficiales</h2>
@@ -328,7 +416,7 @@ function AdminPlanPrices({
   }
 
   return (
-    <section className="admin-plan-prices">
+    <section className="admin-plan-prices" id="precios">
       <header>
         <span>Precios Pro</span>
         <h2>Modificar valores</h2>
@@ -485,7 +573,7 @@ function AdminAdCampaignPanel({
   }
 
   return (
-    <section className="admin-ad-panel">
+    <section className="admin-ad-panel" id="publicidad">
       <header>
         <span>Publicidad</span>
         <h2>Carteleria LED</h2>
@@ -740,7 +828,7 @@ function AdminLivePanel({
   }
 
   return (
-    <section className="admin-live-panel">
+    <section className="admin-live-panel" id="live">
       <header>
         <span>Fulbito Live</span>
         <h2>Links, permisos y auditoria</h2>
@@ -899,6 +987,7 @@ export function AdminPaymentsPanel({
   const [messages, setMessages] = useState(initialMessages);
   const [blocks, setBlocks] = useState(userBlocks);
   const [filter, setFilter] = useState<AdminRequestFilter>("pending_review");
+  const [searchTerm, setSearchTerm] = useState("");
   const [busyId, setBusyId] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -917,14 +1006,27 @@ export function AdminPaymentsPanel({
   const blockedUserIds = useMemo(() => new Set(blocks.map((block) => block.blocked_user_id)), [blocks]);
 
   const filteredRequests = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
     return requests.filter((request) => {
       const blocked = blockedUserIds.has(request.requester_id);
+      if (normalizedSearch) {
+        const requester = profileMap.get(request.requester_id);
+        const haystack = [
+          request.title,
+          request.plan_code,
+          request.payer_note,
+          request.proof_filename,
+          request.status,
+          requester?.display_name
+        ].filter(Boolean).join(" ").toLowerCase();
+        if (!haystack.includes(normalizedSearch)) return false;
+      }
       if (filter === "all") return true;
       if (filter === "blocked") return blocked;
       if (filter === "pending_review") return request.status === "pending_review" && !blocked;
       return request.status === filter;
     });
-  }, [blockedUserIds, filter, requests]);
+  }, [blockedUserIds, filter, profileMap, requests, searchTerm]);
 
   const filterCounts = useMemo<Record<AdminRequestFilter, number>>(() => {
     return {
@@ -1065,69 +1167,93 @@ export function AdminPaymentsPanel({
 
   return (
     <main className="admin-shell">
-      <header className="admin-topbar">
-        <a href="/">Fulbito Arena</a>
-        <span>{roles.includes("admin") ? "Admin activo" : "Sin rol admin"}</span>
+      <header className="admin-topbar admin-topbar--ops">
+        <a className="admin-brand-link" href="/">
+          <span className="admin-brand-mark">FA</span>
+          <span>
+            Fulbito Arena
+            <small>Panel admin</small>
+          </span>
+        </a>
+        <div className="admin-topbar-actions">
+          <span>{roles.includes("admin") ? "Admin activo" : "Sin rol admin"}</span>
+          <a href="/">Ver app</a>
+        </div>
       </header>
 
-      <section className="admin-hero">
-        <span>Panel administrador</span>
-        <h1>Comprobantes y activaciones Pro</h1>
-        <p>Revisa pagos manuales, responde el chat interno y activa beneficios sin cobrar alquileres de canchas.</p>
+      <section className="admin-hero admin-hero--ops">
+        <span>Central de mando</span>
+        <h1>Operaciones Fulbito</h1>
+        <p>Revisa comprobantes, resultados, vivos, publicidad, precios y clubes desde una sola vista sincronizada con la app.</p>
+        <div className="admin-hero-actions">
+          <a href="#pagos">Revisar pagos</a>
+          <a href="#resultados">Validar resultados</a>
+        </div>
       </section>
 
-      <section className="admin-stats">
-        <article><strong>{requests.filter((item) => item.status === "pending_review").length}</strong><span>Pendientes</span></article>
-        <article><strong>{requests.filter((item) => item.status === "approved").length}</strong><span>Aprobados</span></article>
-        <article><strong>{formatPaymentMoney(requests.reduce((total, item) => item.status === "approved" ? total + item.amount : total, 0))}</strong><span>Activado</span></article>
-      </section>
-
-      <AdminPlanPrices adminId={adminId} initialPlans={billingPlans} />
-
-      <AdminAdCampaignPanel adminId={adminId} initialCampaigns={adCampaigns} />
-
-      <AdminLivePanel
-        adminId={adminId}
-        channels={liveChannels}
-        events={liveEvents}
-        permissions={livePermissions}
-        profiles={profiles}
-        tournaments={tournaments}
-      />
-
-      <AdminResultsPanel
-        initialMatches={matches}
-        initialSubmissions={matchResults}
-        profiles={profiles}
+      <AdminOpsDashboard
+        blocks={blocks}
+        liveEvents={liveEvents}
+        matchResults={matchResults}
+        requests={requests}
         teams={teamAudit}
       />
 
-      <AdminTeamAudit teams={teamAudit} />
+      <AdminSectionNav
+        items={[
+          { href: "#pagos", label: "Pagos", meta: `${filterCounts.pending_review} pendientes`, Icon: Clock3 },
+          { href: "#resultados", label: "Resultados", meta: `${matchResults.filter((item) => item.status === "pending").length} por validar`, Icon: Flag },
+          { href: "#live", label: "Fulbito Live", meta: `${liveEvents.filter((event) => event.lifecycle_status === "live" || event.lifecycle_status === "testing").length} activos`, Icon: RadioTower },
+          { href: "#publicidad", label: "Publicidad", meta: `${adCampaigns.filter((item) => item.status === "active").length} activas`, Icon: Megaphone },
+          { href: "#precios", label: "Precios", meta: "Planes Pro", Icon: Trophy },
+          { href: "#clubes", label: "Clubes", meta: `${teamAudit.length} equipos`, Icon: Users }
+        ]}
+      />
 
       {notice ? <p className="admin-notice">{notice}</p> : null}
 
-      <section className="admin-request-tabs" aria-label="Filtrar comprobantes">
-        {[
-          ["pending_review", "Pendientes"],
-          ["approved", "Aprobados"],
-          ["rejected", "Rechazados"],
-          ["cancelled", "Cancelados"],
-          ["blocked", "Bloqueados"],
-          ["all", "Todos"]
-        ].map(([value, label]) => (
-          <button
-            className={filter === value ? "is-active" : ""}
-            key={value}
-            onClick={() => setFilter(value as AdminRequestFilter)}
-            type="button"
-          >
-            <span>{label}</span>
-            <strong>{filterCounts[value as AdminRequestFilter]}</strong>
-          </button>
-        ))}
-      </section>
+      <section className="admin-review-panel" id="pagos">
+        <header className="admin-review-toolbar">
+          <div>
+            <span>Cola principal</span>
+            <h2>Comprobantes y chat interno</h2>
+            <p>Ordena por estado, busca por usuario o plan, abre el comprobante y activa o rechaza sin salir del panel.</p>
+          </div>
+          <label className="admin-search-field">
+            <Search size={17} />
+            <input
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Buscar usuario, copa, plan o archivo"
+              type="search"
+              value={searchTerm}
+            />
+          </label>
+        </header>
 
-      <section className="admin-payment-list">
+        <section className="admin-request-tabs" aria-label="Filtrar comprobantes">
+          {[
+            ["pending_review", "Pendientes"],
+            ["approved", "Aprobados"],
+            ["rejected", "Rechazados"],
+            ["cancelled", "Cancelados"],
+            ["blocked", "Bloqueados"],
+            ["all", "Todos"]
+          ].map(([value, label]) => (
+            <button
+              className={filter === value ? "is-active" : ""}
+              key={value}
+              onClick={() => setFilter(value as AdminRequestFilter)}
+              type="button"
+            >
+              <span>{label}</span>
+              <strong>{filterCounts[value as AdminRequestFilter]}</strong>
+            </button>
+          ))}
+        </section>
+
+        <p className="admin-filter-hint">{filteredRequests.length} solicitudes visibles en esta bandeja.</p>
+
+        <section className="admin-payment-list">
         {filteredRequests.length ? filteredRequests.map((request) => {
           const meta = paymentStatusMeta[request.status];
           const StatusIcon = statusIcons[request.status];
@@ -1206,7 +1332,30 @@ export function AdminPaymentsPanel({
             <span>Cambia el filtro para revisar otro estado.</span>
           </article>
         )}
+        </section>
       </section>
+
+      <AdminResultsPanel
+        initialMatches={matches}
+        initialSubmissions={matchResults}
+        profiles={profiles}
+        teams={teamAudit}
+      />
+
+      <AdminLivePanel
+        adminId={adminId}
+        channels={liveChannels}
+        events={liveEvents}
+        permissions={livePermissions}
+        profiles={profiles}
+        tournaments={tournaments}
+      />
+
+      <AdminAdCampaignPanel adminId={adminId} initialCampaigns={adCampaigns} />
+
+      <AdminPlanPrices adminId={adminId} initialPlans={billingPlans} />
+
+      <AdminTeamAudit teams={teamAudit} />
     </main>
   );
 }
