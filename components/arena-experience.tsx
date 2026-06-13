@@ -39,7 +39,7 @@ import { buildTournamentDraw, type DrawResult } from "@/lib/draw";
 import { roleCatalog } from "@/lib/demo";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaVenue, FieldMode, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
+import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaVenue, FieldMode, FriendlyMatch, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 type LeagueView = "classification" | "bracket";
@@ -355,6 +355,26 @@ function money(value: number) {
   return `$ ${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
 }
 
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function friendlyInviteCode(team: ArenaTeam) {
+  return `${slugify(team.short_name || team.name)}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function friendlyInviteHref(match: FriendlyMatch) {
+  if (typeof window === "undefined") return "";
+  const url = `${window.location.origin}/?friendly=${encodeURIComponent(match.invite_code)}`;
+  const text = `Te invito a jugar un amistoso en Fulbito Arena. Entra a ${url}, elegi tu equipo y acepta el desafio.`;
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+}
+
 function hasCoordinates(venue: ArenaVenue) {
   return typeof venue.latitude === "number" && typeof venue.longitude === "number";
 }
@@ -388,6 +408,58 @@ function formatDate(value: string | null) {
   const hour = String(argentinaTime.getUTCHours()).padStart(2, "0");
   const minute = String(argentinaTime.getUTCMinutes()).padStart(2, "0");
   return `${day}, ${date} ${month}, ${hour}:${minute}`;
+}
+
+function combineDateTime(date: FormDataEntryValue | null, time: FormDataEntryValue | null) {
+  const day = String(date || "");
+  if (!day) return null;
+  const clock = String(time || "20:00") || "20:00";
+  return new Date(`${day}T${clock}:00`).toISOString();
+}
+
+function computeTeamRating(team: ArenaTeam, matches: ArenaMatch[], friendlies: FriendlyMatch[]) {
+  let played = 0;
+  let wins = 0;
+  let draws = 0;
+  let goalsFor = 0;
+  let goalsAgainst = 0;
+
+  function addResult(homeId: string | null, awayId: string | null, homeScore: number | null, awayScore: number | null, weight: number) {
+    if (homeScore === null || awayScore === null) return;
+    const isHome = homeId === team.id;
+    const isAway = awayId === team.id;
+    if (!isHome && !isAway) return;
+    played += weight;
+    const own = isHome ? homeScore : awayScore;
+    const rival = isHome ? awayScore : homeScore;
+    goalsFor += own * weight;
+    goalsAgainst += rival * weight;
+    if (own > rival) wins += weight;
+    if (own === rival) draws += weight;
+  }
+
+  matches.forEach((match) => {
+    if (match.status !== "final") return;
+    addResult(match.home_team_id, match.away_team_id, match.home_score, match.away_score, 1);
+  });
+  friendlies.forEach((match) => {
+    if (match.status !== "final") return;
+    addResult(match.home_team_id, match.away_team_id, match.home_score, match.away_score, 0.65);
+  });
+
+  const points = wins * 3 + draws;
+  const form = played ? points / (played * 3) : 0;
+  const goalBoost = Math.max(-10, Math.min(16, (goalsFor - goalsAgainst) * 1.5));
+  const rating = Math.max(42, Math.min(94, Math.round(48 + form * 34 + Math.min(played, 10) * 1.4 + goalBoost)));
+  const stars = Math.max(1, Math.min(5, Math.round(rating / 20)));
+  const tier = rating >= 82 ? "oro" : rating >= 68 ? "plata" : "bronce";
+  return { rating, stars, tier, played: Math.round(played), wins: Math.round(wins), goalsFor: Math.round(goalsFor), goalsAgainst: Math.round(goalsAgainst) };
+}
+
+function playerLevel(player: ArenaPlayer) {
+  const rating = Math.max(42, Math.min(91, 48 + player.goals * 4 - (player.red_cards ?? 0) * 6 - (player.yellow_cards ?? 0)));
+  const tier = rating >= 82 ? "oro" : rating >= 68 ? "plata" : "bronce";
+  return { rating, tier };
 }
 
 function groupTeams(teams: ArenaTeam[], size = 4) {
@@ -1629,9 +1701,234 @@ function StartGuidePanel({
   );
 }
 
-function TeamProfile({ team, players, isManager }: { team?: ArenaTeam; players: ArenaPlayer[]; isManager: boolean }) {
+function FriendlyPanel({
+  data,
+  ownedTeam,
+  focusCode,
+  onCreateTeam
+}: {
+  data: ArenaData;
+  ownedTeam?: ArenaTeam | null;
+  focusCode?: string;
+  onCreateTeam: () => void;
+}) {
+  const ownedTeams = data.user ? data.teams.filter((team) => team.owner_id === data.user?.id) : [];
+  const focusedFriendly = focusCode ? data.friendlyMatches.find((match) => match.invite_code === focusCode) : null;
+  const [open, setOpen] = useState(Boolean(focusedFriendly));
+  const [selectedTeamId, setSelectedTeamId] = useState(ownedTeam?.id ?? ownedTeams[0]?.id ?? "");
+  const [fieldMode, setFieldMode] = useState<FieldMode>(focusedFriendly?.field_mode ?? "5v5");
+  const [message, setMessage] = useState("");
+  const [inviteHref, setInviteHref] = useState("");
+  const [pending, setPending] = useState(false);
+  const ownedTeamIds = new Set(ownedTeams.map((team) => team.id));
+  const selectedTeam = ownedTeams.find((team) => team.id === selectedTeamId) ?? ownedTeams[0] ?? null;
+  const visibleFriendlies = data.friendlyMatches
+    .filter((match) => {
+      if (focusedFriendly?.id === match.id) return true;
+      if (match.status === "open") return true;
+      return ownedTeamIds.has(match.home_team_id) || (match.away_team_id ? ownedTeamIds.has(match.away_team_id) : false);
+    })
+    .slice(0, 6);
+
+  async function createFriendly(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    setInviteHref("");
+    if (!data.user) return setMessage("Entra con Google para crear un amistoso.");
+    if (!selectedTeam) {
+      setMessage("Primero crea un equipo propio.");
+      onCreateTeam();
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    setPending(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { data: created, error } = await supabase
+        .from("friendly_matches")
+        .insert({
+          created_by: data.user.id,
+          home_team_id: selectedTeam.id,
+          venue_id: String(form.get("venueId") || "") || null,
+          field_mode: fieldMode,
+          invite_code: friendlyInviteCode(selectedTeam),
+          title: String(form.get("title") || "").trim() || "Amistoso barrial",
+          note: String(form.get("note") || "").trim() || null,
+          scheduled_at: combineDateTime(form.get("friendlyDate"), form.get("friendlyTime")),
+          status: "open"
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      const related = { ...(created as FriendlyMatch), homeTeam: selectedTeam, awayTeam: null, venue: data.venues.find((venue) => venue.id === created.venue_id) ?? null };
+      setInviteHref(friendlyInviteHref(related));
+      setMessage("Amistoso creado. Compartilo por WhatsApp para que otro equipo lo acepte.");
+      event.currentTarget.reset();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo crear el amistoso.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function acceptFriendly(match: FriendlyMatch) {
+    setMessage("");
+    if (!data.user) return setMessage("Entra con Google para aceptar el amistoso.");
+    if (!selectedTeam) return setMessage("Primero crea o elegi un equipo propio.");
+    if (selectedTeam.id === match.home_team_id) return setMessage("Ese amistoso ya pertenece a tu equipo. Compartilo con otro club.");
+    setPending(true);
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("friendly_matches")
+        .update({
+          away_team_id: selectedTeam.id,
+          accepted_by: data.user.id,
+          accepted_at: new Date().toISOString(),
+          status: "accepted"
+        })
+        .eq("invite_code", match.invite_code);
+      if (error) throw error;
+      setMessage(`Listo: ${selectedTeam.name} acepto el amistoso contra ${match.homeTeam?.name ?? "el rival"}.`);
+      window.setTimeout(() => window.location.reload(), 800);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo aceptar el amistoso.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function saveFriendlyResult(event: FormEvent<HTMLFormElement>, match: FriendlyMatch) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setPending(true);
+    setMessage("");
+    try {
+      const homeScore = Number(form.get("homeScore"));
+      const awayScore = Number(form.get("awayScore"));
+      if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) throw new Error("Cargá un marcador valido.");
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("friendly_matches")
+        .update({
+          home_score: homeScore,
+          away_score: awayScore,
+          status: "final",
+          result_locked_at: new Date().toISOString()
+        })
+        .eq("id", match.id);
+      if (error) throw error;
+      setMessage("Resultado guardado. El rating del equipo se recalcula con este amistoso.");
+      window.setTimeout(() => window.location.reload(), 800);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo guardar el resultado.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <section className={`friendly-panel ${open ? "is-open" : ""}`} id="friendly">
+      <button className="friendly-panel__toggle" onClick={() => setOpen((current) => !current)} type="button">
+        <Flag size={18} />
+        <div>
+          <span>Amistosos</span>
+          <strong>Buscar rival para entrenar</strong>
+          <small>Creá un desafío, compartilo por WhatsApp y sumá puntos de forma.</small>
+        </div>
+        <ChevronDown className={open ? "is-open" : ""} size={18} />
+      </button>
+      {open ? (
+        <div className="friendly-panel__body">
+          {!ownedTeams.length ? (
+            <article className="friendly-empty">
+              <Shield size={18} />
+              <div>
+                <strong>Primero necesitás un equipo</strong>
+                <span>El amistoso se crea desde un club propio. Después podés invitar rivales.</span>
+              </div>
+              <button onClick={onCreateTeam} type="button">Crear equipo</button>
+            </article>
+          ) : (
+            <form className="friendly-form" onSubmit={createFriendly}>
+              <select value={selectedTeamId} onChange={(event) => setSelectedTeamId(event.target.value)}>
+                {ownedTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+              </select>
+              <div className="field-mode-card-grid" aria-label="Modalidad del amistoso">
+                {(["5v5", "7v7", "11v11"] as FieldMode[]).map((mode) => (
+                  <button className={fieldMode === mode ? "is-active" : ""} key={mode} onClick={() => setFieldMode(mode)} type="button">
+                    <b>{mode.replace("v", " vs ")}</b>
+                    <small>{getRosterRule(mode).starters} titulares</small>
+                  </button>
+                ))}
+              </div>
+              <input name="title" placeholder="Titulo: amistoso de entrenamiento" />
+              <div className="creator-inline">
+                <input name="friendlyDate" type="date" />
+                <input defaultValue="20:00" name="friendlyTime" type="time" />
+              </div>
+              <select name="venueId" defaultValue="">
+                <option value="">Cancha a confirmar</option>
+                {data.venues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
+              </select>
+              <input name="note" placeholder="Nota: buscamos rival nivel medio, traer pelota..." />
+              <button disabled={pending} type="submit">{pending ? "Creando" : "Crear amistoso"}</button>
+              {inviteHref ? <a className="inline-whatsapp-button" href={inviteHref} rel="noreferrer" target="_blank">Invitar rival por WhatsApp</a> : null}
+            </form>
+          )}
+
+          {visibleFriendlies.length ? (
+            <div className="friendly-list">
+              {visibleFriendlies.map((match) => {
+                const canAccept = data.user && selectedTeam && match.status === "open" && match.home_team_id !== selectedTeam.id;
+                const canResult = data.user && match.away_team_id && (ownedTeamIds.has(match.home_team_id) || ownedTeamIds.has(match.away_team_id)) && match.status !== "final";
+                return (
+                  <article className={focusedFriendly?.id === match.id ? "is-focused" : ""} key={match.id}>
+                    <header>
+                      <span>{match.field_mode} / {match.status === "open" ? "busca rival" : match.status}</span>
+                      <strong>{match.homeTeam?.short_name ?? "LOC"} vs {match.awayTeam?.short_name ?? "Rival"}</strong>
+                      <small>{formatDate(match.scheduled_at)}{match.venue ? ` / ${match.venue.name}` : ""}</small>
+                    </header>
+                    {match.note ? <p>{match.note}</p> : null}
+                    <div className="friendly-actions">
+                      {match.status === "open" ? <a className="inline-whatsapp-button" href={friendlyInviteHref(match)} rel="noreferrer" target="_blank">Compartir</a> : null}
+                      {canAccept ? <button disabled={pending} onClick={() => acceptFriendly(match)} type="button">Aceptar con mi equipo</button> : null}
+                    </div>
+                    {match.status === "final" ? (
+                      <b className="friendly-score">{match.home_score} - {match.away_score}</b>
+                    ) : canResult ? (
+                      <form className="friendly-result-form" onSubmit={(event) => saveFriendlyResult(event, match)}>
+                        <input name="homeScore" inputMode="numeric" placeholder={match.homeTeam?.short_name ?? "LOC"} />
+                        <input name="awayScore" inputMode="numeric" placeholder={match.awayTeam?.short_name ?? "VIS"} />
+                        <button disabled={pending} type="submit">Guardar resultado</button>
+                      </form>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
+          {message ? <p className="console-message">{message}</p> : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function TeamProfile({
+  team,
+  players,
+  isManager,
+  rating
+}: {
+  team?: ArenaTeam;
+  players: ArenaPlayer[];
+  isManager: boolean;
+  rating?: ReturnType<typeof computeTeamRating>;
+}) {
   if (!team) return null;
   const goals = players.reduce((total, player) => total + player.goals, 0);
+  const teamRating = rating ?? { rating: 50, stars: 3, tier: "bronce", played: 0, wins: 0, goalsFor: goals, goalsAgainst: 0 };
   return (
     <section className="team-profile-console">
       <div className="team-profile-console__identity">
@@ -1640,6 +1937,9 @@ function TeamProfile({ team, players, isManager }: { team?: ArenaTeam; players: 
           <span>{isManager ? "Panel del club" : "Vista publica"}</span>
           <h2>{team.name}</h2>
           <p>{team.neighborhood ?? "Barrio"} / {players.length} jugadores / {goals} goles</p>
+          <small className={`team-rating-badge team-rating-badge--${teamRating.tier}`}>
+            {teamRating.rating} OVR / {"★".repeat(teamRating.stars)}{"☆".repeat(5 - teamRating.stars)} / {teamRating.tier.toUpperCase()}
+          </small>
         </div>
       </div>
       <div className="team-profile-console__stats">
@@ -2234,7 +2534,7 @@ function LiveMatchPanel({
   );
 }
 
-export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: ArenaData; joinCode?: string; inviteTeamCode?: string }) {
+export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }: { data: ArenaData; joinCode?: string; inviteTeamCode?: string; friendlyCode?: string }) {
   const inviteMode = Boolean(joinCode && data.activeTournament);
   const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
   const memberTeamId = data.user ? data.players.find((player) => player.profile_id === data.user?.id)?.team_id : null;
@@ -2243,6 +2543,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
     ? data.teams.find((team) => team.slug === inviteTeamCode || team.id === inviteTeamCode || team.short_name.toLowerCase() === inviteTeamCode.toLowerCase())
     : null;
   const playerInviteMode = Boolean(inviteMode && inviteTeamCode && invitedTeam);
+  const friendlyInvite = friendlyCode ? data.friendlyMatches.find((match) => match.invite_code === friendlyCode) : null;
   const inferredTeam = playerInviteMode
     ? invitedTeam
     : inviteMode
@@ -2569,6 +2870,20 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           </section>
         ) : null}
 
+        {!inviteMode && friendlyInvite ? (
+          <section className="join-tournament-banner join-tournament-banner--friendly">
+            <Flag size={20} />
+            <div>
+              <span>Desafio amistoso</span>
+              <strong>{friendlyInvite.homeTeam?.name ?? "Equipo rival"} busca rival</strong>
+              <small>{friendlyInvite.field_mode} / {formatDate(friendlyInvite.scheduled_at)}. Entra con tu equipo para aceptar.</small>
+            </div>
+            <button onClick={() => (data.user ? document.getElementById("friendly")?.scrollIntoView({ block: "center", behavior: "smooth" }) : openLoginPanel())} type="button">
+              {data.user ? "Ver desafio" : "Entrar"}
+            </button>
+          </section>
+        ) : null}
+
         {!inviteMode && data.user ? (
           <StartGuidePanel
             data={data}
@@ -2619,6 +2934,18 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
             <MiniStat icon={<CalendarDays />} label="Partidos" onClick={() => setActiveTab("matches")} value={data.matches.length} />
             <MiniStat icon={<Trophy />} label="Mis torneos" onClick={openMyTournaments} value={data.tournaments.length} />
           </section>
+        ) : null}
+
+        {!inviteMode && data.user ? (
+          <FriendlyPanel
+            data={data}
+            focusCode={friendlyCode}
+            onCreateTeam={() => {
+              if (!ownedTeam && !memberTeam) setSelectedTeamId("__new__");
+              setActiveTab("squad");
+            }}
+            ownedTeam={ownedTeam}
+          />
         ) : null}
 
         {!inviteMode ? <YouTubeFollowStrip /> : null}
@@ -2837,18 +3164,26 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode }: { data: Aren
           )}
         </section>
         <TeamCarousel onSelect={setSelectedTeamId} selectedTeamId={selectedTeam.id} teams={data.teams} />
-        <TeamProfile isManager={isTeamManager} players={selectedPlayers} team={selectedTeam} />
+        <TeamProfile
+          isManager={isTeamManager}
+          players={selectedPlayers}
+          rating={selectedTeam ? computeTeamRating(selectedTeam, data.matches, data.friendlyMatches) : undefined}
+          team={selectedTeam}
+        />
         <section className="player-strip">
-          {selectedPlayers.map((player) => (
-            <button key={player.id} onClick={() => setSelectedPlayerId(player.id)} type="button">
-              <PlayerAvatar player={player} />
-              <div>
-                <strong>{player.display_name}</strong>
-                <span>#{player.jersey_number ?? "-"} / {player.position ?? "Posicion"} / {player.goals} goles</span>
-              </div>
-              <Activity size={16} />
-            </button>
-          ))}
+          {selectedPlayers.map((player) => {
+            const level = playerLevel(player);
+            return (
+              <button key={player.id} onClick={() => setSelectedPlayerId(player.id)} type="button">
+                <PlayerAvatar player={player} />
+                <div>
+                  <strong>{player.display_name}</strong>
+                  <span>#{player.jersey_number ?? "-"} / {player.position ?? "Posicion"} / {player.goals} goles / {level.rating} {level.tier}</span>
+                </div>
+                <Activity size={16} />
+              </button>
+            );
+          })}
         </section>
         {isTeamManager ? <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} /> : null}
         {data.user && isTeamManager ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}

@@ -504,6 +504,7 @@ function TournamentProForm({
   const [sent, setSent] = useState(isRequestPending(existingRequest));
   const [tournamentFormat, setTournamentFormat] = useState<TournamentFormat>("world_cup");
   const [selectedMaxTeams, setSelectedMaxTeams] = useState(getDefaultMaxTeams("world_cup"));
+  const [selectedFieldMode, setSelectedFieldMode] = useState<FieldMode>("7v7");
   const submitLockedRef = useRef(false);
   const teamCountOptions = useMemo(() => getTournamentTeamCountOptions(tournamentFormat), [tournamentFormat]);
   const selectedTeamCountOption = teamCountOptions.find((option) => option.value === selectedMaxTeams) ?? teamCountOptions[0];
@@ -526,7 +527,7 @@ function TournamentProForm({
     setPending(true);
     try {
       const supabase = createSupabaseBrowserClient();
-      const fieldMode = String(form.get("fieldMode") || "7v7") as FieldMode;
+      const fieldMode = String(form.get("fieldMode") || selectedFieldMode) as FieldMode;
       const tournamentFormat = String(form.get("tournamentFormat") || "world_cup") as TournamentFormat;
       const maxTeams = Number(form.get("maxTeams") || getDefaultMaxTeams(tournamentFormat));
       const validTeamCount = getTournamentTeamCountOptions(tournamentFormat).some((option) => option.value === maxTeams);
@@ -615,12 +616,23 @@ function TournamentProForm({
         </div>
         <small>{selectedTeamCountOption?.detail}</small>
       </div>
-      <div className="creator-inline">
-        <select name="fieldMode" defaultValue="7v7">
-          <option value="5v5">5v5</option>
-          <option value="7v7">7v7</option>
-          <option value="11v11">11v11</option>
-        </select>
+      <div className="team-count-picker field-mode-picker">
+        <span>Formato de cancha</span>
+        <input name="fieldMode" readOnly type="hidden" value={selectedFieldMode} />
+        <div className="team-count-picker__grid">
+          {(["5v5", "7v7", "11v11"] as FieldMode[]).map((mode) => (
+            <button
+              className={selectedFieldMode === mode ? "is-active" : ""}
+              disabled={pending || sent}
+              key={mode}
+              onClick={() => setSelectedFieldMode(mode)}
+              type="button"
+            >
+              <b>{mode.replace("v", " vs ")}</b>
+              <small>{mode === "5v5" ? "cancha chica" : mode === "7v7" ? "cancha media" : "cancha grande"}</small>
+            </button>
+          ))}
+        </div>
       </div>
       <div className="creator-inline">
         <label>

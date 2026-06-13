@@ -1,4 +1,4 @@
-import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaVenue } from "@/lib/types";
+import type { AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaVenue, FriendlyMatch } from "@/lib/types";
 
 export const roleCatalog: Record<AppRole, {
   label: string;
@@ -176,6 +176,15 @@ export function attachMatchRelations(rawMatches: ArenaMatch[], rawTeams: ArenaTe
   }));
 }
 
+export function attachFriendlyRelations(rawMatches: FriendlyMatch[], rawTeams: ArenaTeam[] = teams, rawVenues: ArenaVenue[] = venues) {
+  return rawMatches.map((match) => ({
+    ...match,
+    homeTeam: rawTeams.find((team) => team.id === match.home_team_id) ?? null,
+    awayTeam: rawTeams.find((team) => team.id === match.away_team_id) ?? null,
+    venue: rawVenues.find((venue) => venue.id === match.venue_id) ?? null
+  }));
+}
+
 export function computeStandings(rawTeams: ArenaTeam[], rawMatches: ArenaMatch[]) {
   const table = new Map<string, ArenaTeam>();
   rawTeams.forEach((team) => {
@@ -225,6 +234,28 @@ export function computeStandings(rawTeams: ArenaTeam[], rawMatches: ArenaMatch[]
 }
 
 const relatedMatches = attachMatchRelations(matches);
+const friendlyMatches = attachFriendlyRelations([
+  {
+    id: "friendly-demo-1",
+    created_by: "demo",
+    home_team_id: teams[0].id,
+    away_team_id: null,
+    venue_id: venues[0].id,
+    field_mode: "5v5",
+    invite_code: "amistoso-demo",
+    title: "Amistoso de entrenamiento",
+    note: "Buscamos rival para entrenar antes de la copa.",
+    scheduled_at: new Date(Date.now() + 2 * 86400000).toISOString(),
+    status: "open",
+    home_score: null,
+    away_score: null,
+    accepted_by: null,
+    accepted_at: null,
+    result_locked_at: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+]);
 
 export const demoArenaData: ArenaData = {
   source: "demo",
@@ -238,6 +269,7 @@ export const demoArenaData: ArenaData = {
   teams,
   players,
   matches: relatedMatches,
+  friendlyMatches,
   standings: computeStandings(teams, relatedMatches),
   paymentRequests: [],
   paymentMessages: [],

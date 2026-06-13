@@ -166,6 +166,30 @@ export type ArenaMatch = {
   venue?: ArenaVenue | null;
 };
 
+export type FriendlyMatch = {
+  id: string;
+  created_by: string;
+  home_team_id: string;
+  away_team_id: string | null;
+  venue_id: string | null;
+  field_mode: FieldMode;
+  invite_code: string;
+  title: string;
+  note: string | null;
+  scheduled_at: string | null;
+  status: "open" | "accepted" | "scheduled" | "result_pending" | "final" | "cancelled";
+  home_score: number | null;
+  away_score: number | null;
+  accepted_by: string | null;
+  accepted_at: string | null;
+  result_locked_at: string | null;
+  created_at: string;
+  updated_at: string;
+  homeTeam?: ArenaTeam | null;
+  awayTeam?: ArenaTeam | null;
+  venue?: ArenaVenue | null;
+};
+
 export type LiveStreamChannel = {
   id: string;
   name: string;
@@ -334,6 +358,7 @@ export type ArenaData = {
   teams: ArenaTeam[];
   players: ArenaPlayer[];
   matches: ArenaMatch[];
+  friendlyMatches: FriendlyMatch[];
   standings: ArenaTeam[];
   paymentRequests: PaymentRequest[];
   paymentMessages: PaymentMessage[];
