@@ -1760,11 +1760,19 @@ function FriendlyPanel({
       return ownedTeamIds.has(match.home_team_id) || (match.away_team_id ? ownedTeamIds.has(match.away_team_id) : false);
     })
     .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime());
+  const latestOwnOpenFriendly = friendlyFeed.find((match) => match.status === "open" && ownedTeamIds.has(match.home_team_id));
+  const shareableFriendlyId = !inviteHref
+    ? focusedFriendly && focusedHomeIsMine
+      ? focusedFriendly.id
+      : latestOwnOpenFriendly?.id
+    : null;
   const visibleFriendlies = inviteHref
     ? []
     : focusedFriendly
       ? [focusedFriendly]
-      : friendlyFeed.slice(0, focusMode ? 1 : 6);
+      : focusMode
+        ? latestOwnOpenFriendly ? [latestOwnOpenFriendly] : []
+        : friendlyFeed.slice(0, 6);
 
   useEffect(() => {
     if (focusMode || focusedFriendly) setOpen(true);
@@ -2040,6 +2048,7 @@ function FriendlyPanel({
               {visibleFriendlies.map((match) => {
                 const canAccept = data.user && selectedTeam && match.status === "open" && match.home_team_id !== selectedTeam.id;
                 const canResult = data.user && match.away_team_id && (ownedTeamIds.has(match.home_team_id) || ownedTeamIds.has(match.away_team_id)) && match.status !== "final";
+                const canShare = match.status === "open" && match.id === shareableFriendlyId;
                 return (
                   <article className={focusedFriendly?.id === match.id ? "is-focused" : ""} key={match.id}>
                     <header>
@@ -2049,7 +2058,7 @@ function FriendlyPanel({
                     </header>
                     {match.note ? <p>{match.note}</p> : null}
                     <div className="friendly-actions">
-                      {match.status === "open" && !inviteHref ? <a className="inline-whatsapp-button" href={friendlyInviteHref(match)} rel="noreferrer" target="_blank">Invitar por WhatsApp</a> : null}
+                      {canShare ? <a className="inline-whatsapp-button" href={friendlyInviteHref(match)} rel="noreferrer" target="_blank">Invitar por WhatsApp</a> : null}
                       {canAccept ? <button disabled={pending} onClick={() => acceptFriendly(match)} type="button">Aceptar con mi equipo</button> : null}
                     </div>
                     {match.status === "final" ? (
