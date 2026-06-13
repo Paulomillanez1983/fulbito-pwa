@@ -396,6 +396,13 @@ function venueWhatsappUrl(phone?: string | null) {
   return digits ? `https://wa.me/${digits}` : "";
 }
 
+function venueReservationWhatsappUrl(venue?: ArenaVenue | null) {
+  const baseUrl = venueWhatsappUrl(venue?.phone);
+  if (!baseUrl || !venue) return "";
+  const text = `Hola, vi ${venue.name} en Fulbito Arena. Queria consultar disponibilidad, precio y horarios para jugar un amistoso.`;
+  return `${baseUrl}?text=${encodeURIComponent(text)}`;
+}
+
 function formatDate(value: string | null) {
   if (!value) return "A confirmar";
   const source = new Date(value);
@@ -1706,23 +1713,32 @@ function FriendlyPanel({
   ownedTeam,
   focusCode,
   focusMode = false,
+  nearbyVenues = data.venues,
+  venueLocation = null,
+  venueLocationStatus = "Mostrando canchas registradas.",
   onCreateTeam,
   onOpenTeamPro,
-  onCloseFocus
+  onCloseFocus,
+  onRequestVenueLocation
 }: {
   data: ArenaData;
   ownedTeam?: ArenaTeam | null;
   focusCode?: string;
   focusMode?: boolean;
+  nearbyVenues?: ArenaVenue[];
+  venueLocation?: GeoPoint | null;
+  venueLocationStatus?: string;
   onCreateTeam: () => void;
   onOpenTeamPro?: () => void;
   onCloseFocus?: () => void;
+  onRequestVenueLocation?: () => void;
 }) {
   const ownedTeams = data.user ? data.teams.filter((team) => team.owner_id === data.user?.id) : [];
   const focusedFriendly = focusCode ? data.friendlyMatches.find((match) => match.invite_code === focusCode) : null;
   const [open, setOpen] = useState(Boolean(focusedFriendly));
   const [selectedTeamId, setSelectedTeamId] = useState(ownedTeam?.id ?? ownedTeams[0]?.id ?? "");
   const [fieldMode, setFieldMode] = useState<FieldMode>(focusedFriendly?.field_mode ?? "5v5");
+  const [selectedFriendlyVenueId, setSelectedFriendlyVenueId] = useState(focusedFriendly?.venue_id ?? "");
   const [message, setMessage] = useState("");
   const [inviteHref, setInviteHref] = useState("");
   const [pending, setPending] = useState(false);
@@ -1734,6 +1750,9 @@ function FriendlyPanel({
   const stageHomeTeam = focusedFriendly?.homeTeam ?? selectedTeam;
   const stageAwayTeam = focusedFriendly ? focusedFriendly.awayTeam ?? (focusedFriendly.home_team_id !== selectedTeam?.id ? selectedTeam : null) : null;
   const emptyAwayLabel = focusedFriendly && !focusedHomeIsMine ? "Tu equipo" : "Rival pendiente";
+  const friendlyVenueOptions = nearbyVenues.length ? nearbyVenues : data.venues;
+  const selectedFriendlyVenue = friendlyVenueOptions.find((venue) => venue.id === selectedFriendlyVenueId) ?? null;
+  const selectedVenueWhatsapp = venueReservationWhatsappUrl(selectedFriendlyVenue);
   const visibleFriendlies = data.friendlyMatches
     .filter((match) => {
       if (focusedFriendly?.id === match.id) return true;
@@ -1802,10 +1821,10 @@ function FriendlyPanel({
         .insert({
           created_by: data.user.id,
           home_team_id: selectedTeam.id,
-          venue_id: String(form.get("venueId") || "") || null,
+          venue_id: selectedFriendlyVenueId || null,
           field_mode: fieldMode,
           invite_code: friendlyInviteCode(selectedTeam),
-          title: String(form.get("title") || "").trim() || "Amistoso barrial",
+          title: "Amistoso",
           note: String(form.get("note") || "").trim() || null,
           scheduled_at: combineDateTime(form.get("friendlyDate"), form.get("friendlyTime")),
           status: "open"
@@ -1886,8 +1905,8 @@ function FriendlyPanel({
         <header className="friendly-mode-header">
           <div>
             <span>Modo amistoso</span>
-            <h2>Configura tu partido</h2>
-            <p>Elegis tu equipo, definis formato y mandas la invitacion. El rival entra por WhatsApp, crea o elige su club y confirma el juego.</p>
+            <h2>Amistoso</h2>
+            <p>Elegis tu equipo, dia, hora y cancha. Despues mandas la invitacion por WhatsApp para que el rival confirme el partido.</p>
           </div>
           {onCloseFocus ? <button onClick={onCloseFocus} type="button">Inicio</button> : null}
         </header>
@@ -1963,15 +1982,48 @@ function FriendlyPanel({
                   </button>
                 ))}
               </div>
-              <input name="title" placeholder="Titulo: amistoso de entrenamiento" />
               <div className="creator-inline">
                 <input name="friendlyDate" type="date" />
                 <input defaultValue="20:00" name="friendlyTime" type="time" />
               </div>
-              <select name="venueId" defaultValue="">
-                <option value="">Cancha a confirmar</option>
-                {data.venues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
-              </select>
+              <section className="friendly-venue-picker">
+                <header>
+                  <div>
+                    <span>Cancha</span>
+                    <strong>{venueLocation ? "Sedes a 50 km" : "Busca sedes cercanas"}</strong>
+                    <small>{venueLocationStatus}</small>
+                  </div>
+                  {onRequestVenueLocation ? (
+                    <button onClick={onRequestVenueLocation} type="button">
+                      <LocateFixed size={15} />
+                      {venueLocation ? "Actualizar" : "Usar ubicacion"}
+                    </button>
+                  ) : null}
+                </header>
+                <select name="venueId" value={selectedFriendlyVenueId} onChange={(event) => setSelectedFriendlyVenueId(event.target.value)}>
+                  <option value="">Cancha a confirmar</option>
+                  {friendlyVenueOptions.map((venue) => (
+                    <option key={venue.id} value={venue.id}>
+                      {venue.name}{venue.neighborhood ? ` / ${venue.neighborhood}` : ""}{venue.price_per_hour ? ` / ${money(venue.price_per_hour)}` : ""}
+                    </option>
+                  ))}
+                </select>
+                {selectedFriendlyVenue ? (
+                  <div className="friendly-venue-summary">
+                    <div>
+                      <strong>{selectedFriendlyVenue.name}</strong>
+                      <span>{selectedFriendlyVenue.address ?? selectedFriendlyVenue.neighborhood}{selectedFriendlyVenue.price_per_hour ? ` / ${money(selectedFriendlyVenue.price_per_hour)} por hora` : ""}</span>
+                    </div>
+                    {selectedVenueWhatsapp ? (
+                      <a href={selectedVenueWhatsapp} rel="noreferrer" target="_blank">Consultar reserva</a>
+                    ) : (
+                      <small>Sin WhatsApp cargado</small>
+                    )}
+                  </div>
+                ) : (
+                  <p className="friendly-venue-hint">Podes dejarla a confirmar o elegir una sede para consultar disponibilidad por WhatsApp.</p>
+                )}
+              </section>
               <input name="note" placeholder="Nota: buscamos rival nivel medio, traer pelota..." />
               {!focusedFriendly ? <button disabled={pending} type="submit">{pending ? "Creando invitacion" : "Crear invitacion de amistoso"}</button> : null}
               {inviteHref ? <a className="inline-whatsapp-button" href={inviteHref} rel="noreferrer" target="_blank">Invitar rival por WhatsApp</a> : null}
@@ -3076,6 +3128,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             data={data}
             focusMode={showFriendlyFocus}
             focusCode={friendlyCode}
+            nearbyVenues={nearbyVenues}
             onCloseFocus={() => setFriendlyFocus(false)}
             onCreateTeam={() => {
               if (!ownedTeam && !memberTeam) setSelectedTeamId("__new__");
@@ -3085,7 +3138,10 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
               window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "team_pro" }));
               window.setTimeout(() => document.getElementById("pro")?.scrollIntoView({ block: "center", behavior: "smooth" }), 80);
             }}
+            onRequestVenueLocation={requestVenueLocation}
             ownedTeam={ownedTeam}
+            venueLocation={venueLocation}
+            venueLocationStatus={venueLocationStatus}
           />
         ) : null}
 
