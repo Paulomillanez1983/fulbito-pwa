@@ -63,11 +63,14 @@ export function LoginPanel({
   const disabled = !configured;
 
   const redirectTo = useMemo(() => {
-    const url = new URL("/auth/callback", getSiteUrl());
+    const siteOrigin = typeof window !== "undefined" ? window.location.origin : getSiteUrl();
+    const url = new URL("/auth/callback", siteOrigin);
     const nextParams = new URLSearchParams();
     if (joinCode) nextParams.set("join", joinCode);
     if (teamCode) nextParams.set("team", teamCode);
-    url.searchParams.set("next", nextParams.size ? `/?${nextParams.toString()}` : nextTarget);
+    const rawNext = nextParams.size ? `/?${nextParams.toString()}` : nextTarget;
+    const safeNext = new URL(rawNext || "/", siteOrigin);
+    url.searchParams.set("next", safeNext.origin === siteOrigin ? `${safeNext.pathname}${safeNext.search}${safeNext.hash}` : "/");
     url.searchParams.set("role", role);
     return url.toString();
   }, [joinCode, nextTarget, role, teamCode]);

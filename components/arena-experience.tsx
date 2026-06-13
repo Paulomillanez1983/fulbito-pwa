@@ -1138,9 +1138,10 @@ function markSponsorSplashShown(campaign: AdCampaign, userKey: string) {
 }
 
 function pickSponsorSplashCampaign(campaigns: AdCampaign[], userKey: string) {
+  if (!campaigns.length) return null;
   const eligible = campaigns.filter((item) => canShowSponsorSplash(item, userKey));
-  if (!eligible.length) return null;
-  const ranked = eligible
+  const candidates = eligible.length ? eligible : campaigns;
+  const ranked = candidates
     .map((item, index) => ({ item, index, lastShownAt: getSponsorSplashLastShownAt(item, userKey) }))
     .sort((left, right) => left.lastShownAt - right.lastShownAt || left.index - right.index);
   const oldestShownAt = ranked[0]?.lastShownAt ?? 0;
@@ -1149,8 +1150,8 @@ function pickSponsorSplashCampaign(campaigns: AdCampaign[], userKey: string) {
 
   const lastPickedId = window.sessionStorage.getItem(`fulbito:sponsor-splash-last-picked:${userKey}`);
   const pool = leastSeen.filter((entry) => entry.item.id !== lastPickedId);
-  const candidates = pool.length ? pool : leastSeen;
-  const picked = candidates[Math.floor(Math.random() * candidates.length)]?.item ?? leastSeen[0]?.item ?? null;
+  const randomPool = pool.length ? pool : leastSeen;
+  const picked = randomPool[Math.floor(Math.random() * randomPool.length)]?.item ?? leastSeen[0]?.item ?? null;
   if (picked) window.sessionStorage.setItem(`fulbito:sponsor-splash-last-picked:${userKey}`, picked.id);
   return picked;
 }
@@ -1258,7 +1259,7 @@ function SponsorSplashOverlay({
   useEffect(() => {
     if (!enabled || campaign) return;
     if (shownTriggerRef.current === triggerKey) return;
-    const splashCampaigns = campaigns.filter((item) => item.splash_enabled || item.placement === "sponsor_splash" || item.placement === "both");
+    const splashCampaigns = campaigns.filter((item) => item.splash_enabled || ["sponsor_splash", "arena_led", "both"].includes(item.placement));
     if (!splashCampaigns.length) return;
     const deviceId = getSponsorDeviceId();
     const userKey = userId ?? deviceId;
@@ -3156,7 +3157,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     });
   }, [data.adCampaigns, venueLocation]);
   const sponsorSplashCampaigns = useMemo(() => {
-    return visibleAdCampaigns.filter((campaign) => campaign.splash_enabled || campaign.placement === "sponsor_splash" || campaign.placement === "both");
+    return visibleAdCampaigns.filter((campaign) => campaign.splash_enabled || ["sponsor_splash", "arena_led", "both"].includes(campaign.placement));
   }, [visibleAdCampaigns]);
   const selectedVenue = nearbyVenues.find((venue) => venue.id === selectedVenueId) ?? nearbyVenues[0];
   const selectedPlayers = data.players.filter((player) => player.team_id === selectedTeam?.id);
