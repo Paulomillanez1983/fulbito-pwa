@@ -1730,6 +1730,18 @@ function FriendlyPanel({
     })
     .slice(0, 6);
 
+  useEffect(() => {
+    function openRequested() {
+      setOpen(true);
+      window.setTimeout(() => {
+        document.getElementById("friendly")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 40);
+    }
+
+    window.addEventListener("fulbito:open-friendly", openRequested);
+    return () => window.removeEventListener("fulbito:open-friendly", openRequested);
+  }, []);
+
   async function createFriendly(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
@@ -2781,6 +2793,13 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
         window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "tournament_pro" }));
         document.getElementById("pro")?.scrollIntoView({ block: "center", behavior: "smooth" });
       }, 140);
+    } else if (startTarget === "friendly" || window.location.hash === "#friendly") {
+      activeRef.current = "home";
+      setActive("home");
+      window.setTimeout(() => {
+        window.dispatchEvent(new Event("fulbito:open-friendly"));
+        document.getElementById("friendly")?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 140);
     } else if (startTarget === "squad") {
       activeRef.current = "squad";
       if (!ownedTeam && !memberTeam) setSelectedTeamId("__new__");
@@ -2811,6 +2830,18 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
       if (data.user) window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "tournament_pro" }));
       document.getElementById(target)?.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 60);
+  }
+
+  function openFriendlyStarter() {
+    if (!data.user) {
+      openLoginPanel("/?start=friendly#friendly");
+      return;
+    }
+    setActiveTab("home");
+    window.setTimeout(() => {
+      window.dispatchEvent(new Event("fulbito:open-friendly"));
+      document.getElementById("friendly")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 80);
   }
 
   function openMyTournaments() {
@@ -2878,7 +2909,12 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
               <strong>{friendlyInvite.homeTeam?.name ?? "Equipo rival"} busca rival</strong>
               <small>{friendlyInvite.field_mode} / {formatDate(friendlyInvite.scheduled_at)}. Entra con tu equipo para aceptar.</small>
             </div>
-            <button onClick={() => (data.user ? document.getElementById("friendly")?.scrollIntoView({ block: "center", behavior: "smooth" }) : openLoginPanel())} type="button">
+            <button
+              onClick={() => (data.user
+                ? window.dispatchEvent(new Event("fulbito:open-friendly"))
+                : openLoginPanel(`/?friendly=${encodeURIComponent(friendlyInvite.invite_code)}#friendly`))}
+              type="button"
+            >
               {data.user ? "Ver desafio" : "Entrar"}
             </button>
           </section>
@@ -2914,6 +2950,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             <div className="hero-actions">
               <InstallAppButton variant="hero" />
               <button onClick={openTournamentStarter} type="button">Crear torneo</button>
+              <button onClick={openFriendlyStarter} type="button">Crear amistoso</button>
               <button onClick={() => setActiveTab("matches")} type="button">Ver fecha</button>
             </div>
           </section>
