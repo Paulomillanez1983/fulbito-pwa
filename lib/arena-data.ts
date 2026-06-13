@@ -6,6 +6,10 @@ import type { AccountEntitlement, AdCampaign, AppFeatureFlag, AppRole, ArenaData
 type TournamentTeamRow = {
   tournament_id: string;
   team_id: string;
+  group_code: string | null;
+  seed: number | null;
+  status: string;
+  created_at?: string;
 };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -78,7 +82,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       supabase.from("team_members").select("*").order("team_id", { ascending: true }).order("jersey_number", { ascending: true, nullsFirst: false }),
       supabase.from("matches").select("*").order("scheduled_at", { ascending: true }),
       friendlyQuery,
-      user || normalizedJoinCode ? supabase.from("tournament_teams").select("tournament_id,team_id,status,created_at") : emptyResult,
+      user || normalizedJoinCode ? supabase.from("tournament_teams").select("tournament_id,team_id,group_code,seed,status,created_at") : emptyResult,
       user || normalizedJoinCode ? supabase.from("tournament_draws").select("*").order("created_at", { ascending: false }) : emptyResult,
       user ? supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(12) : emptyResult,
       user ? supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(80) : emptyResult,
@@ -207,6 +211,15 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
 
     const matches = attachMatchRelations(matchRows, teams, venues);
     const friendlyMatches = attachFriendlyRelations(friendlyMatchRows, teams, venues);
+    const activeTournamentTeamIds = activeTournament
+      ? new Set(tournamentTeamRows.filter((row) => row.tournament_id === activeTournament?.id).map((row) => row.team_id))
+      : new Set<string>();
+    const standingsTeams = activeTournament && activeTournamentTeamIds.size
+      ? teams.filter((team) => activeTournamentTeamIds.has(team.id))
+      : teams;
+    const standingsMatches = activeTournament
+      ? matches.filter((match) => match.tournament_id === activeTournament?.id && (match.phase === "groups" || match.phase === "league"))
+      : matches;
 
     return {
       source: "supabase",
@@ -221,7 +234,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       players,
       matches,
       friendlyMatches,
-      standings: computeStandings(teams, matches),
+      standings: computeStandings(standingsTeams, standingsMatches),
       paymentRequests: (paymentRequestsResult.data ?? []) as PaymentRequest[],
       paymentMessages: (paymentMessagesResult.data ?? []) as PaymentMessage[],
       entitlements: (entitlementsResult.data ?? []) as AccountEntitlement[],

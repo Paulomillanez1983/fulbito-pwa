@@ -754,7 +754,15 @@ function FeaturedVenueForm({
   existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
-  const [mode, setMode] = useState(data.venues.length ? "existing" : "new");
+  const ownedVenues = data.user ? data.venues.filter((venue) => venue.owner_id === data.user?.id) : [];
+  const availableOwnedVenues = ownedVenues.filter((venue) => {
+    return !data.entitlements.some((entitlement) => {
+      if (entitlement.plan_code !== "featured_venue" || entitlement.target_type !== "venue") return false;
+      if (entitlement.target_id !== venue.id) return false;
+      return isEntitlementActive(entitlement);
+    });
+  });
+  const [mode, setMode] = useState(availableOwnedVenues.length ? "existing" : "new");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
@@ -773,7 +781,7 @@ function FeaturedVenueForm({
     try {
       const supabase = createSupabaseBrowserClient();
       let venueId = String(form.get("venueId") || "");
-      let venueName = data.venues.find((venue) => venue.id === venueId)?.name ?? "";
+      let venueName = availableOwnedVenues.find((venue) => venue.id === venueId)?.name ?? "";
 
       if (mode === "new" || !venueId) {
         venueName = String(form.get("venueName") || "").trim();
@@ -823,15 +831,15 @@ function FeaturedVenueForm({
 
   return (
     <form className="creator-form" onSubmit={submit}>
-      {data.venues.length ? (
+      {availableOwnedVenues.length ? (
         <div className="creator-toggle">
           <button className={mode === "existing" ? "is-active" : ""} onClick={() => setMode("existing")} type="button">Elegir cancha</button>
           <button className={mode === "new" ? "is-active" : ""} onClick={() => setMode("new")} type="button">Crear cancha</button>
         </div>
       ) : null}
-      {mode === "existing" && data.venues.length ? (
-        <select name="venueId" defaultValue={data.venues[0]?.id}>
-          {data.venues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
+      {mode === "existing" && availableOwnedVenues.length ? (
+        <select name="venueId" defaultValue={availableOwnedVenues[0]?.id}>
+          {availableOwnedVenues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
         </select>
       ) : (
         <>
@@ -1115,6 +1123,24 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
   }, [activeEntitlements, data.user, ownedTeamIds]);
   const activePlanCodes = useMemo(() => new Set(userActiveEntitlements.map((entitlement) => entitlement.plan_code)), [userActiveEntitlements]);
   const hasActiveTournamentPro = userActiveEntitlements.some((entitlement) => entitlement.plan_code === "tournament_pro");
+  const ownedTeams = useMemo(() => data.teams.filter((team) => ownedTeamIds.has(team.id)), [data.teams, ownedTeamIds]);
+  const ownedVenueIds = useMemo(() => {
+    if (!data.user) return new Set<string>();
+    return new Set(data.venues.filter((venue) => venue.owner_id === data.user?.id).map((venue) => venue.id));
+  }, [data.user, data.venues]);
+  const ownedVenues = useMemo(() => data.venues.filter((venue) => ownedVenueIds.has(venue.id)), [data.venues, ownedVenueIds]);
+  const activeTeamProTargetIds = useMemo(() => {
+    return new Set(userActiveEntitlements
+      .filter((entitlement) => entitlement.plan_code === "team_pro" && entitlement.target_type === "team" && entitlement.target_id)
+      .map((entitlement) => entitlement.target_id as string));
+  }, [userActiveEntitlements]);
+  const activeVenueProTargetIds = useMemo(() => {
+    return new Set(userActiveEntitlements
+      .filter((entitlement) => entitlement.plan_code === "featured_venue" && entitlement.target_type === "venue" && entitlement.target_id)
+      .map((entitlement) => entitlement.target_id as string));
+  }, [userActiveEntitlements]);
+  const hasTeamNeedingPro = ownedTeams.length === 0 || ownedTeams.some((team) => !activeTeamProTargetIds.has(team.id));
+  const hasVenueNeedingPro = ownedVenues.length === 0 || ownedVenues.some((venue) => !activeVenueProTargetIds.has(venue.id));
 
   const pendingRequestByPlan = useMemo(() => {
     return requests.reduce<Partial<Record<PaymentPlan["code"], PaymentRequest>>>((groups, request) => {
@@ -1126,11 +1152,13 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
   const visiblePlans = useMemo(() => {
     return plans.filter((plan) => {
       if (plan.code === "tournament_pro") return !hasActiveTournamentPro || showNewTournament;
+      if (plan.code === "team_pro") return hasTeamNeedingPro || Boolean(pendingRequestByPlan.team_pro);
+      if (plan.code === "featured_venue") return hasVenueNeedingPro || Boolean(pendingRequestByPlan.featured_venue);
       if (activePlanCodes.has(plan.code)) return false;
       if (pendingRequestByPlan[plan.code]) return true;
       return !activePlanCodes.has(plan.code);
     });
-  }, [activePlanCodes, hasActiveTournamentPro, pendingRequestByPlan, plans, showNewTournament]);
+  }, [activePlanCodes, hasActiveTournamentPro, hasTeamNeedingPro, hasVenueNeedingPro, pendingRequestByPlan, plans, showNewTournament]);
   const tournamentPlan = plans.find((plan) => plan.code === "tournament_pro");
 
   function onCreated(request: PaymentRequest) {

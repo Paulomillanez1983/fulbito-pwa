@@ -323,7 +323,8 @@ export function ArenaActions({
   const [origin, setOrigin] = useState("");
   const [pendingEnrollId, setPendingEnrollId] = useState("");
   const showTeam = mode === "all" || mode === "squad";
-  const hasMatches = data.matches.length > 0;
+  const resultMatches = data.matches.filter((match) => match.home_team_id && match.away_team_id && match.status !== "final");
+  const hasMatches = resultMatches.length > 0;
   const showVenue = mode === "all" || mode === "venue";
   const showResult = hasMatches && (mode === "all" || mode === "result");
   const selfPlayerMode = mode === "self-player";
@@ -514,6 +515,7 @@ export function ArenaActions({
   async function submitResult(formData: FormData) {
     setMessage("");
     const matchId = String(formData.get("matchId") || "");
+    if (!matchId) return setMessage("No hay un partido real para cargar resultado.");
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Entra con Google para continuar.");
     const role = data.user?.roles[0] ?? "captain";
@@ -567,7 +569,7 @@ export function ArenaActions({
     setMessage(error ? error.message : selfRegister ? "Tu ficha quedo guardada en el plantel." : "Jugador agregado al plantel.");
   }
 
-  const nextMatch = data.matches.find((match) => match.status !== "final") ?? data.matches[0];
+  const nextMatch = resultMatches[0];
 
   const actionContent = (
     <>
@@ -713,7 +715,7 @@ export function ArenaActions({
           <h3>Enviar resultado</h3>
           <p>El marcador queda pendiente hasta validacion de cancha, veedor u organizador.</p>
           <select name="matchId" defaultValue={nextMatch?.id}>
-            {data.matches.map((match) => (
+            {resultMatches.map((match) => (
               <option key={match.id} value={match.id}>
                 {match.homeTeam?.short_name ?? "LOC"} vs {match.awayTeam?.short_name ?? "VIS"} - {match.round_name}
               </option>

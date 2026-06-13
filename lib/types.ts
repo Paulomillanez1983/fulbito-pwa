@@ -8,6 +8,8 @@ export type BillingPlanCode = "team_pro" | "tournament_pro" | "sponsor" | "featu
 
 export type PaymentRequestStatus = "pending_review" | "approved" | "rejected" | "cancelled";
 
+export type ResultReviewStatus = "pending" | "accepted" | "rejected";
+
 export type AdCampaignStatus = "pending" | "active" | "paused" | "rejected" | "expired";
 
 export type AdCampaignScope = "local" | "national";
@@ -144,6 +146,8 @@ export type ArenaTournamentDraw = {
 export type ArenaTournamentTeam = {
   tournament_id: string;
   team_id: string;
+  group_code: string | null;
+  seed: number | null;
   status: string;
   created_at?: string;
 };
@@ -157,6 +161,7 @@ export type ArenaMatch = {
   phase: string;
   round_name: string;
   group_code: string | null;
+  match_order: number;
   scheduled_at: string | null;
   status: MatchStatus;
   home_score: number | null;
@@ -287,6 +292,18 @@ export type PaymentMessage = {
   payment_request_id: string;
   sender_id: string;
   body: string;
+  created_at: string;
+};
+
+export type MatchResultSubmission = {
+  id: string;
+  match_id: string;
+  submitted_by: string | null;
+  source_role: AppRole;
+  home_score: number;
+  away_score: number;
+  status: ResultReviewStatus;
+  note: string | null;
   created_at: string;
 };
 

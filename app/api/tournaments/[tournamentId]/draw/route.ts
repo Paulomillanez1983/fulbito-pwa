@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { buildTournamentDraw } from "@/lib/draw";
+import { ensureTournamentFixtures } from "@/lib/fixtures";
 import { normalizeLiveWatchUrl } from "@/lib/live";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { ArenaTeam, ArenaTournament } from "@/lib/types";
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
 
   const [{ data: tournament, error: tournamentError }, { data: existingDraw }] = await Promise.all([
     supabase.from("tournaments").select("*").eq("id", cleanTournamentId).maybeSingle(),
-    supabase.from("tournament_draws").select("id").eq("tournament_id", cleanTournamentId).eq("mode", "official").maybeSingle()
+    supabase.from("tournament_draws").select("*").eq("tournament_id", cleanTournamentId).eq("mode", "official").maybeSingle()
   ]);
 
   if (tournamentError) return NextResponse.json({ error: tournamentError.message }, { status: 400 });
@@ -37,12 +38,43 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
     return NextResponse.json({ error: "Solo el organizador del torneo puede iniciar el sorteo oficial." }, { status: 403 });
   }
   if (existingDraw) {
-    return NextResponse.json({ error: "Este torneo ya tiene un sorteo oficial guardado. No se puede repetir sin auditoria." }, { status: 409 });
+    const { data: existingMatches, error: existingMatchesError } = await supabase
+      .from("matches")
+      .select("id")
+      .eq("tournament_id", cleanTournamentId)
+      .limit(1);
+    if (existingMatchesError) return NextResponse.json({ error: existingMatchesError.message }, { status: 400 });
+    if (existingMatches?.length) {
+      return NextResponse.json({ error: "Este torneo ya tiene un sorteo oficial y fixture guardados. No se puede repetir sin auditoria." }, { status: 409 });
+    }
+
+    const { data: repairRows, error: repairRowsError } = await supabase
+      .from("tournament_teams")
+      .select("team_id,status,group_code,seed")
+      .eq("tournament_id", cleanTournamentId)
+      .eq("status", "approved");
+    if (repairRowsError) return NextResponse.json({ error: repairRowsError.message }, { status: 400 });
+    const repairTeamIds = (repairRows ?? []).map((row) => row.team_id);
+    const { data: repairTeams, error: repairTeamsError } = await supabase.from("teams").select("*").in("id", repairTeamIds);
+    if (repairTeamsError) return NextResponse.json({ error: repairTeamsError.message }, { status: 400 });
+    const repairTeamsById = new Map(((repairTeams ?? []) as ArenaTeam[]).map((team) => [team.id, team]));
+    const fixtureTeams = (repairRows ?? [])
+      .map((row) => {
+        const team = repairTeamsById.get(row.team_id);
+        return team ? { ...team, group_code: row.group_code, seed: row.seed } : null;
+      })
+      .filter((team): team is ArenaTeam & { group_code: string | null; seed: number | null } => Boolean(team));
+    const fixture = await ensureTournamentFixtures({ supabase, tournament: tournament as ArenaTournament, teams: fixtureTeams });
+    return NextResponse.json({
+      draw: existingDraw,
+      fixture,
+      reason: "El sorteo oficial ya existia. Se reparo el fixture sin repetir el sorteo."
+    });
   }
 
   const { data: enrollmentRows, error: enrollmentError } = await supabase
     .from("tournament_teams")
-    .select("team_id,status")
+    .select("team_id,status,group_code,seed")
     .eq("tournament_id", cleanTournamentId)
     .eq("status", "approved");
   if (enrollmentError) return NextResponse.json({ error: enrollmentError.message }, { status: 400 });
@@ -114,8 +146,38 @@ export async function POST(request: NextRequest, context: { params: Promise<{ to
     ));
   }
 
+  const fixtureTeams = result.groups.length
+    ? result.groups.flatMap((group) =>
+        group.teams.map((team, index) => ({
+          id: team.id,
+          name: team.name,
+          slug: team.id,
+          short_name: team.shortName,
+          badge_url: team.badgeUrl,
+          primary_color: "#eec15c",
+          neighborhood: null,
+          home_venue_id: null,
+          group_code: group.code,
+          seed: index + 1
+        }))
+      )
+    : result.teams.map((team, index) => ({
+        id: team.id,
+        name: team.name,
+        slug: team.id,
+        short_name: team.shortName,
+        badge_url: team.badgeUrl,
+        primary_color: "#eec15c",
+        neighborhood: null,
+        home_venue_id: null,
+        group_code: null,
+        seed: index + 1
+      }));
+  const fixture = await ensureTournamentFixtures({ supabase, tournament: tournament as ArenaTournament, teams: fixtureTeams });
+
   return NextResponse.json({
     draw,
-    reason: "Sorteo oficial guardado. El resultado queda auditado y no se puede repetir desde la app."
+    fixture,
+    reason: "Sorteo oficial guardado. El fixture real quedo creado y auditado."
   });
 }

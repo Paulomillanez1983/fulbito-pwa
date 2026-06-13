@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { Ban, CheckCircle2, Clock3, ExternalLink, LoaderCircle, Megaphone, MessageCircle, RadioTower, ShieldCheck, Trophy, Users, Send, Upload, Video, XCircle } from "lucide-react";
+import { Ban, CheckCircle2, Clock3, ExternalLink, Flag, LoaderCircle, Megaphone, MessageCircle, RadioTower, ShieldCheck, Trophy, Users, Send, Upload, Video, XCircle } from "lucide-react";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AccountEntitlement, AdCampaign, AdCampaignScope, AdCampaignStatus, AppRole, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
+import type { AccountEntitlement, AdCampaign, AdCampaignScope, AdCampaignStatus, AppRole, ArenaMatch, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, MatchResultSubmission, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
 
 const statusIcons: Record<PaymentRequest["status"], typeof Clock3> = {
   pending_review: Clock3,
@@ -158,6 +158,118 @@ function Requester({ profile }: { profile?: AdminProfile }) {
         <small>Solicitante</small>
       </div>
     </div>
+  );
+}
+
+function AdminResultsPanel({
+  initialSubmissions,
+  initialMatches,
+  profiles,
+  teams
+}: {
+  initialSubmissions: MatchResultSubmission[];
+  initialMatches: ArenaMatch[];
+  profiles: AdminProfile[];
+  teams: AdminTeamAuditItem[];
+}) {
+  const [submissions, setSubmissions] = useState(initialSubmissions);
+  const [matches, setMatches] = useState(initialMatches);
+  const [busyId, setBusyId] = useState("");
+  const [notice, setNotice] = useState("");
+  const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles]);
+  const matchMap = useMemo(() => new Map(matches.map((match) => [match.id, match])), [matches]);
+  const teamNameMap = useMemo(() => new Map(teams.map((item) => [item.team.id, item.team.name])), [teams]);
+  const pending = submissions.filter((submission) => submission.status === "pending");
+  const visibleSubmissions = [...submissions].sort((left, right) => {
+    if (left.status === "pending" && right.status !== "pending") return -1;
+    if (left.status !== "pending" && right.status === "pending") return 1;
+    return new Date(right.created_at).getTime() - new Date(left.created_at).getTime();
+  }).slice(0, 24);
+
+  async function reviewSubmission(submission: MatchResultSubmission, status: "accepted" | "rejected") {
+    setNotice("");
+    setBusyId(submission.id);
+    try {
+      const response = await fetch("/api/admin/match-results/review", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ submissionId: submission.id, status })
+      });
+      const result = (await response.json()) as { submission?: MatchResultSubmission; match?: ArenaMatch; reason?: string; error?: string };
+      if (!response.ok || !result.submission) throw new Error(result.error || "No se pudo revisar el resultado.");
+      setSubmissions((current) => current.map((item) => item.id === result.submission?.id ? result.submission as MatchResultSubmission : item));
+      if (result.match) {
+        setMatches((current) => current.map((match) => match.id === result.match?.id ? result.match as ArenaMatch : match));
+      }
+      setNotice(result.reason ?? (status === "accepted" ? "Resultado aprobado." : "Resultado rechazado."));
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo revisar el resultado.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  return (
+    <section className="admin-team-audit admin-results-panel">
+      <header>
+        <span>Actas de partido</span>
+        <h2>Resultados oficiales</h2>
+        <p>Aproba el marcador para cerrar el partido, recalcular la tabla y avanzar la llave cuando corresponda.</p>
+      </header>
+
+      <div className="admin-team-summary">
+        <article><Clock3 size={18} /><strong>{pending.length}</strong><span>Pendientes</span></article>
+        <article><CheckCircle2 size={18} /><strong>{submissions.filter((item) => item.status === "accepted").length}</strong><span>Aprobados</span></article>
+        <article><XCircle size={18} /><strong>{submissions.filter((item) => item.status === "rejected").length}</strong><span>Rechazados</span></article>
+      </div>
+
+      {notice ? <p className="admin-notice">{notice}</p> : null}
+
+      <div className="admin-payment-list admin-results-list">
+        {visibleSubmissions.length ? visibleSubmissions.map((submission) => {
+          const match = matchMap.get(submission.match_id);
+          const requester = submission.submitted_by ? profileMap.get(submission.submitted_by) : undefined;
+          const busy = busyId === submission.id;
+          const home = match?.home_team_id ? teamNameMap.get(match.home_team_id) ?? "Local" : "Local";
+          const away = match?.away_team_id ? teamNameMap.get(match.away_team_id) ?? "Visitante" : "Visitante";
+          return (
+            <article className="admin-payment-card" key={submission.id}>
+              <header>
+                <Requester profile={requester} />
+                <b className={`payment-status payment-status--${submission.status === "accepted" ? "approved" : submission.status === "rejected" ? "rejected" : "pending"}`}>
+                  {submission.status === "pending" ? <Clock3 size={15} /> : submission.status === "accepted" ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+                  {submission.status === "pending" ? "Pendiente" : submission.status === "accepted" ? "Aprobado" : "Rechazado"}
+                </b>
+              </header>
+              <div className="admin-payment-card__body">
+                <div>
+                  <span>{match?.round_name ?? "Partido"}</span>
+                  <h2>{home} {submission.home_score} - {submission.away_score} {away}</h2>
+                  <small>{formatDate(submission.created_at)} / {match?.group_code ? `Grupo ${match.group_code}` : match?.phase ?? "sin fase"}</small>
+                  {submission.note ? <p>{submission.note}</p> : null}
+                </div>
+              </div>
+              <div className="admin-review-actions">
+                <button disabled={busy || submission.status === "accepted"} onClick={() => reviewSubmission(submission, "accepted")} type="button">
+                  {busy ? <LoaderCircle className="button-spinner" size={17} /> : <CheckCircle2 size={17} />}
+                  Aprobar resultado
+                </button>
+                <button disabled={busy || submission.status === "rejected"} onClick={() => reviewSubmission(submission, "rejected")} type="button">
+                  <XCircle size={17} />
+                  Rechazar
+                </button>
+              </div>
+            </article>
+          );
+        }) : (
+          <article className="admin-empty">
+            <Flag size={24} />
+            <strong>No hay resultados cargados.</strong>
+            <span>Cuando un veedor, cancha o capitan envie marcador, aparece aca.</span>
+          </article>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -760,6 +872,8 @@ export function AdminPaymentsPanel({
   liveChannels,
   liveEvents,
   livePermissions,
+  matchResults,
+  matches,
   roles,
   teamAudit,
   tournaments,
@@ -774,6 +888,8 @@ export function AdminPaymentsPanel({
   liveChannels: LiveStreamChannel[];
   liveEvents: LiveStreamEvent[];
   livePermissions: LiveStreamPermission[];
+  matchResults: MatchResultSubmission[];
+  matches: ArenaMatch[];
   roles: AppRole[];
   teamAudit: AdminTeamAuditItem[];
   tournaments: AdminLiveTournament[];
@@ -977,6 +1093,13 @@ export function AdminPaymentsPanel({
         permissions={livePermissions}
         profiles={profiles}
         tournaments={tournaments}
+      />
+
+      <AdminResultsPanel
+        initialMatches={matches}
+        initialSubmissions={matchResults}
+        profiles={profiles}
+        teams={teamAudit}
       />
 
       <AdminTeamAudit teams={teamAudit} />

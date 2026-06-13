@@ -2,7 +2,7 @@ import { AdminPaymentsPanel } from "@/components/admin-payments-panel";
 import { LoginPanel } from "@/components/login-panel";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AccountEntitlement, AdCampaign, AppRole, BillingPlanSetting, FieldMode, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, UserBlock } from "@/lib/types";
+import type { AccountEntitlement, AdCampaign, AppRole, ArenaMatch, BillingPlanSetting, FieldMode, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, MatchResultSubmission, PaymentMessage, PaymentRequest, UserBlock } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +106,7 @@ export default async function AdminPage() {
     );
   }
 
-  const [requestsResult, messagesResult, billingPlansResult, adCampaignsResult, teamsResult, teamMembersResult, tournamentTeamsResult, tournamentsAuditResult, entitlementsAuditResult, userBlocksResult, liveChannelsResult, livePermissionsResult, liveEventsResult] = await Promise.all([
+  const [requestsResult, messagesResult, billingPlansResult, adCampaignsResult, teamsResult, teamMembersResult, tournamentTeamsResult, tournamentsAuditResult, entitlementsAuditResult, userBlocksResult, liveChannelsResult, livePermissionsResult, liveEventsResult, matchResultsResult, matchesAuditResult] = await Promise.all([
     supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(80),
     supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(300),
     supabase.from("billing_plan_settings").select("*").order("sort_order", { ascending: true }),
@@ -119,7 +119,9 @@ export default async function AdminPage() {
     supabase.from("user_blocks").select("*").order("created_at", { ascending: false }).limit(500),
     supabase.from("live_stream_channels").select("*").order("created_at", { ascending: true }),
     supabase.from("live_stream_permissions").select("*").order("created_at", { ascending: false }).limit(400),
-    supabase.from("live_stream_events").select("*").order("created_at", { ascending: false }).limit(300)
+    supabase.from("live_stream_events").select("*").order("created_at", { ascending: false }).limit(300),
+    supabase.from("match_result_submissions").select("*").order("created_at", { ascending: false }).limit(200),
+    supabase.from("matches").select("*").order("scheduled_at", { ascending: true, nullsFirst: false }).order("match_order", { ascending: true }).limit(600)
   ]);
 
   const requests = (requestsResult.data ?? []) as PaymentRequest[];
@@ -133,6 +135,8 @@ export default async function AdminPage() {
   const liveChannels = (liveChannelsResult.data ?? []) as LiveStreamChannel[];
   const livePermissions = (livePermissionsResult.data ?? []) as LiveStreamPermission[];
   const liveEvents = (liveEventsResult.data ?? []) as LiveStreamEvent[];
+  const matchResults = (matchResultsResult.data ?? []) as MatchResultSubmission[];
+  const matches = (matchesAuditResult.data ?? []) as ArenaMatch[];
   const profileIds = Array.from(new Set([
     ...requests.map((item) => item.requester_id),
     ...messages.map((item) => item.sender_id),
@@ -141,7 +145,8 @@ export default async function AdminPage() {
     ...tournaments.map((item) => item.organizer_id).filter(Boolean),
     ...livePermissions.map((item) => item.user_id),
     ...livePermissions.map((item) => item.enabled_by_user_id).filter(Boolean),
-    ...liveEvents.map((item) => item.created_by_user_id).filter(Boolean)
+    ...liveEvents.map((item) => item.created_by_user_id).filter(Boolean),
+    ...matchResults.map((item) => item.submitted_by).filter(Boolean)
   ] as string[]));
   const profilesResult = profileIds.length
     ? await supabase.from("profiles").select("id,display_name,avatar_url").in("id", profileIds)
@@ -193,6 +198,8 @@ export default async function AdminPage() {
       liveChannels={liveChannels}
       liveEvents={liveEvents}
       livePermissions={livePermissions}
+      matchResults={matchResults}
+      matches={matches}
       messages={messages}
       profiles={profiles}
       requests={requests}

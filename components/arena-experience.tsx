@@ -39,7 +39,8 @@ import { buildTournamentDraw, type DrawResult } from "@/lib/draw";
 import { roleCatalog } from "@/lib/demo";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaVenue, FieldMode, FriendlyMatch, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
+import { getKnockoutBracketSize } from "@/lib/tournament-structure";
+import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, FieldMode, FriendlyMatch, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 type LeagueView = "classification" | "bracket";
@@ -478,6 +479,43 @@ function groupTeams(teams: ArenaTeam[], size = 4) {
   }, []);
 }
 
+function buildClassificationGroups({
+  tournament,
+  tournamentTeams,
+  standings,
+  teams
+}: {
+  tournament: ArenaTournament | null;
+  tournamentTeams: ArenaTournamentTeam[];
+  standings: ArenaTeam[];
+  teams: ArenaTeam[];
+}) {
+  const rankedTeams = standings.length ? standings : teams;
+  if (!tournament) return groupTeams(rankedTeams);
+  const rows = tournamentTeams.filter((row) => row.tournament_id === tournament.id);
+  if (tournament.format === "league") return [rankedTeams];
+
+  const groupCodes = Array.from(new Set(rows.map((row) => row.group_code).filter(Boolean) as string[])).sort();
+  if (!groupCodes.length) return groupTeams(rankedTeams);
+
+  const rankedById = new Map(rankedTeams.map((team) => [team.id, team]));
+  const fallbackById = new Map(teams.map((team) => [team.id, team]));
+  return groupCodes.map((code) => {
+    const groupRows = rows
+      .filter((row) => row.group_code === code)
+      .sort((left, right) => (left.seed ?? 999) - (right.seed ?? 999));
+    return groupRows
+      .map((row) => rankedById.get(row.team_id) ?? fallbackById.get(row.team_id))
+      .filter((team): team is ArenaTeam => Boolean(team))
+      .sort((left, right) =>
+        (right.points ?? 0) - (left.points ?? 0) ||
+        (right.goalDiff ?? 0) - (left.goalDiff ?? 0) ||
+        (right.goalsFor ?? 0) - (left.goalsFor ?? 0) ||
+        left.name.localeCompare(right.name)
+      );
+  });
+}
+
 function buildKnockoutRounds(teams: ArenaTeam[]) {
   const bracketSize = Math.pow(2, Math.ceil(Math.log2(Math.max(2, teams.length))));
   return buildKnockoutRoundsBySize(bracketSize);
@@ -583,7 +621,8 @@ function buildSimulatedDrawTeams(teams: ArenaTeam[], maxTeams: number) {
 function findDrawDestination(draw: DrawResult, team: DrawResult["teams"][number]) {
   const group = draw.groups.find((item) => item.teams.some((groupTeam) => groupTeam.id === team.id));
   if (group) return `Grupo ${group.code}`;
-  return "Bombo principal";
+  const seedIndex = draw.teams.findIndex((drawTeam) => drawTeam.id === team.id);
+  return seedIndex >= 0 ? `Llave ${seedIndex + 1}` : "Bombo principal";
 }
 
 function TeamCrest({ team, size = "normal" }: { team?: ArenaTeam | null; size?: "normal" | "large" }) {
@@ -775,6 +814,11 @@ function DrawLiveTeaser({
   const maxTeams = activeDrawTournament.max_teams ?? Math.max(8, teamCount);
   const isReady = teamCount >= maxTeams;
   const groupLabels = Array.from({ length: Math.min(26, Math.max(1, Math.ceil(maxTeams / 4))) }, (_, index) => String.fromCharCode(65 + index));
+  const drawDestinationLabel = activeDrawTournament.format === "knockout" ? "posicion de llave" : "grupo";
+  const drawStageLabel = activeDrawTournament.format === "knockout" ? "llave" : "grupos";
+  const drawBoardPlaceholders = activeDrawTournament.format === "knockout"
+    ? Array.from({ length: Math.min(8, Math.max(2, maxTeams / 2)) }, (_, index) => `Llave ${index + 1}`)
+    : groupLabels.map((group) => `Grupo ${group}`);
   const savedDraw = officialDraw ?? data.tournamentDraws.find((draw) => draw.tournament_id === activeDrawTournament.id && draw.mode === "official") ?? null;
   const canManage = Boolean(data.user && data.user.id === activeDrawTournament.organizer_id);
   const revealedTeamSet = new Set(revealedTeamIds);
@@ -808,8 +852,8 @@ function DrawLiveTeaser({
     setCurrentReveal(null);
     setDrawEvents([]);
     setRevealedTeamIds([]);
-    setStage("Camara uno / grupos preparados");
-    setMessage("Show demo de 2 minutos: completa cupos con equipos demo, simula el sorteo de grupos y no guarda resultado.");
+    setStage(`Camara uno / ${drawStageLabel} preparado`);
+    setMessage(`Show demo de 2 minutos: completa cupos con equipos demo, simula el sorteo de ${drawStageLabel} y no guarda resultado.`);
 
     const durationMs = 120000;
     const progressInterval = window.setInterval(() => {
@@ -829,7 +873,7 @@ function DrawLiveTeaser({
         setCurrentReveal({ team, destination, index: index + 1, total: result.teams.length });
         setRevealedTeamIds((current) => current.includes(team.id) ? current : [...current, team.id]);
         setDrawEvents((current) => [`${team.shortName} -> ${destination}`, ...current].slice(0, 6));
-        setStage(index === result.teams.length - 1 ? "Ultima extraccion / grupos completos" : `Extraccion ${index + 1} de ${result.teams.length}`);
+        setStage(index === result.teams.length - 1 ? `Ultima extraccion / ${drawStageLabel} completo` : `Extraccion ${index + 1} de ${result.teams.length}`);
       }, delay);
       demoTimersRef.current.push(timer);
     });
@@ -840,7 +884,7 @@ function DrawLiveTeaser({
       setCurrentBall("");
       setCurrentReveal(null);
       setRevealedTeamIds(result.teams.map((team) => team.id));
-      setStage("Grupos demo generados");
+      setStage(`${drawStageLabel[0].toUpperCase()}${drawStageLabel.slice(1)} demo generado`);
     }, durationMs);
     demoTimersRef.current.push(finishTimer);
   }
@@ -861,6 +905,7 @@ function DrawLiveTeaser({
       setDemoDraw(null);
       setStage("Sorteo oficial guardado");
       setMessage(result.reason || "Sorteo oficial guardado.");
+      window.setTimeout(() => window.location.reload(), 1200);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "No se pudo iniciar el sorteo oficial.");
     } finally {
@@ -893,7 +938,7 @@ function DrawLiveTeaser({
               {currentReveal?.team.badgeUrl ? <img alt="" src={currentReveal.team.badgeUrl} /> : <b>{currentReveal?.team.shortName ?? "FA"}</b>}
             </div>
             <strong>{currentReveal?.team.name ?? "Equipo por revelar"}</strong>
-            <p>{currentReveal ? `Destino: ${currentReveal.destination}` : "Cuando empiece el show, cada bolilla revela el grupo del equipo."}</p>
+            <p>{currentReveal ? `Destino: ${currentReveal.destination}` : `Cuando empiece el show, cada bolilla revela la ${drawDestinationLabel} del equipo.`}</p>
           </div>
           <div className="draw-broadcast__lower-third">
             <span>{stage || "Escenario listo"}</span>
@@ -907,7 +952,7 @@ function DrawLiveTeaser({
         </div>
         <div className="draw-show__meta">
           <b>{demoRunning ? `Demo en curso ${String(Math.floor(demoSecondsLeft / 60)).padStart(2, "0")}:${String(demoSecondsLeft % 60).padStart(2, "0")}` : savedDraw ? "Resultado oficial guardado" : "Listo para probar el show"}</b>
-          <small>{currentBall ? `Sale bolilla ${currentBall}` : "Las bolillas van cayendo en grupos."}</small>
+          <small>{currentBall ? `Sale bolilla ${currentBall}` : `Las bolillas van cayendo en ${drawStageLabel}.`}</small>
         </div>
         <div className="draw-show__events">
           {drawEvents.length ? drawEvents.map((event) => <span key={event}>{event}</span>) : <span>Esperando primera extraccion</span>}
@@ -920,9 +965,9 @@ function DrawLiveTeaser({
             <span>{group.teams.map((team) => team.shortName).join(" / ") || "Pendiente"}</span>
           </article>
         )) : (
-          groupLabels.map((group) => (
-            <article key={group}>
-              <strong>Grupo {group}</strong>
+          drawBoardPlaceholders.map((label) => (
+            <article key={label}>
+              <strong>{label}</strong>
               <span>Esperando sorteo</span>
             </article>
           ))
@@ -2882,9 +2927,17 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
       return !entitlement.expires_at || new Date(entitlement.expires_at).getTime() > Date.now();
     })
   );
-  const groups = useMemo(() => groupTeams(data.standings.length ? data.standings : data.teams), [data.standings, data.teams]);
+  const groups = useMemo(() => buildClassificationGroups({
+    tournament: data.activeTournament,
+    tournamentTeams: data.tournamentTeams,
+    standings: data.standings,
+    teams: data.teams
+  }), [data.activeTournament, data.standings, data.teams, data.tournamentTeams]);
   const tournamentMatches = useMemo(() => data.activeTournament ? data.matches.filter((match) => match.tournament_id === data.activeTournament?.id) : data.matches, [data.activeTournament, data.matches]);
-  const knockoutRounds = useMemo(() => buildKnockoutRoundsBySize(data.activeTournament?.max_teams ?? data.teams.length), [data.activeTournament?.max_teams, data.teams.length]);
+  const knockoutRounds = useMemo(() => {
+    const bracketSize = getKnockoutBracketSize(data.activeTournament, data.teams.length);
+    return bracketSize ? buildKnockoutRoundsBySize(bracketSize) : [];
+  }, [data.activeTournament, data.teams.length]);
   const currentFormation = getFormationPreset(formationMode, formationPresetId);
   const selectedSlot = currentFormation.slots[selectedSlotIndex] ?? currentFormation.slots[0];
   const rosterRule = getRosterRule(data.activeTournament?.field_mode);

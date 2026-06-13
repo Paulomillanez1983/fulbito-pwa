@@ -78,7 +78,7 @@ function teamToDrawTeam(team: ArenaTeam): DrawTeam {
 }
 
 function buildGroups(teams: DrawTeam[], format: TournamentFormat, maxTeams?: number | null, scope: DrawScope = "full") {
-  if (format === "knockout" && scope === "full") return [];
+  if (format === "knockout") return [];
   const plannedTeams = Math.max(teams.length, maxTeams ?? 0, 4);
   const groupCount = format === "league" && scope === "full" ? 1 : Math.max(1, Math.ceil(plannedTeams / 4));
   const groups: DrawGroup[] = Array.from({ length: groupCount }, (_, index) => ({
