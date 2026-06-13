@@ -10856,6 +10856,12 @@ body::after,
   background: rgba(255,255,255,.04);
 }
 
+.admin-ad-form__hint {
+  color: #9df6ff;
+  font-size: .78rem;
+  font-weight: 900;
+}
+
 .admin-ad-form__grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -11009,6 +11015,14 @@ body::after,
   flex-wrap: wrap;
 }
 
+.admin-ad-actions .admin-ad-danger {
+  border-color: rgba(255,100,117,.34);
+  background:
+    linear-gradient(135deg, rgba(255,100,117,.16), rgba(88,17,26,.22)),
+    rgba(255,255,255,.04);
+  color: #ffd2d7;
+}
+
 .admin-ad-edit-form {
   margin-top: 4px;
   background: rgba(2,6,12,.7);
@@ -11038,6 +11052,48 @@ body::after,
 .admin-ad-metrics strong {
   color: #fff8e8;
   font-size: .92rem;
+}
+
+.admin-advertising-shell {
+  width: min(1120px, calc(100% - 24px));
+}
+
+.admin-advertising-hero {
+  border-color: rgba(52,201,255,.22);
+}
+
+.admin-advertising-dashboard {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-advertising-requests {
+  margin-bottom: 12px;
+}
+
+.admin-advertising-tabs {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.admin-ad-request-card .admin-payment-card__body p {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-ad-note-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.admin-ad-note-chip-list small {
+  width: auto;
+  border: 1px solid rgba(52,201,255,.18);
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(52,201,255,.07);
+  color: #d7fbff;
 }
 
 .admin-team-audit {

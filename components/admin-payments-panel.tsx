@@ -496,7 +496,7 @@ function localDateTime(value?: string | null) {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
-function AdminAdFields({ campaign }: { campaign?: AdCampaign }) {
+function AdminAdFields({ campaign, defaultScope = "national" }: { campaign?: AdCampaign; defaultScope?: AdCampaignScope }) {
   return (
     <div className="admin-ad-form__grid">
       <input defaultValue={campaign?.advertiser_name ?? ""} name="advertiserName" placeholder="Nombre del comercio" />
@@ -508,7 +508,7 @@ function AdminAdFields({ campaign }: { campaign?: AdCampaign }) {
         <option value="arena_led">Solo LED</option>
         <option value="sponsor_splash">Solo Sponsor Splash</option>
       </select>
-      <select name="scope" defaultValue={campaign?.scope ?? "local"}>
+      <select name="scope" defaultValue={campaign?.scope ?? defaultScope}>
         <option value="local">Local 50 km</option>
         <option value="national">Nacional / tienda online</option>
       </select>
@@ -541,7 +541,7 @@ function AdminAdFields({ campaign }: { campaign?: AdCampaign }) {
   );
 }
 
-function AdminAdCampaignPanel({
+export function AdminAdCampaignPanel({
   adminId,
   initialCampaigns,
   initialEvents
@@ -643,6 +643,27 @@ function AdminAdCampaignPanel({
     }
   }
 
+  async function deleteCampaign(campaign: AdCampaign) {
+    const confirmed = window.confirm(`Eliminar la publicidad "${campaign.headline}"? Esta accion la saca de la app y de la rotacion.`);
+    if (!confirmed) return;
+    setBusyId(`delete-${campaign.id}`);
+    setNotice("");
+    try {
+      const supabase = createSupabaseBrowserClient();
+      const { error } = await supabase
+        .from("ad_campaigns")
+        .delete()
+        .eq("id", campaign.id);
+      if (error) throw error;
+      setCampaigns((current) => current.filter((item) => item.id !== campaign.id));
+      setNotice("Publicidad eliminada de la app.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo eliminar la publicidad.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
   async function updateCampaignStatus(campaign: AdCampaign, status: AdCampaignStatus) {
     setBusyId(campaign.id);
     setNotice("");
@@ -735,8 +756,11 @@ function AdminAdCampaignPanel({
         <p>Administra sponsors de la tira LED y pantalla completa. Local se filtra por radio; nacional se ve en todo el pais.</p>
       </header>
 
+      {notice ? <p className="admin-notice admin-ad-notice" role="status">{notice}</p> : null}
+
       <form className="admin-ad-form" onSubmit={createCampaign}>
-        <AdminAdFields />
+        <AdminAdFields defaultScope="national" />
+        <small className="admin-ad-form__hint">Alta rapida: nacional no requiere coordenadas. Si elegis local, carga latitud y longitud del comercio.</small>
         <button disabled={busyId === "new-ad"} type="submit">
           {busyId === "new-ad" ? <LoaderCircle className="button-spinner" size={16} /> : <Megaphone size={16} />}
           Publicar sponsor
@@ -751,6 +775,7 @@ function AdminAdCampaignPanel({
           const placementLabel = campaign.placement === "both" ? "LED + Splash" : campaign.placement === "sponsor_splash" ? "Splash" : "LED";
           const isEditing = editingId === campaign.id;
           const editBusy = busyId === `edit-${campaign.id}`;
+          const deleteBusy = busyId === `delete-${campaign.id}`;
           return (
             <article className={`admin-ad-card is-${campaign.status}`} key={campaign.id}>
               <header>
@@ -779,6 +804,10 @@ function AdminAdCampaignPanel({
                 <button disabled={editBusy} onClick={() => setEditingId((current) => current === campaign.id ? "" : campaign.id)} type="button">
                   {isEditing ? "Cerrar edicion" : "Editar"}
                 </button>
+                <button className="admin-ad-danger" disabled={deleteBusy} onClick={() => deleteCampaign(campaign)} type="button">
+                  {deleteBusy ? <LoaderCircle className="button-spinner" size={16} /> : <XCircle size={16} />}
+                  Eliminar
+                </button>
               </div>
               {isEditing ? (
                 <form className="admin-ad-form admin-ad-edit-form" onSubmit={(event) => updateCampaign(event, campaign)}>
@@ -799,7 +828,6 @@ function AdminAdCampaignPanel({
           </article>
         )}
       </div>
-      {notice ? <p className="admin-notice">{notice}</p> : null}
     </section>
   );
 }
@@ -1338,6 +1366,7 @@ export function AdminPaymentsPanel({
         </a>
         <div className="admin-topbar-actions">
           <span>{roles.includes("admin") ? "Admin activo" : "Sin rol admin"}</span>
+          <a href="/admin/publicidad">Publicidad</a>
           <a href="/">Ver app</a>
         </div>
       </header>
@@ -1349,6 +1378,7 @@ export function AdminPaymentsPanel({
         <div className="admin-hero-actions">
           <a href="#pagos">Revisar pagos</a>
           <a href="#resultados">Validar resultados</a>
+          <a href="/admin/publicidad">Panel publicidad</a>
         </div>
       </section>
 
@@ -1365,7 +1395,7 @@ export function AdminPaymentsPanel({
           { href: "#pagos", label: "Pagos", meta: `${filterCounts.pending_review} pendientes`, Icon: Clock3 },
           { href: "#resultados", label: "Resultados", meta: `${matchResults.filter((item) => item.status === "pending").length} por validar`, Icon: Flag },
           { href: "#live", label: "Fulbito Live", meta: `${liveEvents.filter((event) => event.lifecycle_status === "live" || event.lifecycle_status === "testing").length} activos`, Icon: RadioTower },
-          { href: "#publicidad", label: "Publicidad", meta: `${adCampaigns.filter((item) => item.status === "active").length} activas`, Icon: Megaphone },
+          { href: "/admin/publicidad", label: "Publicidad", meta: `${adCampaigns.filter((item) => item.status === "active").length} activas`, Icon: Megaphone },
           { href: "#precios", label: "Precios", meta: "Planes Pro", Icon: Trophy },
           { href: "#clubes", label: "Clubes", meta: `${teamAudit.length} equipos`, Icon: Users }
         ]}
