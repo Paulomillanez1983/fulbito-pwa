@@ -1094,8 +1094,10 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
     return merged.filter((plan) => plan.code !== "featured_venue");
   }, [data.billingPlans, planCodes]);
   const teamOnly = planCodes?.length === 1 && planCodes[0] === "team_pro";
+  const tournamentOnly = planCodes?.length === 1 && planCodes[0] === "tournament_pro";
   const venueOnly = planCodes?.length === 1 && planCodes[0] === "featured_venue";
-  const showTournamentTools = !teamOnly && !venueOnly;
+  const mixedPlanScope = Boolean(planCodes?.length && !teamOnly && !tournamentOnly && !venueOnly);
+  const showTournamentTools = !teamOnly && !venueOnly && !mixedPlanScope;
   const activeEntitlements = useMemo(() => {
     return data.entitlements.filter((entitlement) => {
       if (!isEntitlementActive(entitlement)) return false;
@@ -1123,9 +1125,9 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
   }, [requests]);
   const visiblePlans = useMemo(() => {
     return plans.filter((plan) => {
-      if (pendingRequestByPlan[plan.code]) return true;
       if (plan.code === "tournament_pro") return !hasActiveTournamentPro || showNewTournament;
-      if (plan.code === "team_pro") return true;
+      if (activePlanCodes.has(plan.code)) return false;
+      if (pendingRequestByPlan[plan.code]) return true;
       return !activePlanCodes.has(plan.code);
     });
   }, [activePlanCodes, hasActiveTournamentPro, pendingRequestByPlan, plans, showNewTournament]);
@@ -1142,13 +1144,15 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
   return (
     <section className="console-panel payment-console" id="pro">
       <div className="payment-console__head">
-        <span>{teamOnly ? "Equipo Pro" : venueOnly ? "Cancha Pro" : "Crear torneo Pro"}</span>
-        <h2>{teamOnly ? "Activa identidad premium" : venueOnly ? "Destaca tu cancha" : "Crea tu torneo barrial"}</h2>
+        <span>{teamOnly ? "Equipo Pro" : venueOnly ? "Cancha Pro" : tournamentOnly ? "Crear torneo Pro" : planCodes?.length ? "Beneficios disponibles" : "Crear torneo Pro"}</span>
+        <h2>{teamOnly ? "Activa identidad premium" : venueOnly ? "Destaca tu cancha" : tournamentOnly ? "Crea tu torneo barrial" : planCodes?.length ? "Activa lo que todavia no tenes" : "Crea tu torneo barrial"}</h2>
         <p>
           {teamOnly
             ? "El equipo gratis puede inscribirse con nombre, sigla y plantel. Equipo Pro habilita escudo, fotos de jugadores, cartas estilo juego y estadisticas premium."
             : venueOnly
               ? "Cancha gratis muestra ubicacion, nombre y WhatsApp. Cancha Pro habilita foto, precio, promo y visibilidad en mapa y carteleria LED."
+              : planCodes?.length && !tournamentOnly
+                ? "Fulbito oculta los beneficios que ya tenes activos. Aca solo aparecen planes disponibles o pagos pendientes."
               : "Arma la copa, elegi formato, envia invitaciones por WhatsApp y deja que cada club cargue su plantel. El equipo basico es gratis; lo premium activa fotos, cartas y estadisticas."}
         </p>
       </div>

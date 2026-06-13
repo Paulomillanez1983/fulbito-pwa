@@ -1753,13 +1753,18 @@ function FriendlyPanel({
   const friendlyVenueOptions = nearbyVenues.length ? nearbyVenues : data.venues;
   const selectedFriendlyVenue = friendlyVenueOptions.find((venue) => venue.id === selectedFriendlyVenueId) ?? null;
   const selectedVenueWhatsapp = venueReservationWhatsappUrl(selectedFriendlyVenue);
-  const visibleFriendlies = data.friendlyMatches
+  const friendlyFeed = data.friendlyMatches
     .filter((match) => {
       if (focusedFriendly?.id === match.id) return true;
       if (match.status === "open") return true;
       return ownedTeamIds.has(match.home_team_id) || (match.away_team_id ? ownedTeamIds.has(match.away_team_id) : false);
     })
-    .slice(0, 6);
+    .sort((left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime());
+  const visibleFriendlies = inviteHref
+    ? []
+    : focusedFriendly
+      ? [focusedFriendly]
+      : friendlyFeed.slice(0, focusMode ? 1 : 6);
 
   useEffect(() => {
     if (focusMode || focusedFriendly) setOpen(true);
@@ -3219,7 +3224,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             <LoginPanel configured={data.configured} joinCode={joinCode} nextTarget={loginNextTarget} teamCode={inviteTeamCode} tournamentName={data.activeTournament?.name} />
           )}
         </section> : null}
-        {!inviteMode ? <PaymentConsole data={data} planCodes={showFriendlyFocus ? ["team_pro"] : showTournamentFocus ? ["tournament_pro"] : undefined} /> : null}
+        {!inviteMode ? <PaymentConsole data={data} planCodes={showFriendlyFocus ? ["team_pro", "tournament_pro", "featured_venue"] : showTournamentFocus ? ["tournament_pro"] : undefined} /> : null}
       </>
     );
   }
