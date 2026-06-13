@@ -1705,12 +1705,18 @@ function FriendlyPanel({
   data,
   ownedTeam,
   focusCode,
-  onCreateTeam
+  focusMode = false,
+  onCreateTeam,
+  onOpenTeamPro,
+  onCloseFocus
 }: {
   data: ArenaData;
   ownedTeam?: ArenaTeam | null;
   focusCode?: string;
+  focusMode?: boolean;
   onCreateTeam: () => void;
+  onOpenTeamPro?: () => void;
+  onCloseFocus?: () => void;
 }) {
   const ownedTeams = data.user ? data.teams.filter((team) => team.owner_id === data.user?.id) : [];
   const focusedFriendly = focusCode ? data.friendlyMatches.find((match) => match.invite_code === focusCode) : null;
@@ -1720,8 +1726,14 @@ function FriendlyPanel({
   const [message, setMessage] = useState("");
   const [inviteHref, setInviteHref] = useState("");
   const [pending, setPending] = useState(false);
+  const [teamPending, setTeamPending] = useState(false);
   const ownedTeamIds = new Set(ownedTeams.map((team) => team.id));
   const selectedTeam = ownedTeams.find((team) => team.id === selectedTeamId) ?? ownedTeams[0] ?? null;
+  const focusedHomeIsMine = focusedFriendly ? ownedTeamIds.has(focusedFriendly.home_team_id) : false;
+  const panelOpen = focusMode || open || Boolean(focusedFriendly);
+  const stageHomeTeam = focusedFriendly?.homeTeam ?? selectedTeam;
+  const stageAwayTeam = focusedFriendly ? focusedFriendly.awayTeam ?? (focusedFriendly.home_team_id !== selectedTeam?.id ? selectedTeam : null) : null;
+  const emptyAwayLabel = focusedFriendly && !focusedHomeIsMine ? "Tu equipo" : "Rival pendiente";
   const visibleFriendlies = data.friendlyMatches
     .filter((match) => {
       if (focusedFriendly?.id === match.id) return true;
@@ -1729,6 +1741,10 @@ function FriendlyPanel({
       return ownedTeamIds.has(match.home_team_id) || (match.away_team_id ? ownedTeamIds.has(match.away_team_id) : false);
     })
     .slice(0, 6);
+
+  useEffect(() => {
+    if (focusMode || focusedFriendly) setOpen(true);
+  }, [focusMode, focusedFriendly?.id]);
 
   useEffect(() => {
     function openRequested() {
@@ -1741,6 +1757,31 @@ function FriendlyPanel({
     window.addEventListener("fulbito:open-friendly", openRequested);
     return () => window.removeEventListener("fulbito:open-friendly", openRequested);
   }, []);
+
+  async function createInlineTeam(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    if (!data.user) return setMessage("Entra con Google para crear tu equipo.");
+    const form = new FormData(event.currentTarget);
+    const teamName = String(form.get("teamName") || "").trim();
+    if (!teamName) return setMessage("El equipo necesita nombre.");
+    setTeamPending(true);
+    try {
+      const response = await fetch("/api/teams", { method: "POST", body: form });
+      const result = (await response.json()) as { team?: { id: string; name: string }; error?: string; warning?: string };
+      if (!response.ok || !result.team) throw new Error(result.error || "No se pudo crear el equipo.");
+      setMessage(result.warning || `${result.team.name} quedo creado. Volvemos al amistoso para usarlo.`);
+      window.setTimeout(() => {
+        window.location.href = focusedFriendly?.invite_code
+          ? `/?friendly=${encodeURIComponent(focusedFriendly.invite_code)}#friendly`
+          : "/?start=friendly#friendly";
+      }, 850);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "No se pudo crear el equipo.");
+    } finally {
+      setTeamPending(false);
+    }
+  }
 
   async function createFriendly(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1840,7 +1881,17 @@ function FriendlyPanel({
   }
 
   return (
-    <section className={`friendly-panel ${open ? "is-open" : ""}`} id="friendly">
+    <section className={`friendly-panel ${panelOpen ? "is-open" : ""} ${focusMode ? "friendly-panel--focus" : ""}`} id="friendly">
+      {focusMode ? (
+        <header className="friendly-mode-header">
+          <div>
+            <span>Modo amistoso</span>
+            <h2>Configura tu partido</h2>
+            <p>Elegis tu equipo, definis formato y mandas la invitacion. El rival entra por WhatsApp, crea o elige su club y confirma el juego.</p>
+          </div>
+          {onCloseFocus ? <button onClick={onCloseFocus} type="button">Inicio</button> : null}
+        </header>
+      ) : null}
       <button className="friendly-panel__toggle" onClick={() => setOpen((current) => !current)} type="button">
         <Flag size={18} />
         <div>
@@ -1848,10 +1899,44 @@ function FriendlyPanel({
           <strong>Buscar rival para entrenar</strong>
           <small>Creá un desafío, compartilo por WhatsApp y sumá puntos de forma.</small>
         </div>
-        <ChevronDown className={open ? "is-open" : ""} size={18} />
+        <ChevronDown className={panelOpen ? "is-open" : ""} size={18} />
       </button>
-      {open ? (
+      {panelOpen ? (
         <div className="friendly-panel__body">
+          <article className="friendly-versus-stage">
+            <div className="friendly-versus-team">
+              <TeamCrest team={stageHomeTeam} size="large" />
+              <span>{focusedFriendly ? "Local" : "Tu equipo"}</span>
+              <strong>{stageHomeTeam?.name ?? "Crea tu club"}</strong>
+              <small>{stageHomeTeam?.neighborhood ?? "Equipo propio"}</small>
+            </div>
+            <div className="friendly-versus-center">
+              <b>VS</b>
+              <span>{focusedFriendly?.field_mode ?? fieldMode}</span>
+            </div>
+            <div className={`friendly-versus-team ${stageAwayTeam ? "" : "friendly-versus-team--empty"}`}>
+              {stageAwayTeam ? <TeamCrest team={stageAwayTeam} size="large" /> : <span className="friendly-rival-placeholder">?</span>}
+              <span>{focusedFriendly?.awayTeam ? "Visitante" : emptyAwayLabel}</span>
+              <strong>{stageAwayTeam?.name ?? "A confirmar"}</strong>
+              <small>{stageAwayTeam ? stageAwayTeam.neighborhood ?? "Club confirmado" : "Se completa al aceptar el link"}</small>
+            </div>
+          </article>
+          {focusMode && !ownedTeams.length ? (
+            <form className="friendly-team-form" onSubmit={createInlineTeam}>
+              <header>
+                <span>Alta rapida</span>
+                <strong>Crear equipo gratis</strong>
+                <p>Nombre, sigla y barrio. El escudo, fotos y cartas quedan para Equipo Pro.</p>
+              </header>
+              <input name="teamName" placeholder="Nombre del club" />
+              <div className="creator-inline">
+                <input maxLength={4} name="shortName" placeholder="Sigla" />
+                <input name="neighborhood" placeholder="Barrio" />
+              </div>
+              <button disabled={teamPending} type="submit">{teamPending ? "Guardando equipo" : "Crear equipo gratis"}</button>
+              <button className="friendly-team-form__pro" onClick={onOpenTeamPro ?? onCreateTeam} type="button">Quiero Equipo Pro</button>
+            </form>
+          ) : null}
           {!ownedTeams.length ? (
             <article className="friendly-empty">
               <Shield size={18} />
@@ -1863,6 +1948,10 @@ function FriendlyPanel({
             </article>
           ) : (
             <form className="friendly-form" onSubmit={createFriendly}>
+              <header className="friendly-form__head">
+                <span>{focusedFriendly ? "Aceptar desafio" : "Nuevo desafio"}</span>
+                <strong>{focusedFriendly ? "Elige tu club para confirmar" : "Tu equipo vs rival pendiente"}</strong>
+              </header>
               <select value={selectedTeamId} onChange={(event) => setSelectedTeamId(event.target.value)}>
                 {ownedTeams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
               </select>
@@ -1884,7 +1973,7 @@ function FriendlyPanel({
                 {data.venues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
               </select>
               <input name="note" placeholder="Nota: buscamos rival nivel medio, traer pelota..." />
-              <button disabled={pending} type="submit">{pending ? "Creando" : "Crear amistoso"}</button>
+              {!focusedFriendly ? <button disabled={pending} type="submit">{pending ? "Creando invitacion" : "Crear invitacion de amistoso"}</button> : null}
               {inviteHref ? <a className="inline-whatsapp-button" href={inviteHref} rel="noreferrer" target="_blank">Invitar rival por WhatsApp</a> : null}
             </form>
           )}
@@ -2601,6 +2690,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const [venueLocationAsked, setVenueLocationAsked] = useState(false);
   const [venueLocationStatus, setVenueLocationStatus] = useState("Mostrando canchas registradas.");
   const [showVenueForm, setShowVenueForm] = useState(false);
+  const [friendlyFocus, setFriendlyFocus] = useState(Boolean(friendlyCode));
   const [loginNextTarget, setLoginNextTarget] = useState("/");
   const activeRef = useRef<TabId>(active);
   const historyReadyRef = useRef(false);
@@ -2796,6 +2886,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     } else if (startTarget === "friendly" || window.location.hash === "#friendly") {
       activeRef.current = "home";
       setActive("home");
+      setFriendlyFocus(true);
       window.setTimeout(() => {
         window.dispatchEvent(new Event("fulbito:open-friendly"));
         document.getElementById("friendly")?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -2838,6 +2929,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
       return;
     }
     setActiveTab("home");
+    setFriendlyFocus(true);
     window.setTimeout(() => {
       window.dispatchEvent(new Event("fulbito:open-friendly"));
       document.getElementById("friendly")?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -2887,6 +2979,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   }
 
   function renderHome() {
+    const showFriendlyFocus = !inviteMode && Boolean(data.user) && friendlyFocus;
     return (
       <>
         {inviteMode ? (
@@ -2910,9 +3003,14 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
               <small>{friendlyInvite.field_mode} / {formatDate(friendlyInvite.scheduled_at)}. Entra con tu equipo para aceptar.</small>
             </div>
             <button
-              onClick={() => (data.user
-                ? window.dispatchEvent(new Event("fulbito:open-friendly"))
-                : openLoginPanel(`/?friendly=${encodeURIComponent(friendlyInvite.invite_code)}#friendly`))}
+              onClick={() => {
+                if (!data.user) {
+                  openLoginPanel(`/?friendly=${encodeURIComponent(friendlyInvite.invite_code)}#friendly`);
+                  return;
+                }
+                setFriendlyFocus(true);
+                window.dispatchEvent(new Event("fulbito:open-friendly"));
+              }}
               type="button"
             >
               {data.user ? "Ver desafio" : "Entrar"}
@@ -2920,7 +3018,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           </section>
         ) : null}
 
-        {!inviteMode && data.user ? (
+        {!inviteMode && data.user && !showFriendlyFocus ? (
           <StartGuidePanel
             data={data}
             hasCreatedTournament={hasCreatedTournament}
@@ -2956,15 +3054,15 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           </section>
         ) : null}
 
-        {!inviteMode && nextMatch ? (
+        {!inviteMode && !showFriendlyFocus && nextMatch ? (
           <MatchTile liveEvent={liveEventByMatch.get(nextMatch.id)} match={nextMatch} featured onOpen={() => openMatch(nextMatch)} />
-        ) : !inviteMode && data.user ? (
+        ) : !inviteMode && data.user && !showFriendlyFocus ? (
           <EmptyState icon={<CalendarDays />} title="Tu calendario empieza vacio">
             Crea un torneo, carga tu equipo o espera una invitacion. Cuando haya fixtures reales, aparecen aca.
           </EmptyState>
         ) : null}
 
-        {(!inviteMode || data.user) ? (
+        {(!inviteMode || data.user) && !showFriendlyFocus ? (
           <section className="mini-grid">
             <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActiveTab("league")} value={data.activeTournament?.name ?? "Torneo"} />
             <MiniStat icon={<Users />} label="Equipos" onClick={() => setActiveTab("squad")} value={data.teams.length} />
@@ -2976,18 +3074,24 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
         {!inviteMode && data.user ? (
           <FriendlyPanel
             data={data}
+            focusMode={showFriendlyFocus}
             focusCode={friendlyCode}
+            onCloseFocus={() => setFriendlyFocus(false)}
             onCreateTeam={() => {
               if (!ownedTeam && !memberTeam) setSelectedTeamId("__new__");
               setActiveTab("squad");
+            }}
+            onOpenTeamPro={() => {
+              window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "team_pro" }));
+              window.setTimeout(() => document.getElementById("pro")?.scrollIntoView({ block: "center", behavior: "smooth" }), 80);
             }}
             ownedTeam={ownedTeam}
           />
         ) : null}
 
-        {!inviteMode ? <YouTubeFollowStrip /> : null}
+        {!inviteMode && !showFriendlyFocus ? <YouTubeFollowStrip /> : null}
 
-        {!inviteMode && data.user ? (
+        {!inviteMode && data.user && !showFriendlyFocus ? (
           <DrawLiveTeaser
             data={data}
             onOpenMatches={() => setActiveTab("matches")}
@@ -2996,7 +3100,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           />
         ) : null}
 
-        <section className="console-panel">
+        {!showFriendlyFocus ? <section className="console-panel">
           {!data.user || inviteMode ? (
             <ScreenHeader
               eyebrow={inviteMode ? playerInviteMode ? "Entrada de jugador" : "Entrada de equipo" : "Crear torneo"}
@@ -3036,8 +3140,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           ) : (
             <LoginPanel configured={data.configured} joinCode={joinCode} nextTarget={loginNextTarget} teamCode={inviteTeamCode} tournamentName={data.activeTournament?.name} />
           )}
-        </section>
-        {!inviteMode ? <PaymentConsole data={data} /> : null}
+        </section> : null}
+        {!inviteMode ? <PaymentConsole data={data} planCodes={showFriendlyFocus ? ["team_pro"] : undefined} /> : null}
       </>
     );
   }
