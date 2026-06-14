@@ -6,6 +6,7 @@ import { CheckCircle2, Clock3, ExternalLink, ImagePlus, LoaderCircle, MapPin, Sh
 import { formatPaymentMoney, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AccountEntitlement, ArenaVenue, PaymentMessage, PaymentRequest, PaymentRequestStatus } from "@/lib/types";
+import { normalizeVenueSurface, venueSurfaceOptions } from "@/lib/venue-options";
 
 type AdminProfile = {
   id: string;
@@ -160,7 +161,7 @@ export function AdminVenuesPanel({
           neighborhood: String(form.get("neighborhood") || "").trim() || "Barrio sin cargar",
           address: String(form.get("address") || "").trim() || null,
           phone: String(form.get("phone") || "").trim() || null,
-          surface: String(form.get("surface") || "").trim() || null,
+          surface: normalizeVenueSurface(String(form.get("surface") || "")),
           price_per_hour: Number(form.get("pricePerHour") || 0),
           inscription_fee: Number(form.get("inscriptionFee") || 0),
           open_hours: String(form.get("openHours") || "").trim() || null,
@@ -369,7 +370,9 @@ export function AdminVenuesPanel({
                     <input defaultValue={venue.neighborhood} name="neighborhood" placeholder="Barrio" />
                     <input defaultValue={venue.address ?? ""} name="address" placeholder="Dirección" />
                     <input defaultValue={venue.phone ?? ""} name="phone" placeholder="WhatsApp" />
-                    <input defaultValue={venue.surface ?? ""} name="surface" placeholder="Superficie" />
+                    <select defaultValue={normalizeVenueSurface(venue.surface)} name="surface">
+                      {venueSurfaceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
                     <input defaultValue={venue.price_per_hour || ""} inputMode="numeric" name="pricePerHour" placeholder="Precio por hora" />
                     <input defaultValue={venue.inscription_fee || ""} inputMode="numeric" name="inscriptionFee" placeholder="Inscripción sugerida" />
                     <input defaultValue={venue.open_hours ?? ""} name="openHours" placeholder="Horarios" />

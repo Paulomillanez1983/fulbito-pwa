@@ -9,6 +9,8 @@ import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AccountEntitlement, ArenaData, ArenaTeam, ArenaTournament, FieldMode, PaymentMessage, PaymentRequest, TournamentFormat } from "@/lib/types";
+import { normalizeVenueSurface, venueSurfaceOptions } from "@/lib/venue-options";
+import type { VenueSurfaceValue } from "@/lib/venue-options";
 
 const tournamentFormatOptions: Array<{ value: TournamentFormat; label: string; note: string }> = [
   { value: "world_cup", label: "Grupos + eliminatorias", note: "Ideal para Mundial barrial" },
@@ -767,6 +769,7 @@ function FeaturedVenueForm({
   const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
   const [sent, setSent] = useState(isRequestPending(existingRequest));
+  const [surface, setSurface] = useState<VenueSurfaceValue>(venueSurfaceOptions[0].value);
   const submitLockedRef = useRef(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -795,7 +798,7 @@ function FeaturedVenueForm({
             neighborhood: String(form.get("neighborhood") || "").trim() || "Barrio a confirmar",
             address: String(form.get("address") || "").trim() || null,
             phone: String(form.get("phone") || "").trim() || null,
-            surface: String(form.get("surface") || "").trim() || "Sintetico",
+            surface: normalizeVenueSurface(String(form.get("surface") || "")),
             price_per_hour: Number(form.get("pricePerHour") || 0),
             status: "pending_pro"
           })
@@ -847,8 +850,25 @@ function FeaturedVenueForm({
           <input name="neighborhood" placeholder="Barrio" />
           <input name="address" placeholder="Direccion" />
           <input name="phone" inputMode="tel" placeholder="WhatsApp o telefono" />
+          <section className="venue-surface-panel venue-surface-panel--compact" aria-label="Formato de cancha">
+            <input name="surface" type="hidden" value={surface} />
+            <span>Formato de cancha</span>
+            <div className="venue-surface-options">
+              {venueSurfaceOptions.map((option) => (
+                <button
+                  aria-pressed={surface === option.value}
+                  className={surface === option.value ? "is-active" : ""}
+                  key={option.value}
+                  onClick={() => setSurface(option.value)}
+                  type="button"
+                >
+                  <strong>{option.label}</strong>
+                  <small>{option.detail}</small>
+                </button>
+              ))}
+            </div>
+          </section>
           <div className="creator-inline">
-            <input name="surface" placeholder="Superficie" />
             <input name="pricePerHour" inputMode="numeric" placeholder="Precio hora" />
           </div>
         </>

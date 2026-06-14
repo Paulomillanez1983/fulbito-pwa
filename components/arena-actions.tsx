@@ -7,6 +7,8 @@ import { SlideSubmitButton } from "@/components/slide-submit-button";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ArenaData } from "@/lib/types";
+import { normalizeVenueSurface, venueSurfaceOptions } from "@/lib/venue-options";
+import type { VenueSurfaceValue } from "@/lib/venue-options";
 import type { Map, Marker } from "maplibre-gl";
 
 type ActionMode = "all" | "squad" | "venue" | "result" | "slot" | "self-player";
@@ -164,7 +166,7 @@ function VenueLocationPicker() {
   const [locationReady, setLocationReady] = useState(false);
   const [locating, setLocating] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
-  const [status, setStatus] = useState("Usa tu ubicacion actual o toca el mapa para confirmar la sede.");
+  const [status, setStatus] = useState("Usa tu ubicacion actual, toca el mapa o arrastra el pin para confirmar la sede.");
   const mapNode = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const markerRef = useRef<Marker | null>(null);
@@ -184,7 +186,7 @@ function VenueLocationPicker() {
     if (!mapNode.current || !value) return;
     const form = mapNode.current.closest("form");
     const input = form?.querySelector<HTMLInputElement>(`input[name="${name}"]`);
-    if (!input || input.value) return;
+    if (!input || (input.type !== "hidden" && input.value)) return;
     input.value = value;
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -205,7 +207,7 @@ function VenueLocationPicker() {
       if (geocodeRequestRef.current !== requestId) return;
       setInputValue("venueNeighborhood", result.neighborhood ?? "");
       setInputValue("venueAddress", result.address ?? "");
-      setStatus(result.neighborhood || result.address ? "Ubicacion tomada y datos sugeridos. Ajustalos si hace falta." : "Ubicacion tomada. Completa barrio y direccion manualmente.");
+      setStatus(result.neighborhood || result.address ? "Ubicacion tomada y datos sugeridos. Si no es exacta, arrastra el pin." : "Ubicacion tomada. Completa barrio y direccion manualmente.");
     } catch {
       if (geocodeRequestRef.current === requestId) {
         setStatus("Ubicacion tomada. No se pudo sugerir direccion; completala manualmente.");
@@ -278,7 +280,7 @@ function VenueLocationPicker() {
           longitude: Number(position.coords.longitude.toFixed(6))
         };
         setMapPoint(next);
-        setStatus("Ubicacion actual tomada. Si no es exacta, mueve el puntero.");
+        setStatus("Ubicacion actual tomada. Si no es exacta, arrastra el pin hasta la entrada real.");
         setLocating(false);
       },
       () => {
@@ -302,7 +304,7 @@ function VenueLocationPicker() {
       </div>
       <div className="venue-picker__map" ref={mapNode} />
       <p>{status}</p>
-      <small>Direccion sugerida con OpenStreetMap/Nominatim. Verifica antes de guardar.</small>
+      <small>La ubicacion exacta se guarda por coordenadas. Podes mover el pin antes de registrar la cancha.</small>
     </div>
   );
 }
@@ -345,6 +347,7 @@ export function ArenaActions({
   const rosterFull = Boolean(playerTeamId && managedTeamPlayers.length >= rosterRule.maxPlayers);
   const showPlayer = Boolean(managedTeam) && (mode === "all" || mode === "squad" || mode === "slot" || selfPlayerMode);
   const [venueMode, setVenueMode] = useState<"simple" | "pro">("simple");
+  const [venueSurface, setVenueSurface] = useState<VenueSurfaceValue>(venueSurfaceOptions[0].value);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -490,7 +493,7 @@ export function ArenaActions({
       slug: `${slugify(name)}-${Date.now().toString(36)}`,
       neighborhood: String(formData.get("venueNeighborhood") || "").trim() || "Barrio sin cargar",
       address: String(formData.get("venueAddress") || "").trim() || null,
-      surface: selectedVenueMode === "pro" ? String(formData.get("venueSurface") || "").trim() || "Sintetico" : null,
+      surface: normalizeVenueSurface(String(formData.get("venueSurface") || "")),
       phone: String(formData.get("venuePhone") || "").trim() || null,
       latitude,
       longitude,
@@ -633,6 +636,24 @@ export function ArenaActions({
             <button className={venueMode === "pro" ? "is-active" : ""} onClick={() => setVenueMode("pro")} type="button">Cancha Pro</button>
           </div>
           <VenueLocationPicker />
+          <section className="venue-surface-panel" aria-label="Formato de cancha">
+            <input name="venueSurface" type="hidden" value={venueSurface} />
+            <span>Formato de cancha</span>
+            <div className="venue-surface-options">
+              {venueSurfaceOptions.map((option) => (
+                <button
+                  aria-pressed={venueSurface === option.value}
+                  className={venueSurface === option.value ? "is-active" : ""}
+                  key={option.value}
+                  onClick={() => setVenueSurface(option.value)}
+                  type="button"
+                >
+                  <strong>{option.label}</strong>
+                  <small>{option.detail}</small>
+                </button>
+              ))}
+            </div>
+          </section>
           <div className="venue-form-grid">
             <input name="venueName" placeholder="Nombre de la cancha" />
             <input name="venuePhone" inputMode="tel" placeholder="WhatsApp o telefono" />
@@ -640,7 +661,6 @@ export function ArenaActions({
               <>
                 <input name="venueNeighborhood" placeholder="Barrio" />
                 <input name="venueAddress" placeholder="Direccion" />
-                <input name="venueSurface" placeholder="Superficie" />
                 <input name="pricePerHour" inputMode="numeric" placeholder="Precio por hora" />
                 <input name="inscriptionFee" inputMode="numeric" placeholder="Inscripcion sugerida" />
               </>
