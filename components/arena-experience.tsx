@@ -44,6 +44,7 @@ import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { getKnockoutBracketSize } from "@/lib/tournament-structure";
 import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, FieldMode, FriendlyMatch, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
+import { primaryVenuePrice, venueSurfaceSummary, venueSurfacesFromStored } from "@/lib/venue-options";
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
 type LeagueView = "classification" | "bracket";
@@ -357,6 +358,20 @@ function getFormationPreset(mode: FieldMode, presetId: string) {
 
 function money(value: number) {
   return `$ ${Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".")}`;
+}
+
+function venuePriceSummary(venue: ArenaVenue) {
+  const modes = venueSurfacesFromStored(venue.field_modes, venue.surface);
+  const prices = venue.format_prices ?? {};
+  const pricedModes = modes
+    .map((mode) => {
+      const value = Number(prices[mode] || 0);
+      return value > 0 ? `${mode.replace("v", " vs ")} ${money(value)}` : null;
+    })
+    .filter(Boolean);
+  if (pricedModes.length) return pricedModes.join(" / ");
+  const fallbackPrice = primaryVenuePrice(prices, modes) || venue.price_per_hour || 0;
+  return fallbackPrice > 0 ? money(fallbackPrice) : "Consultar";
 }
 
 function slugify(value: string) {
@@ -2016,9 +2031,9 @@ function VenueRow({ venue, onOpen }: { venue: ArenaVenue; onOpen: () => void }) 
     <button className="venue-row venue-row--button" onClick={onOpen} type="button">
       <div>
         <strong>{venue.name}</strong>
-        <span>{venue.neighborhood} / {venue.surface ?? "Sintetico"} / {venue.phone ? `Contacto ${venue.phone}` : venue.address ?? "Direccion pendiente"}</span>
+        <span>{venue.neighborhood} / {venueSurfaceSummary(venue.field_modes, venue.surface)} / {venue.phone ? `Contacto ${venue.phone}` : venue.address ?? "Direccion pendiente"}</span>
       </div>
-      <b>{money(venue.price_per_hour)}</b>
+      <b>{venuePriceSummary(venue)}</b>
     </button>
   );
 }
@@ -2665,7 +2680,7 @@ function FriendlyPanel({
                   <option value="">Cancha a confirmar</option>
                   {friendlyVenueOptions.map((venue) => (
                     <option key={venue.id} value={venue.id}>
-                      {venue.name}{venue.neighborhood ? ` / ${venue.neighborhood}` : ""}{venue.price_per_hour ? ` / ${money(venue.price_per_hour)}` : ""}
+                      {venue.name}{venue.neighborhood ? ` / ${venue.neighborhood}` : ""} / {venueSurfaceSummary(venue.field_modes, venue.surface)} / {venuePriceSummary(venue)}
                     </option>
                   ))}
                 </select>
@@ -2673,7 +2688,7 @@ function FriendlyPanel({
                   <div className="friendly-venue-summary">
                     <div>
                       <strong>{selectedFriendlyVenue.name}</strong>
-                      <span>{selectedFriendlyVenue.address ?? selectedFriendlyVenue.neighborhood}{selectedFriendlyVenue.price_per_hour ? ` / ${money(selectedFriendlyVenue.price_per_hour)} por hora` : ""}</span>
+                      <span>{selectedFriendlyVenue.address ?? selectedFriendlyVenue.neighborhood} / {venueSurfaceSummary(selectedFriendlyVenue.field_modes, selectedFriendlyVenue.surface)} / {venuePriceSummary(selectedFriendlyVenue)}</span>
                     </div>
                     {selectedVenueWhatsapp ? (
                       <a href={selectedVenueWhatsapp} rel="noreferrer" target="_blank">Consultar reserva</a>
@@ -3095,11 +3110,11 @@ function VenueSpotlight({ venue }: { venue?: ArenaVenue }) {
       <div>
         <span>{venue.status === "verified" ? "Cancha verificada" : "Cancha partner"}</span>
         <h2>{venue.name}</h2>
-        <p>{venue.address ?? venue.neighborhood} / {venue.open_hours ?? "Horario a cargar"}</p>
+        <p>{venue.address ?? venue.neighborhood} / {venueSurfaceSummary(venue.field_modes, venue.surface)} / {venue.open_hours ?? "Horario a cargar"}</p>
         {venue.phone ? <small>Contacto: {venue.phone}</small> : null}
       </div>
       <div>
-        <strong>{money(venue.price_per_hour)}<small>por hora</small></strong>
+        <strong>{venuePriceSummary(venue)}<small>{venue.price_per_hour ? "por hora" : "precio"}</small></strong>
         {whatsappUrl ? <a className="venue-contact-link" href={whatsappUrl} rel="noreferrer" target="_blank">Consultar turno</a> : null}
       </div>
     </section>
@@ -3129,17 +3144,26 @@ function EmptyState({
 function SplashScreen() {
   return (
     <div className="arena-splash" aria-label="Cargando Fulbito Arena">
-      <div className="arena-splash__ball" aria-hidden="true">
-        <span className="arena-splash__texture" />
-        <span className="arena-splash__patch arena-splash__patch--center" />
-        <span className="arena-splash__patch arena-splash__patch--top" />
-        <span className="arena-splash__patch arena-splash__patch--left" />
-        <span className="arena-splash__patch arena-splash__patch--right" />
-        <span className="arena-splash__patch arena-splash__patch--bottom" />
-        <span className="arena-splash__shine" />
+      <span className="arena-splash__stadium" aria-hidden="true" />
+      <div className="arena-splash__scene">
+        <span className="arena-splash__orbit arena-splash__orbit--cyan" aria-hidden="true" />
+        <span className="arena-splash__orbit arena-splash__orbit--gold" aria-hidden="true" />
+        <div className="arena-splash__ball" aria-hidden="true">
+          <span className="arena-splash__texture" />
+          <span className="arena-splash__patch arena-splash__patch--center" />
+          <span className="arena-splash__patch arena-splash__patch--top" />
+          <span className="arena-splash__patch arena-splash__patch--left" />
+          <span className="arena-splash__patch arena-splash__patch--right" />
+          <span className="arena-splash__patch arena-splash__patch--bottom" />
+          <span className="arena-splash__shine" />
+        </div>
+        <span className="arena-splash__ground" aria-hidden="true" />
       </div>
-      <strong>Fulbito Arena</strong>
-      <small>Modo torneo</small>
+      <div className="arena-splash__copy">
+        <strong>Fulbito Arena</strong>
+        <small>Modo torneo</small>
+      </div>
+      <span className="arena-splash__loading" aria-hidden="true"><i /></span>
     </div>
   );
 }

@@ -6,7 +6,19 @@ import { CheckCircle2, Clock3, ExternalLink, ImagePlus, LoaderCircle, MapPin, Sh
 import { formatPaymentMoney, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AccountEntitlement, ArenaVenue, PaymentMessage, PaymentRequest, PaymentRequestStatus } from "@/lib/types";
-import { normalizeVenueSurface, venueSurfaceOptions } from "@/lib/venue-options";
+import {
+  composeInternationalPhone,
+  getPhoneCountry,
+  normalizePhoneNational,
+  normalizeVenuePhoneForCountry,
+  normalizeVenueSurfaces,
+  primaryVenuePrice,
+  readVenueFormatPrices,
+  southAmericanPhoneCountries,
+  venueSurfaceLabel,
+  venueSurfaceOptions,
+  venueSurfacesFromStored
+} from "@/lib/venue-options";
 
 type AdminProfile = {
   id: string;
@@ -40,6 +52,18 @@ function formatDate(value?: string | null) {
     year: "numeric",
     timeZone: "America/Argentina/Buenos_Aires"
   }).format(new Date(value));
+}
+
+function FlagCountrySelect({ defaultValue, name }: { defaultValue: string; name: string }) {
+  const selected = getPhoneCountry(defaultValue);
+  return (
+    <label className="flag-country-select" title={`${selected.name} ${selected.dialCode}`}>
+      <span>{selected.flag}</span>
+      <select aria-label={`Pais del WhatsApp: ${selected.name}`} defaultValue={selected.iso} name={name}>
+        {southAmericanPhoneCountries.map((country) => <option key={country.iso} value={country.iso}>{country.flag}</option>)}
+      </select>
+    </label>
+  );
 }
 
 async function optimizeVenueCover(file: File) {
@@ -154,16 +178,25 @@ export function AdminVenuesPanel({
     try {
       const coverUrl = await uploadCover(venue, form.get("coverFile"));
       const supabase = createSupabaseBrowserClient();
+      const selectedModes = normalizeVenueSurfaces(form.getAll("surface"));
+      const formatPrices = readVenueFormatPrices(form, selectedModes);
+      const phoneCountry = getPhoneCountry(String(form.get("phoneCountryIso") || venue.phone_country_iso || "AR"));
+      const phoneNational = normalizeVenuePhoneForCountry(phoneCountry.iso, String(form.get("phoneNational") || ""));
       const { data, error } = await supabase
         .from("venues")
         .update({
           name: String(form.get("name") || venue.name).trim(),
           neighborhood: String(form.get("neighborhood") || "").trim() || "Barrio sin cargar",
           address: String(form.get("address") || "").trim() || null,
-          phone: String(form.get("phone") || "").trim() || null,
-          surface: normalizeVenueSurface(String(form.get("surface") || "")),
-          price_per_hour: Number(form.get("pricePerHour") || 0),
-          inscription_fee: Number(form.get("inscriptionFee") || 0),
+          phone: composeInternationalPhone(phoneCountry.iso, phoneNational),
+          phone_country_iso: phoneCountry.iso,
+          phone_country_code: phoneCountry.dialCode,
+          phone_national: phoneNational || null,
+          surface: selectedModes.join(","),
+          field_modes: selectedModes,
+          format_prices: formatPrices,
+          price_per_hour: primaryVenuePrice(formatPrices, selectedModes),
+          inscription_fee: Number(form.get("reserveFee") || 0),
           open_hours: String(form.get("openHours") || "").trim() || null,
           status: String(form.get("status") || venue.status),
           cover_url: coverUrl
@@ -351,6 +384,9 @@ export function AdminVenuesPanel({
             const isPro = proVenueIds.has(venue.id);
             const owner = venue.owner_id ? profileMap.get(venue.owner_id) : null;
             const busy = busyId === `venue-${venue.id}`;
+            const selectedModes = venueSurfacesFromStored(venue.field_modes, venue.surface);
+            const formatPrices = venue.format_prices ?? {};
+            const selectedPhoneCountry = getPhoneCountry(venue.phone_country_iso);
             return (
               <article className={`admin-venue-card ${isPro ? "is-pro" : "is-free"}`} key={venue.id}>
                 <div className="admin-venue-cover">
@@ -369,12 +405,27 @@ export function AdminVenuesPanel({
                     <input defaultValue={venue.name} name="name" placeholder="Nombre" />
                     <input defaultValue={venue.neighborhood} name="neighborhood" placeholder="Barrio" />
                     <input defaultValue={venue.address ?? ""} name="address" placeholder="Dirección" />
-                    <input defaultValue={venue.phone ?? ""} name="phone" placeholder="WhatsApp" />
-                    <select defaultValue={normalizeVenueSurface(venue.surface)} name="surface">
-                      {venueSurfaceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-                    </select>
-                    <input defaultValue={venue.price_per_hour || ""} inputMode="numeric" name="pricePerHour" placeholder="Precio por hora" />
-                    <input defaultValue={venue.inscription_fee || ""} inputMode="numeric" name="inscriptionFee" placeholder="Inscripción sugerida" />
+                    <div className="admin-venue-phone-row">
+                      <FlagCountrySelect defaultValue={selectedPhoneCountry.iso} name="phoneCountryIso" />
+                      <input defaultValue={venue.phone_national ?? normalizePhoneNational(venue.phone ?? "")} inputMode="tel" name="phoneNational" placeholder={selectedPhoneCountry.placeholder} />
+                    </div>
+                    <div className="admin-venue-mode-checks">
+                      {venueSurfaceOptions.map((option) => (
+                        <label key={option.value}>
+                          <input defaultChecked={selectedModes.includes(option.value)} name="surface" type="checkbox" value={option.value} />
+                          <span>{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="admin-venue-price-grid">
+                      {venueSurfaceOptions.map((option) => (
+                        <label key={option.value}>
+                          <span>{venueSurfaceLabel(option.value)}</span>
+                          <input defaultValue={formatPrices[option.value] || (selectedModes.includes(option.value) ? venue.price_per_hour || "" : "")} inputMode="numeric" name={`price_${option.value}`} placeholder="Precio hora" />
+                        </label>
+                      ))}
+                    </div>
+                    <input defaultValue={venue.inscription_fee || ""} inputMode="numeric" name="reserveFee" placeholder="Seña de reserva opcional" />
                     <input defaultValue={venue.open_hours ?? ""} name="openHours" placeholder="Horarios" />
                     <select defaultValue={venue.status} name="status">
                       <option value="listed">Gratis visible</option>

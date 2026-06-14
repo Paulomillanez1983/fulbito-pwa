@@ -55,11 +55,15 @@ export type ArenaVenue = {
   neighborhood: string;
   address: string | null;
   phone?: string | null;
+  phone_country_iso?: string | null;
+  phone_country_code?: string | null;
+  phone_national?: string | null;
   cover_url?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   price_per_hour: number;
   inscription_fee: number;
+  format_prices?: Partial<Record<FieldMode, number>> | null;
   commission_rate: number;
   status: string;
   surface: string | null;

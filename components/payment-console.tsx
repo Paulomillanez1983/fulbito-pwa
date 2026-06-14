@@ -2,15 +2,26 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { CalendarDays, CheckCircle2, ChevronDown, Clipboard, PlusCircle, Sparkles, Trophy, Upload, Users } from "lucide-react";
+import { CalendarDays, CheckCircle2, ChevronDown, Clipboard, MapPinned, PlusCircle, Sparkles, Trophy, Upload, Users } from "lucide-react";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { AccountEntitlement, ArenaData, ArenaTeam, ArenaTournament, FieldMode, PaymentMessage, PaymentRequest, TournamentFormat } from "@/lib/types";
-import { normalizeVenueSurface, venueSurfaceOptions } from "@/lib/venue-options";
-import type { VenueSurfaceValue } from "@/lib/venue-options";
+import type { AccountEntitlement, ArenaData, ArenaTeam, ArenaTournament, ArenaVenue, FieldMode, PaymentMessage, PaymentRequest, TournamentFormat } from "@/lib/types";
+import {
+  composeInternationalPhone,
+  getPhoneCountry,
+  normalizeVenuePhoneForCountry,
+  normalizeVenueSurfaces,
+  primaryVenuePrice,
+  readVenueFormatPrices,
+  southAmericanPhoneCountries,
+  venueSurfaceSummary,
+  venueSurfacesFromStored,
+  venueSurfaceOptions
+} from "@/lib/venue-options";
+import type { SouthAmericanPhoneCountryIso, VenueSurfaceValue } from "@/lib/venue-options";
 
 const tournamentFormatOptions: Array<{ value: TournamentFormat; label: string; note: string }> = [
   { value: "world_cup", label: "Grupos + eliminatorias", note: "Ideal para Mundial barrial" },
@@ -74,6 +85,26 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+function FlagCountrySelect({
+  name,
+  value,
+  onChange
+}: {
+  name: string;
+  value: SouthAmericanPhoneCountryIso;
+  onChange: (value: SouthAmericanPhoneCountryIso) => void;
+}) {
+  const selected = getPhoneCountry(value);
+  return (
+    <label className="flag-country-select" title={`${selected.name} ${selected.dialCode}`}>
+      <span>{selected.flag}</span>
+      <select aria-label={`Pais del WhatsApp: ${selected.name}`} name={name} value={selected.iso} onChange={(event) => onChange(event.target.value as SouthAmericanPhoneCountryIso)}>
+        {southAmericanPhoneCountries.map((country) => <option key={country.iso} value={country.iso}>{country.flag}</option>)}
+      </select>
+    </label>
+  );
+}
+
 async function optimizeProofFile(file: File) {
   if (file.type === "application/pdf" || !file.type.startsWith("image/")) return file;
   const bitmap = await createImageBitmap(file);
@@ -107,6 +138,44 @@ async function uploadProof(userId: string, fileValue: FormDataEntryValue | null)
   });
   if (error) throw error;
   return { proofPath, proofFilename: fileValue.name };
+}
+
+async function optimizeVenueCover(file: File) {
+  if (!file.type.startsWith("image/")) return file;
+  const bitmap = await createImageBitmap(file);
+  const maxWidth = 1280;
+  const maxHeight = 720;
+  const scale = Math.min(1, maxWidth / bitmap.width, maxHeight / bitmap.height);
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return file;
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.76));
+  if (!blob) return file;
+  const filename = file.name.replace(/\.[^.]+$/, "") || "cancha";
+  return new File([blob], `${filename}.webp`, { type: "image/webp" });
+}
+
+async function uploadVenueCover(userId: string, venueId: string, fileValue: FormDataEntryValue | null) {
+  if (!(fileValue instanceof File) || fileValue.size === 0) return null;
+  const supabase = createSupabaseBrowserClient();
+  const optimizedCover = await optimizeVenueCover(fileValue);
+  const extension = optimizedCover.type === "image/webp" ? "webp" : optimizedCover.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${userId}/${venueId}-${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from("venue-photos").upload(path, optimizedCover, {
+    cacheControl: "31536000",
+    contentType: optimizedCover.type || undefined,
+    upsert: false
+  });
+  if (error) throw error;
+  return supabase.storage.from("venue-photos").getPublicUrl(path).data.publicUrl;
 }
 
 async function createPaymentRequest({
@@ -756,21 +825,56 @@ function FeaturedVenueForm({
   existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
 }) {
-  const ownedVenues = data.user ? data.venues.filter((venue) => venue.owner_id === data.user?.id) : [];
-  const availableOwnedVenues = ownedVenues.filter((venue) => {
+  const ownedVenues = useMemo(() => data.user ? data.venues.filter((venue) => venue.owner_id === data.user?.id) : [], [data.user, data.venues]);
+  const availableOwnedVenues = useMemo(() => ownedVenues.filter((venue) => {
     return !data.entitlements.some((entitlement) => {
       if (entitlement.plan_code !== "featured_venue" || entitlement.target_type !== "venue") return false;
       if (entitlement.target_id !== venue.id) return false;
       return isEntitlementActive(entitlement);
     });
-  });
+  }), [data.entitlements, ownedVenues]);
   const [mode, setMode] = useState(availableOwnedVenues.length ? "existing" : "new");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
   const [sent, setSent] = useState(isRequestPending(existingRequest));
-  const [surface, setSurface] = useState<VenueSurfaceValue>(venueSurfaceOptions[0].value);
+  const [surfaces, setSurfaces] = useState<VenueSurfaceValue[]>([venueSurfaceOptions[0].value]);
+  const [selectedVenueId, setSelectedVenueId] = useState(availableOwnedVenues[0]?.id ?? "");
+  const [phoneCountryIso, setPhoneCountryIso] = useState<SouthAmericanPhoneCountryIso>(southAmericanPhoneCountries[0].iso);
   const submitLockedRef = useRef(false);
+  const selectedPhoneCountry = getPhoneCountry(phoneCountryIso);
+  const selectedVenue = availableOwnedVenues.find((venue) => venue.id === selectedVenueId) ?? null;
+  const selectedVenueModes = selectedVenue ? venueSurfacesFromStored(selectedVenue.field_modes, selectedVenue.surface) : surfaces;
+  const selectedVenueFormatPrices = selectedVenue?.format_prices ?? {};
+
+  useEffect(() => {
+    if (!availableOwnedVenues.length) {
+      setSelectedVenueId("");
+      setMode("new");
+      return;
+    }
+    setSelectedVenueId((current) => availableOwnedVenues.some((venue) => venue.id === current) ? current : availableOwnedVenues[0].id);
+  }, [availableOwnedVenues]);
+
+  useEffect(() => {
+    function focusVenue(event: Event) {
+      const venueId = String((event as CustomEvent<string>).detail || "");
+      if (!venueId) return;
+      setMode("existing");
+      setSelectedVenueId(venueId);
+      setMessage("Cancha seleccionada. Adjunta el comprobante para activar Cancha Pro.");
+    }
+
+    window.addEventListener("fulbito:focus-featured-venue", focusVenue);
+    return () => window.removeEventListener("fulbito:focus-featured-venue", focusVenue);
+  }, []);
+
+  function toggleSurface(value: VenueSurfaceValue) {
+    setSurfaces((current) => {
+      if (current.includes(value)) return current.length === 1 ? current : current.filter((item) => item !== value);
+      return [...current, value];
+    });
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -783,12 +887,21 @@ function FeaturedVenueForm({
     setPending(true);
     try {
       const supabase = createSupabaseBrowserClient();
-      let venueId = String(form.get("venueId") || "");
+      let venueId = String(form.get("venueId") || selectedVenueId || "");
       let venueName = availableOwnedVenues.find((venue) => venue.id === venueId)?.name ?? "";
+
+      if (mode === "existing" && !venueId) throw new Error("Elegi una cancha para activar Cancha Pro.");
 
       if (mode === "new" || !venueId) {
         venueName = String(form.get("venueName") || "").trim();
         if (!venueName) throw new Error("La cancha necesita nombre.");
+        const selectedModes = normalizeVenueSurfaces(form.getAll("surface"));
+        const formatPrices = readVenueFormatPrices(form, selectedModes);
+        const phoneCountry = getPhoneCountry(String(form.get("phoneCountryIso") || "AR"));
+        const phoneNational = normalizeVenuePhoneForCountry(phoneCountry.iso, String(form.get("phoneNational") || ""));
+        if (!phoneNational) throw new Error("Carga un WhatsApp de contacto para la cancha.");
+        const address = String(form.get("address") || "").trim();
+        if (!address) throw new Error("Carga el domicilio de la cancha.");
         const { data: venue, error } = await supabase
           .from("venues")
           .insert({
@@ -796,10 +909,16 @@ function FeaturedVenueForm({
             name: venueName,
             slug: `${slugify(venueName)}-${Date.now().toString(36)}`,
             neighborhood: String(form.get("neighborhood") || "").trim() || "Barrio a confirmar",
-            address: String(form.get("address") || "").trim() || null,
-            phone: String(form.get("phone") || "").trim() || null,
-            surface: normalizeVenueSurface(String(form.get("surface") || "")),
-            price_per_hour: Number(form.get("pricePerHour") || 0),
+            address,
+            phone: composeInternationalPhone(phoneCountry.iso, phoneNational),
+            phone_country_iso: phoneCountry.iso,
+            phone_country_code: phoneCountry.dialCode,
+            phone_national: phoneNational || null,
+            surface: selectedModes.join(","),
+            field_modes: selectedModes,
+            format_prices: formatPrices,
+            price_per_hour: primaryVenuePrice(formatPrices, selectedModes),
+            inscription_fee: Number(form.get("reserveFee") || 0),
             status: "pending_pro"
           })
           .select("id,name")
@@ -808,6 +927,34 @@ function FeaturedVenueForm({
         venueId = venue.id;
         venueName = venue.name;
       }
+
+      const venueModesForPro = mode === "existing" && selectedVenue
+        ? venueSurfacesFromStored(selectedVenue.field_modes, selectedVenue.surface)
+        : normalizeVenueSurfaces(form.getAll("surface"));
+      const submittedFormatPrices = readVenueFormatPrices(form, venueModesForPro);
+      const venueFormatPrices = venueModesForPro.reduce<Partial<Record<VenueSurfaceValue, number>>>((prices, surface) => {
+        const submittedPrice = Number(submittedFormatPrices[surface] || 0);
+        const currentPrice = Number(selectedVenue?.format_prices?.[surface] || 0);
+        prices[surface] = submittedPrice > 0 ? submittedPrice : currentPrice;
+        return prices;
+      }, {});
+      const coverUrl = await uploadVenueCover(data.user.id, venueId, form.get("coverFile"));
+      const reserveFeeValue = String(form.get("reserveFee") || "").trim();
+      const openHoursValue = String(form.get("openHours") || "").trim();
+      const updatePayload: Record<string, unknown> = {
+        field_modes: venueModesForPro,
+        format_prices: venueFormatPrices,
+        price_per_hour: primaryVenuePrice(venueFormatPrices, venueModesForPro),
+        inscription_fee: reserveFeeValue ? Number(reserveFeeValue) : selectedVenue?.inscription_fee ?? 0,
+        open_hours: openHoursValue || selectedVenue?.open_hours || null
+      };
+      if (coverUrl) updatePayload.cover_url = coverUrl;
+      const { error: venueUpdateError } = await supabase
+        .from("venues")
+        .update(updatePayload)
+        .eq("id", venueId)
+        .eq("owner_id", data.user.id);
+      if (venueUpdateError) throw venueUpdateError;
 
       const note = String(form.get("payerNote") || "").trim() || `Cancha: ${venueName}`;
       const created = await createPaymentRequest({
@@ -841,25 +988,67 @@ function FeaturedVenueForm({
         </div>
       ) : null}
       {mode === "existing" && availableOwnedVenues.length ? (
-        <select name="venueId" defaultValue={availableOwnedVenues[0]?.id}>
-          {availableOwnedVenues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
-        </select>
+        <>
+          <select name="venueId" value={selectedVenueId} onChange={(event) => setSelectedVenueId(event.target.value)}>
+            {availableOwnedVenues.map((venue) => <option key={venue.id} value={venue.id}>{venue.name}</option>)}
+          </select>
+          {selectedVenue ? (
+            <section className="venue-pro-panel">
+              <div className="venue-pro-panel__header">
+                <div>
+                  <span>Cancha seleccionada</span>
+                  <strong>{selectedVenue.name}</strong>
+                  <small>{selectedVenue.address || selectedVenue.neighborhood} / {venueSurfaceSummary(selectedVenue.field_modes, selectedVenue.surface)}</small>
+                </div>
+                {selectedVenue.cover_url ? <img alt="" src={selectedVenue.cover_url} /> : <MapPinned size={28} />}
+              </div>
+              <label className="venue-pro-upload">
+                <Upload size={17} />
+                <span>
+                  <strong>Foto o logo de la cancha</strong>
+                  <small>JPG, PNG o WebP. Fulbito lo convierte a WebP liviano.</small>
+                </span>
+                <input accept="image/png,image/jpeg,image/webp" name="coverFile" type="file" />
+              </label>
+              <section className="venue-format-price-list">
+                <span>Precio por formato</span>
+                {selectedVenueModes.map((surface) => {
+                  const option = venueSurfaceOptions.find((item) => item.value === surface);
+                  return (
+                    <label key={surface}>
+                      <small>{option?.label ?? surface}</small>
+                      <input defaultValue={selectedVenueFormatPrices?.[surface] ? String(selectedVenueFormatPrices[surface]) : ""} inputMode="numeric" name={`price_${surface}`} placeholder={`Precio ${option?.label ?? surface}`} />
+                    </label>
+                  );
+                })}
+              </section>
+              <div className="creator-inline">
+                <input defaultValue={selectedVenue.inscription_fee ? String(selectedVenue.inscription_fee) : ""} inputMode="numeric" name="reserveFee" placeholder="Seña para reservar (opcional)" />
+                <input defaultValue={selectedVenue.open_hours || ""} name="openHours" placeholder="Horarios visibles, ej. Lun a Dom 17 a 01" />
+              </div>
+            </section>
+          ) : null}
+        </>
       ) : (
         <>
-          <input name="venueName" placeholder="Nombre de la cancha" />
+          <input name="venueName" placeholder="Nombre de la cancha" required />
           <input name="neighborhood" placeholder="Barrio" />
-          <input name="address" placeholder="Direccion" />
-          <input name="phone" inputMode="tel" placeholder="WhatsApp o telefono" />
+          <input name="address" placeholder="Domicilio de la cancha" required />
+          <div className="venue-phone-input">
+            <FlagCountrySelect name="phoneCountryIso" value={phoneCountryIso} onChange={setPhoneCountryIso} />
+            <input name="phoneNational" inputMode="tel" placeholder={`WhatsApp ${selectedPhoneCountry.placeholder}`} required />
+            <small>Fulbito guarda {selectedPhoneCountry.dialCode} automaticamente.</small>
+          </div>
           <section className="venue-surface-panel venue-surface-panel--compact" aria-label="Formato de cancha">
-            <input name="surface" type="hidden" value={surface} />
+            {surfaces.map((surface) => <input key={surface} name="surface" type="hidden" value={surface} />)}
             <span>Formato de cancha</span>
             <div className="venue-surface-options">
               {venueSurfaceOptions.map((option) => (
                 <button
-                  aria-pressed={surface === option.value}
-                  className={surface === option.value ? "is-active" : ""}
+                  aria-pressed={surfaces.includes(option.value)}
+                  className={surfaces.includes(option.value) ? "is-active" : ""}
                   key={option.value}
-                  onClick={() => setSurface(option.value)}
+                  onClick={() => toggleSurface(option.value)}
                   type="button"
                 >
                   <strong>{option.label}</strong>
@@ -868,9 +1057,28 @@ function FeaturedVenueForm({
               ))}
             </div>
           </section>
-          <div className="creator-inline">
-            <input name="pricePerHour" inputMode="numeric" placeholder="Precio hora" />
-          </div>
+          <section className="venue-format-price-list">
+            <span>Precio por formato</span>
+            {surfaces.map((surface) => {
+              const option = venueSurfaceOptions.find((item) => item.value === surface);
+              return (
+                <label key={surface}>
+                  <small>{option?.label ?? surface}</small>
+                  <input inputMode="numeric" name={`price_${surface}`} placeholder={`Precio ${option?.label ?? surface}`} />
+                </label>
+              );
+            })}
+          </section>
+          <input name="openHours" placeholder="Horarios visibles, ej. Lun a Dom 17 a 01" />
+          <label className="venue-pro-upload">
+            <Upload size={17} />
+            <span>
+              <strong>Foto o logo de la cancha</strong>
+              <small>Opcional. Se sube optimizada en WebP.</small>
+            </span>
+            <input accept="image/png,image/jpeg,image/webp" name="coverFile" type="file" />
+          </label>
+          <input name="reserveFee" inputMode="numeric" placeholder="Seña para reservar (opcional)" />
         </>
       )}
       <input name="payerNote" placeholder="Nota: horarios, telefono o zona" />
@@ -902,9 +1110,14 @@ function CreatorPaymentCard({
 
   useEffect(() => {
     function openRequested(event: Event) {
-      const requestedPlan = (event as CustomEvent<PaymentPlan["code"]>).detail;
+      const detail = (event as CustomEvent<PaymentPlan["code"] | { planCode?: PaymentPlan["code"]; targetId?: string }>).detail;
+      const requestedPlan = typeof detail === "string" ? detail : detail?.planCode;
+      const targetId = typeof detail === "string" ? "" : detail?.targetId ?? "";
       if (requestedPlan !== plan.code) return;
       setOpen(true);
+      if (targetId) {
+        window.setTimeout(() => window.dispatchEvent(new CustomEvent("fulbito:focus-featured-venue", { detail: targetId })), 90);
+      }
       window.setTimeout(() => cardRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 60);
     }
 
@@ -1112,6 +1325,22 @@ function MyTournamentsPanel({
 export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes?: PaymentPlan["code"][] }) {
   const [requests, setRequests] = useState(data.paymentRequests);
   const [showNewTournament, setShowNewTournament] = useState(false);
+  const [localVenues, setLocalVenues] = useState<ArenaVenue[]>([]);
+  useEffect(() => {
+    function venueCreated(event: Event) {
+      const venue = (event as CustomEvent<ArenaVenue>).detail;
+      if (!venue?.id) return;
+      setLocalVenues((current) => current.some((item) => item.id === venue.id) ? current : [venue, ...current]);
+    }
+
+    window.addEventListener("fulbito:venue-created", venueCreated);
+    return () => window.removeEventListener("fulbito:venue-created", venueCreated);
+  }, []);
+  const mergedVenues = useMemo(() => {
+    const ids = new Set(localVenues.map((venue) => venue.id));
+    return [...localVenues, ...data.venues.filter((venue) => !ids.has(venue.id))];
+  }, [data.venues, localVenues]);
+  const paymentData = useMemo<ArenaData>(() => ({ ...data, paymentRequests: requests, venues: mergedVenues }), [data, mergedVenues, requests]);
   const ownedTeamIds = useMemo(() => {
     if (!data.user) return new Set<string>();
     return new Set(data.teams.filter((team) => team.owner_id === data.user?.id).map((team) => team.id));
@@ -1146,9 +1375,9 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
   const ownedTeams = useMemo(() => data.teams.filter((team) => ownedTeamIds.has(team.id)), [data.teams, ownedTeamIds]);
   const ownedVenueIds = useMemo(() => {
     if (!data.user) return new Set<string>();
-    return new Set(data.venues.filter((venue) => venue.owner_id === data.user?.id).map((venue) => venue.id));
-  }, [data.user, data.venues]);
-  const ownedVenues = useMemo(() => data.venues.filter((venue) => ownedVenueIds.has(venue.id)), [data.venues, ownedVenueIds]);
+    return new Set(mergedVenues.filter((venue) => venue.owner_id === data.user?.id).map((venue) => venue.id));
+  }, [data.user, mergedVenues]);
+  const ownedVenues = useMemo(() => mergedVenues.filter((venue) => ownedVenueIds.has(venue.id)), [mergedVenues, ownedVenueIds]);
   const activeTeamProTargetIds = useMemo(() => {
     return new Set(userActiveEntitlements
       .filter((entitlement) => entitlement.plan_code === "team_pro" && entitlement.target_type === "team" && entitlement.target_id)
@@ -1205,12 +1434,12 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
         </p>
       </div>
 
-      <ActiveBenefitsPanel data={data} entitlements={userActiveEntitlements} />
+      <ActiveBenefitsPanel data={paymentData} entitlements={userActiveEntitlements} />
 
       {showTournamentTools ? (
         <MyTournamentsPanel
           activeEntitlements={activeEntitlements}
-          data={{ ...data, paymentRequests: requests }}
+          data={paymentData}
           onCreateTournament={() => {
             setShowNewTournament(true);
             window.setTimeout(() => {
@@ -1231,7 +1460,7 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
         <div className="payment-plan-grid creator-grid">
           {visiblePlans.map((plan) => (
             <CreatorPaymentCard
-              data={data}
+              data={paymentData}
               existingRequest={pendingRequestByPlan[plan.code]}
               key={plan.code}
               onCreated={onCreated}

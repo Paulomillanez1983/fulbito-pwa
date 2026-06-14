@@ -7,8 +7,15 @@ import { SlideSubmitButton } from "@/components/slide-submit-button";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ArenaData } from "@/lib/types";
-import { normalizeVenueSurface, venueSurfaceOptions } from "@/lib/venue-options";
-import type { VenueSurfaceValue } from "@/lib/venue-options";
+import {
+  composeInternationalPhone,
+  getPhoneCountry,
+  normalizeVenuePhoneForCountry,
+  normalizeVenueSurfaces,
+  southAmericanPhoneCountries,
+  venueSurfaceOptions
+} from "@/lib/venue-options";
+import type { SouthAmericanPhoneCountryIso, VenueSurfaceValue } from "@/lib/venue-options";
 import type { Map, Marker } from "maplibre-gl";
 
 type ActionMode = "all" | "squad" | "venue" | "result" | "slot" | "self-player";
@@ -34,8 +41,38 @@ function slugify(value: string) {
     .replace(/(^-|-$)/g, "");
 }
 
-function SubmitButton({ idle, pending }: { idle: string; pending: string }) {
-  return <SlideSubmitButton idle={idle} pendingLabel={pending} />;
+function SubmitButton({
+  idle,
+  pending,
+  disabled = false,
+  disabledLabel
+}: {
+  idle: string;
+  pending: string;
+  disabled?: boolean;
+  disabledLabel?: string;
+}) {
+  return <SlideSubmitButton disabled={disabled} disabledLabel={disabledLabel} idle={idle} pendingLabel={pending} />;
+}
+
+function FlagCountrySelect({
+  name,
+  value,
+  onChange
+}: {
+  name: string;
+  value: SouthAmericanPhoneCountryIso;
+  onChange: (value: SouthAmericanPhoneCountryIso) => void;
+}) {
+  const selected = getPhoneCountry(value);
+  return (
+    <label className="flag-country-select" title={`${selected.name} ${selected.dialCode}`}>
+      <span>{selected.flag}</span>
+      <select aria-label={`Pais del WhatsApp: ${selected.name}`} name={name} value={selected.iso} onChange={(event) => onChange(event.target.value as SouthAmericanPhoneCountryIso)}>
+        {southAmericanPhoneCountries.map((country) => <option key={country.iso} value={country.iso}>{country.flag}</option>)}
+      </select>
+    </label>
+  );
 }
 
 function MediaField({
@@ -231,9 +268,15 @@ function VenueLocationPicker() {
 
       const map = new maplibregl.Map({
         container: mapNode.current,
-        style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+        style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
         center: [coordinates.longitude, coordinates.latitude],
         zoom: 12.4,
+        dragPan: false,
+        dragRotate: false,
+        scrollZoom: false,
+        touchZoomRotate: false,
+        doubleClickZoom: false,
+        keyboard: false,
         attributionControl: false
       });
 
@@ -347,7 +390,26 @@ export function ArenaActions({
   const rosterFull = Boolean(playerTeamId && managedTeamPlayers.length >= rosterRule.maxPlayers);
   const showPlayer = Boolean(managedTeam) && (mode === "all" || mode === "squad" || mode === "slot" || selfPlayerMode);
   const [venueMode, setVenueMode] = useState<"simple" | "pro">("simple");
-  const [venueSurface, setVenueSurface] = useState<VenueSurfaceValue>(venueSurfaceOptions[0].value);
+  const [venueSurfaces, setVenueSurfaces] = useState<VenueSurfaceValue[]>([venueSurfaceOptions[0].value]);
+  const [venuePhoneCountryIso, setVenuePhoneCountryIso] = useState<SouthAmericanPhoneCountryIso>(southAmericanPhoneCountries[0].iso);
+  const [venueDraft, setVenueDraft] = useState({ name: "", address: "", phone: "" });
+  const selectedPhoneCountry = getPhoneCountry(venuePhoneCountryIso);
+  const venueCanSubmit = Boolean(
+    venueDraft.name.trim() &&
+    venueDraft.address.trim() &&
+    normalizeVenuePhoneForCountry(venuePhoneCountryIso, venueDraft.phone)
+  );
+
+  function toggleVenueSurface(value: VenueSurfaceValue) {
+    setVenueSurfaces((current) => {
+      if (current.includes(value)) return current.length === 1 ? current : current.filter((item) => item !== value);
+      return [...current, value];
+    });
+  }
+
+  function updateVenueDraft(field: keyof typeof venueDraft, value: string) {
+    setVenueDraft((current) => ({ ...current, [field]: value }));
+  }
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -487,26 +549,42 @@ export function ArenaActions({
     }
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Entra con Google para continuar.");
+    const selectedModes = normalizeVenueSurfaces(formData.getAll("venueSurface"));
+    const phoneCountryIso = String(formData.get("phoneCountryIso") || "AR");
+    const phoneCountry = getPhoneCountry(phoneCountryIso);
+    const phoneNational = normalizeVenuePhoneForCountry(phoneCountry.iso, String(formData.get("venuePhoneNational") || ""));
+    if (!phoneNational) return setMessage("Carga un WhatsApp de contacto para recibir consultas de reserva.");
+    const address = String(formData.get("venueAddress") || "").trim();
+    if (!address) return setMessage("Carga el domicilio para ubicar bien la cancha en el mapa.");
     const payload = {
       owner_id: userId,
       name,
       slug: `${slugify(name)}-${Date.now().toString(36)}`,
       neighborhood: String(formData.get("venueNeighborhood") || "").trim() || "Barrio sin cargar",
-      address: String(formData.get("venueAddress") || "").trim() || null,
-      surface: normalizeVenueSurface(String(formData.get("venueSurface") || "")),
-      phone: String(formData.get("venuePhone") || "").trim() || null,
+      address,
+      surface: selectedModes.join(","),
+      field_modes: selectedModes,
+      format_prices: {},
+      phone: composeInternationalPhone(phoneCountry.iso, phoneNational),
+      phone_country_iso: phoneCountry.iso,
+      phone_country_code: phoneCountry.dialCode,
+      phone_national: phoneNational || null,
       latitude,
       longitude,
-      price_per_hour: selectedVenueMode === "pro" ? Number(formData.get("pricePerHour") || 0) : 0,
-      inscription_fee: selectedVenueMode === "pro" ? Number(formData.get("inscriptionFee") || 0) : 0,
+      price_per_hour: 0,
+      inscription_fee: 0,
       cover_url: null,
-      status: selectedVenueMode === "pro" ? "pending_pro" : "listed"
+      status: "listed"
     };
-    const { error } = await supabase.from("venues").insert(payload);
-    if (!error && selectedVenueMode === "pro") {
-      window.setTimeout(() => window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "featured_venue" })), 250);
+    const { data: venue, error } = await supabase.from("venues").insert(payload).select().single();
+    if (error || !venue) return setMessage(error?.message || "No se pudo registrar la cancha.");
+    window.dispatchEvent(new CustomEvent("fulbito:venue-created", { detail: venue }));
+    if (selectedVenueMode === "pro") {
+      window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: { planCode: "featured_venue", targetId: venue.id } }));
+      setMessage("Sede guardada. Ahora adjunta el comprobante en Cancha Pro para habilitar foto, precios y publicidad.");
+      return;
     }
-    setMessage(error ? error.message : selectedVenueMode === "pro" ? "Cancha cargada como pendiente Pro. Envia el comprobante desde Cancha Pro para que admin valide pago y foto." : "Cancha registrada gratis. Ya queda visible con ubicacion, nombre y WhatsApp.");
+    setMessage("Cancha registrada gratis. Ya queda visible con ubicacion, domicilio y WhatsApp.");
   }
 
   async function submitResult(formData: FormData) {
@@ -632,20 +710,26 @@ export function ArenaActions({
           <p>Primero marca el punto real de la cancha. El registro gratis muestra nombre y WhatsApp; Pro agrega foto, precio y visibilidad.</p>
           <input name="venueMode" type="hidden" value={venueMode} />
           <div className="creator-toggle venue-mode-toggle" aria-label="Tipo de registro de cancha">
-            <button className={venueMode === "simple" ? "is-active" : ""} onClick={() => setVenueMode("simple")} type="button">Simple gratis</button>
-            <button className={venueMode === "pro" ? "is-active" : ""} onClick={() => setVenueMode("pro")} type="button">Cancha Pro</button>
+            <button className={venueMode === "simple" ? "is-active venue-mode-free" : "venue-mode-free"} onClick={() => setVenueMode("simple")} type="button">
+              <strong>Gratis</strong>
+              <small>Ubicacion + WhatsApp</small>
+            </button>
+            <button className={venueMode === "pro" ? "is-active venue-mode-pro" : "venue-mode-pro"} onClick={() => setVenueMode("pro")} type="button">
+              <strong>Cancha PRO</strong>
+              <small>Foto, precios y publicidad</small>
+            </button>
           </div>
           <VenueLocationPicker />
           <section className="venue-surface-panel" aria-label="Formato de cancha">
-            <input name="venueSurface" type="hidden" value={venueSurface} />
+            {venueSurfaces.map((surface) => <input key={surface} name="venueSurface" type="hidden" value={surface} />)}
             <span>Formato de cancha</span>
             <div className="venue-surface-options">
               {venueSurfaceOptions.map((option) => (
                 <button
-                  aria-pressed={venueSurface === option.value}
-                  className={venueSurface === option.value ? "is-active" : ""}
+                  aria-pressed={venueSurfaces.includes(option.value)}
+                  className={venueSurfaces.includes(option.value) ? "is-active" : ""}
                   key={option.value}
-                  onClick={() => setVenueSurface(option.value)}
+                  onClick={() => toggleVenueSurface(option.value)}
                   type="button"
                 >
                   <strong>{option.label}</strong>
@@ -655,26 +739,38 @@ export function ArenaActions({
             </div>
           </section>
           <div className="venue-form-grid">
-            <input name="venueName" placeholder="Nombre de la cancha" />
-            <input name="venuePhone" inputMode="tel" placeholder="WhatsApp o telefono" />
-            {venueMode === "pro" ? (
+            <input name="venueName" onChange={(event) => updateVenueDraft("name", event.target.value)} placeholder="Nombre de la cancha" required value={venueDraft.name} />
+            <input name="venueAddress" onChange={(event) => updateVenueDraft("address", event.target.value)} placeholder="Domicilio de la cancha" required value={venueDraft.address} />
+            <input name="venueNeighborhood" placeholder="Barrio o zona (opcional)" />
+            <div className="venue-phone-input">
+              <FlagCountrySelect name="phoneCountryIso" value={venuePhoneCountryIso} onChange={setVenuePhoneCountryIso} />
+              <input name="venuePhoneNational" inputMode="tel" onChange={(event) => updateVenueDraft("phone", event.target.value)} placeholder={`WhatsApp ${selectedPhoneCountry.placeholder}`} required value={venueDraft.phone} />
+              <small>Fulbito arma el prefijo {selectedPhoneCountry.dialCode}. En Argentina podes escribirlo con o sin 9.</small>
+            </div>
+            {false && venueMode === "pro" ? (
               <>
                 <input name="venueNeighborhood" placeholder="Barrio" />
                 <input name="venueAddress" placeholder="Direccion" />
-                <input name="pricePerHour" inputMode="numeric" placeholder="Precio por hora" />
-                <input name="inscriptionFee" inputMode="numeric" placeholder="Inscripcion sugerida" />
+                <section className="venue-format-price-list">
+                  <span>Precio por formato</span>
+                  {venueSurfaces.map((surface) => {
+                    const option = venueSurfaceOptions.find((item) => item.value === surface);
+                    return (
+                      <label key={surface}>
+                        <small>{option?.label ?? surface}</small>
+                        <input inputMode="numeric" name={`price_${surface}`} placeholder={`Precio ${option?.label ?? surface}`} />
+                      </label>
+                    );
+                  })}
+                </section>
+                <input name="reserveFee" inputMode="numeric" placeholder="Seña para reservar (opcional)" />
               </>
-            ) : (
-              <>
-                <input name="venueNeighborhood" type="hidden" />
-                <input name="venueAddress" type="hidden" />
-              </>
-            )}
+            ) : null}
           </div>
           {venueMode === "pro" ? (
             <div className="pro-lock-note">
-              <strong>Foto gestionada por admin</strong>
-              <span>Primero registra la sede y adjunta el comprobante en Cancha Pro. Fulbito valida el pago, optimiza la imagen y la publica en mapa/LED.</span>
+              <strong>Primero fijamos la sede real</strong>
+              <span>Al deslizar, Fulbito guarda ubicacion, domicilio y WhatsApp. Despues abre Cancha Pro sobre esa misma sede para cargar comprobante, foto, precios y publicidad.</span>
             </div>
           ) : (
             <div className="pro-lock-note">
@@ -682,7 +778,12 @@ export function ArenaActions({
               <span>Para ahorrar storage, las fotos de sede y publicidad se habilitan con Cancha Pro.</span>
             </div>
           )}
-          <SubmitButton idle={venueMode === "pro" ? "Guardar cancha Pro" : "Guardar cancha gratis"} pending="Registrando cancha" />
+          <SubmitButton
+            disabled={!venueCanSubmit}
+            disabledLabel="Completa nombre, domicilio y WhatsApp"
+            idle={venueMode === "pro" ? "Guardar sede y activar Pro" : "Guardar cancha gratis"}
+            pending={venueMode === "pro" ? "Preparando Cancha Pro" : "Registrando cancha"}
+          />
         </form> : null}
 
         {showPlayer && rosterFull && !selfPlayerMode ? (

@@ -63,9 +63,15 @@ export function VenueMap({
         const userCoordinates: [number, number] | null = userLocation ? [userLocation.longitude, userLocation.latitude] : null;
         const map = new maplibregl.Map({
           container: containerRef.current,
-          style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+          style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
           center: selected?.coordinates ?? userCoordinates ?? [-58.3816, -34.6037],
           zoom: selected ? 11.6 : userCoordinates ? 12.2 : 10.8,
+          dragPan: false,
+          dragRotate: false,
+          scrollZoom: false,
+          touchZoomRotate: false,
+          doubleClickZoom: false,
+          keyboard: false,
           attributionControl: false
         });
 
