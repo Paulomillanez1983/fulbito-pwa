@@ -818,12 +818,14 @@ function FeaturedVenueForm({
   plan,
   data,
   existingRequest,
-  onCreated
+  onCreated,
+  embeddedVenueRegistration = false
 }: {
   plan: PaymentPlan;
   data: ArenaData;
   existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
+  embeddedVenueRegistration?: boolean;
 }) {
   const ownedVenues = useMemo(() => data.user ? data.venues.filter((venue) => venue.owner_id === data.user?.id) : [], [data.user, data.venues]);
   const availableOwnedVenues = useMemo(() => ownedVenues.filter((venue) => {
@@ -833,7 +835,7 @@ function FeaturedVenueForm({
       return isEntitlementActive(entitlement);
     });
   }), [data.entitlements, ownedVenues]);
-  const [mode, setMode] = useState(availableOwnedVenues.length ? "existing" : "new");
+  const [mode, setMode] = useState<"existing" | "new">(embeddedVenueRegistration ? "existing" : availableOwnedVenues.length ? "existing" : "new");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState(isRequestPending(existingRequest) ? "Ya enviaste un comprobante. Espera la revision del admin." : "");
   const [proofReady, setProofReady] = useState(false);
@@ -850,11 +852,12 @@ function FeaturedVenueForm({
   useEffect(() => {
     if (!availableOwnedVenues.length) {
       setSelectedVenueId("");
-      setMode("new");
+      setMode(embeddedVenueRegistration ? "existing" : "new");
       return;
     }
+    if (embeddedVenueRegistration) setMode("existing");
     setSelectedVenueId((current) => availableOwnedVenues.some((venue) => venue.id === current) ? current : availableOwnedVenues[0].id);
-  }, [availableOwnedVenues]);
+  }, [availableOwnedVenues, embeddedVenueRegistration]);
 
   useEffect(() => {
     function focusVenue(event: Event) {
@@ -979,9 +982,21 @@ function FeaturedVenueForm({
     }
   }
 
+  if (embeddedVenueRegistration && !availableOwnedVenues.length) {
+    return (
+      <div className="venue-pro-waiting">
+        <MapPinned size={18} />
+        <div>
+          <strong>Primero guardá la sede</strong>
+          <span>Completá ubicación, nombre, domicilio y WhatsApp. Al deslizar, aparece acá el comprobante para activar Cancha PRO.</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <form className="creator-form" onSubmit={submit}>
-      {availableOwnedVenues.length ? (
+      {availableOwnedVenues.length && !embeddedVenueRegistration ? (
         <div className="creator-toggle">
           <button className={mode === "existing" ? "is-active" : ""} onClick={() => setMode("existing")} type="button">Elegir cancha</button>
           <button className={mode === "new" ? "is-active" : ""} onClick={() => setMode("new")} type="button">Crear cancha</button>
@@ -1095,18 +1110,24 @@ function CreatorPaymentCard({
   plan,
   data,
   existingRequest,
-  onCreated
+  onCreated,
+  embeddedVenueRegistration = false
 }: {
   plan: PaymentPlan;
   data: ArenaData;
   existingRequest?: PaymentRequest;
   onCreated: (request: PaymentRequest, message?: PaymentMessage) => void;
+  embeddedVenueRegistration?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embeddedVenueRegistration && plan.code === "featured_venue");
   const cardRef = useRef<HTMLElement | null>(null);
   const pending = isRequestPending(existingRequest);
   const statusLabel = pending ? "En revision" : "Tocar para abrir";
   const statusTone = pending ? "is-pending" : "is-idle";
+
+  useEffect(() => {
+    if (embeddedVenueRegistration && plan.code === "featured_venue") setOpen(true);
+  }, [embeddedVenueRegistration, plan.code]);
 
   useEffect(() => {
     function openRequested(event: Event) {
@@ -1148,7 +1169,7 @@ function CreatorPaymentCard({
           {plan.code === "team_pro" ? <TeamProForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
           {plan.code === "tournament_pro" ? <TournamentProForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
           {plan.code === "sponsor" ? <SponsorForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
-          {plan.code === "featured_venue" ? <FeaturedVenueForm data={data} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
+          {plan.code === "featured_venue" ? <FeaturedVenueForm data={data} embeddedVenueRegistration={embeddedVenueRegistration} existingRequest={existingRequest} onCreated={onCreated} plan={plan} /> : null}
         </div>
       ) : null}
     </article>
@@ -1322,7 +1343,15 @@ function MyTournamentsPanel({
   );
 }
 
-export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes?: PaymentPlan["code"][] }) {
+export function PaymentConsole({
+  data,
+  planCodes,
+  embeddedVenueRegistration = false
+}: {
+  data: ArenaData;
+  planCodes?: PaymentPlan["code"][];
+  embeddedVenueRegistration?: boolean;
+}) {
   const [requests, setRequests] = useState(data.paymentRequests);
   const [showNewTournament, setShowNewTournament] = useState(false);
   const [localVenues, setLocalVenues] = useState<ArenaVenue[]>([]);
@@ -1419,15 +1448,17 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
   if (!data.user) return null;
 
   return (
-    <section className="console-panel payment-console" id="pro">
+    <section className={`console-panel payment-console ${embeddedVenueRegistration ? "payment-console--embedded-venue" : ""}`} id="pro">
       <div className="payment-console__head">
         <span>{teamOnly ? "Equipo Pro" : venueOnly ? "Cancha Pro" : tournamentOnly ? "Crear torneo Pro" : planCodes?.length ? "Beneficios disponibles" : "Crear torneo Pro"}</span>
-        <h2>{teamOnly ? "Activa identidad premium" : venueOnly ? "Destaca tu cancha" : tournamentOnly ? "Crea tu torneo barrial" : planCodes?.length ? "Activa lo que todavia no tenes" : "Crea tu torneo barrial"}</h2>
+        <h2>{teamOnly ? "Activa identidad premium" : venueOnly ? embeddedVenueRegistration ? "Activa la sede Pro" : "Destaca tu cancha" : tournamentOnly ? "Crea tu torneo barrial" : planCodes?.length ? "Activa lo que todavia no tenes" : "Crea tu torneo barrial"}</h2>
         <p>
           {teamOnly
             ? "El equipo gratis puede inscribirse con nombre, sigla y plantel. Equipo Pro habilita escudo, fotos de jugadores, cartas estilo juego y estadisticas premium."
             : venueOnly
-              ? "Cancha gratis muestra ubicacion, nombre y WhatsApp. Cancha Pro habilita foto, precio, promo y visibilidad en mapa y carteleria LED."
+              ? embeddedVenueRegistration
+                ? "Cancha PRO suma foto/logo, precios por formato, horarios, promo y revision del admin con comprobante."
+                : "Cancha gratis muestra ubicacion, nombre y WhatsApp. Cancha Pro habilita foto, precio, promo y visibilidad en mapa y carteleria LED."
               : planCodes?.length && !tournamentOnly
                 ? "Fulbito oculta los beneficios que ya tenes activos. Aca solo aparecen planes disponibles o pagos pendientes."
               : "Arma la copa, elegi formato, envia invitaciones por WhatsApp y deja que cada club cargue su plantel. El equipo basico es gratis; lo premium activa fotos, cartas y estadisticas."}
@@ -1461,6 +1492,7 @@ export function PaymentConsole({ data, planCodes }: { data: ArenaData; planCodes
           {visiblePlans.map((plan) => (
             <CreatorPaymentCard
               data={paymentData}
+              embeddedVenueRegistration={embeddedVenueRegistration}
               existingRequest={pendingRequestByPlan[plan.code]}
               key={plan.code}
               onCreated={onCreated}

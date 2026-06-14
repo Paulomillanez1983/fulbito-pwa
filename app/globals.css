@@ -7466,6 +7466,7 @@ body::after {
 .action-card--venue .venue-picker,
 .action-card--venue .venue-surface-panel,
 .action-card--venue .venue-form-grid,
+.action-card--venue .venue-pro-inline,
 .action-card--venue .media-field,
 .action-card--venue button {
   position: relative;
@@ -7510,15 +7511,15 @@ body::after {
 }
 
 .venue-mode-pro::after {
-  content: "30 dias";
+  content: "PRO";
   position: absolute;
-  right: 8px;
-  top: 7px;
+  right: 6px;
+  top: 6px;
   border: 1px solid rgba(255,255,255,.18);
   border-radius: 999px;
-  padding: 3px 6px;
+  padding: 2px 5px;
   color: #fff3bf;
-  font-size: .58rem;
+  font-size: .54rem;
   font-weight: 1000;
   text-transform: uppercase;
 }
@@ -7606,6 +7607,82 @@ body::after {
 .venue-format-price-list small {
   color: #fff3bf;
   font-weight: 1000;
+}
+
+.venue-pro-inline {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 10px;
+  border: 1px solid rgba(241,199,91,.32);
+  border-radius: 16px;
+  padding: 11px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(241,199,91,.2), transparent 38%),
+    radial-gradient(circle at 0 100%, rgba(85,246,255,.12), transparent 36%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025)),
+    rgba(3, 8, 16, .72);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 14px 34px rgba(0,0,0,.22);
+}
+
+.venue-pro-inline__headline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 13px;
+  padding: 9px;
+  background: rgba(255,255,255,.045);
+}
+
+.venue-pro-inline__headline div,
+.venue-pro-inline__headline strong,
+.venue-pro-inline__headline span {
+  display: block;
+  min-width: 0;
+}
+
+.venue-pro-inline__headline strong {
+  color: #fff8df;
+  font-size: .92rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.venue-pro-inline__headline span {
+  color: var(--muted);
+  font-size: .76rem;
+  line-height: 1.25;
+}
+
+.venue-pro-inline__headline b {
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, #ffe889, #c9851c);
+  color: #120b03;
+  font-size: .78rem;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+
+.venue-pro-inline .media-field,
+.venue-pro-inline .inline-payment-account,
+.venue-pro-inline .proof-upload {
+  grid-column: 1 / -1;
+}
+
+.venue-pro-inline > input {
+  width: 100%;
+}
+
+.venue-pro-inline > small {
+  color: rgba(226, 234, 255, .72);
+  font-size: .76rem;
+  line-height: 1.35;
+}
+
+.venue-pro-extra-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .venue-pro-payment-button {
@@ -9451,6 +9528,63 @@ body::after,
   display: grid;
   gap: 14px;
   border-color: rgba(241,199,91,.28);
+}
+
+.action-console--venue .payment-console--embedded-venue {
+  grid-column: 1 / -1;
+  margin-top: -2px;
+  border-color: rgba(241,199,91,.34);
+  background:
+    radial-gradient(circle at 100% 0, rgba(241,199,91,.14), transparent 32%),
+    linear-gradient(145deg, rgba(15, 26, 43, .94), rgba(4, 8, 16, .92));
+}
+
+.payment-console--embedded-venue .payment-console__head {
+  gap: 6px;
+}
+
+.payment-console--embedded-venue .payment-console__head h2 {
+  font-size: clamp(1.18rem, 4.6vw, 1.8rem);
+}
+
+.payment-console--embedded-venue .payment-console__head p {
+  font-size: .9rem;
+}
+
+.payment-console--embedded-venue .active-benefits {
+  margin-bottom: 0;
+}
+
+.venue-pro-waiting {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(85,246,255,.22);
+  border-radius: 13px;
+  padding: 11px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(85,246,255,.12), transparent 34%),
+    rgba(3, 9, 18, .74);
+}
+
+.venue-pro-waiting svg {
+  color: var(--cyan);
+}
+
+.venue-pro-waiting div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.venue-pro-waiting strong {
+  color: #fff8e8;
+}
+
+.venue-pro-waiting span {
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .payment-console__head {

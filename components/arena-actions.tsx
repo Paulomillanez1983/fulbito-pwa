@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
-import { Camera, Flag, LoaderCircle, LocateFixed, MapPinned, ShieldPlus, UserPlus } from "lucide-react";
+import { Camera, Clipboard, Flag, LoaderCircle, LocateFixed, MapPinned, ShieldPlus, Upload, UserPlus } from "lucide-react";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
+import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { ArenaData } from "@/lib/types";
@@ -12,6 +13,8 @@ import {
   getPhoneCountry,
   normalizeVenuePhoneForCountry,
   normalizeVenueSurfaces,
+  primaryVenuePrice,
+  readVenueFormatPrices,
   southAmericanPhoneCountries,
   venueSurfaceOptions
 } from "@/lib/venue-options";
@@ -116,6 +119,78 @@ function MediaField({
       </span>
     </label>
   );
+}
+
+function ProofUploadField({
+  ready,
+  onReady
+}: {
+  ready: boolean;
+  onReady: (ready: boolean) => void;
+}) {
+  return (
+    <label className={`proof-upload proof-upload--venue ${ready ? "is-sent" : ""}`}>
+      <Upload size={17} />
+      <span>{ready ? "Comprobante adjunto" : "Adjuntar comprobante"}</span>
+      <input
+        accept="image/png,image/jpeg,image/webp,application/pdf"
+        name="venueProofFile"
+        onChange={(event) => onReady(Boolean(event.target.files?.[0]))}
+        type="file"
+      />
+    </label>
+  );
+}
+
+function InlineVenuePaymentAccount({ amount }: { amount: number }) {
+  const [copied, setCopied] = useState("");
+
+  async function copyValue(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(`${label} copiado`);
+      window.setTimeout(() => setCopied(""), 1600);
+    } catch {
+      setCopied("No se pudo copiar");
+    }
+  }
+
+  return (
+    <div className="inline-payment-account venue-payment-account">
+      <span>Transferi {formatPaymentMoney(amount)} por mes y adjunta el comprobante</span>
+      <button onClick={() => copyValue(paymentAccount.alias, "Alias")} type="button">
+        <span>Alias</span>
+        <b>{paymentAccount.alias}</b>
+        <Clipboard size={15} />
+      </button>
+      <button onClick={() => copyValue(paymentAccount.cvu, "CVU")} type="button">
+        <span>CVU</span>
+        <b>{paymentAccount.cvu}</b>
+        <Clipboard size={15} />
+      </button>
+      {copied ? <small>{copied}</small> : null}
+    </div>
+  );
+}
+
+async function optimizeProofFile(file: File) {
+  if (file.type === "application/pdf" || !file.type.startsWith("image/")) return file;
+  const bitmap = await createImageBitmap(file);
+  const maxSide = 1400;
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const width = Math.round(bitmap.width * scale);
+  const height = Math.round(bitmap.height * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) return file;
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.8));
+  if (!blob) return file;
+  const filename = file.name.replace(/\.[^.]+$/, "") || "comprobante";
+  return new File([blob], `${filename}.webp`, { type: "image/webp" });
 }
 
 const imageTargets: Record<MediaBucket, { width: number; height: number; quality: number; fit: "cover" | "contain" }> = {
@@ -393,12 +468,20 @@ export function ArenaActions({
   const [venueSurfaces, setVenueSurfaces] = useState<VenueSurfaceValue[]>([venueSurfaceOptions[0].value]);
   const [venuePhoneCountryIso, setVenuePhoneCountryIso] = useState<SouthAmericanPhoneCountryIso>(southAmericanPhoneCountries[0].iso);
   const [venueDraft, setVenueDraft] = useState({ name: "", address: "", phone: "" });
+  const [venueProofReady, setVenueProofReady] = useState(false);
   const selectedPhoneCountry = getPhoneCountry(venuePhoneCountryIso);
+  const venueProPlan = mergePaymentPlans(data.billingPlans).find((plan) => plan.code === "featured_venue");
   const venueCanSubmit = Boolean(
     venueDraft.name.trim() &&
     venueDraft.address.trim() &&
-    normalizeVenuePhoneForCountry(venuePhoneCountryIso, venueDraft.phone)
+    normalizeVenuePhoneForCountry(venuePhoneCountryIso, venueDraft.phone) &&
+    (venueMode === "simple" || venueProofReady)
   );
+  const venueSubmitDisabledLabel = !venueDraft.name.trim() || !venueDraft.address.trim() || !normalizeVenuePhoneForCountry(venuePhoneCountryIso, venueDraft.phone)
+    ? "Completa nombre, domicilio y WhatsApp"
+    : venueMode === "pro" && !venueProofReady
+      ? "Adjunta el comprobante para enviar Cancha Pro"
+      : "Completa los datos";
 
   function toggleVenueSurface(value: VenueSurfaceValue) {
     setVenueSurfaces((current) => {
@@ -468,6 +551,92 @@ export function ArenaActions({
     });
     if (error) throw error;
     return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  }
+
+  async function uploadPaymentProof(
+    supabase: ReturnType<typeof createSupabaseBrowserClient>,
+    userId: string,
+    fileValue: FormDataEntryValue | null
+  ) {
+    if (!(fileValue instanceof File) || fileValue.size === 0) throw new Error("Adjunta el comprobante de transferencia.");
+    const optimizedProof = await optimizeProofFile(fileValue);
+    const extension = optimizedProof.type === "application/pdf" ? "pdf" : optimizedProof.type === "image/webp" ? "webp" : optimizedProof.name.split(".").pop()?.toLowerCase() || "jpg";
+    const proofPath = `${userId}/${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage.from("payment-proofs").upload(proofPath, optimizedProof, {
+      cacheControl: "3600",
+      contentType: optimizedProof.type || undefined,
+      upsert: false
+    });
+    if (error) throw error;
+    return { proofPath, proofFilename: fileValue.name };
+  }
+
+  async function createVenueProPaymentRequest({
+    supabase,
+    userId,
+    venueId,
+    venueName,
+    proofFile,
+    amount,
+    note
+  }: {
+    supabase: ReturnType<typeof createSupabaseBrowserClient>;
+    userId: string;
+    venueId: string;
+    venueName: string;
+    proofFile: FormDataEntryValue | null;
+    amount: number;
+    note: string;
+  }) {
+    const { data: block, error: blockError } = await supabase
+      .from("user_blocks")
+      .select("reason")
+      .eq("blocked_user_id", userId)
+      .maybeSingle();
+    if (blockError) throw blockError;
+    if (block) throw new Error(block.reason || "Tu cuenta esta bloqueada para enviar nuevos comprobantes.");
+
+    const { data: existingRequest, error: existingError } = await supabase
+      .from("payment_requests")
+      .select("id")
+      .eq("requester_id", userId)
+      .eq("plan_code", "featured_venue")
+      .eq("status", "pending_review")
+      .limit(1)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (existingRequest) throw new Error("Ya tenes una solicitud de Cancha Pro pendiente. Espera la revision del admin.");
+
+    const proof = await uploadPaymentProof(supabase, userId, proofFile);
+    const { data: request, error: requestError } = await supabase
+      .from("payment_requests")
+      .insert({
+        requester_id: userId,
+        plan_code: "featured_venue",
+        target_type: "venue",
+        target_id: venueId,
+        title: `Cancha destacada - ${venueName}`,
+        amount,
+        proof_path: proof.proofPath,
+        proof_filename: proof.proofFilename,
+        payer_note: note || `Cancha: ${venueName}`
+      })
+      .select()
+      .single();
+    if (requestError) {
+      await supabase.storage.from("payment-proofs").remove([proof.proofPath]);
+      throw requestError;
+    }
+
+    const { error: messageError } = await supabase
+      .from("payment_messages")
+      .insert({
+        payment_request_id: request.id,
+        sender_id: userId,
+        body: note || `Comprobante enviado para Cancha Pro - ${venueName}.`
+      });
+    if (messageError) throw messageError;
+    window.dispatchEvent(new CustomEvent("fulbito:payment-request-created", { detail: request }));
   }
 
   async function createTeam(formData: FormData) {
@@ -556,6 +725,35 @@ export function ArenaActions({
     if (!phoneNational) return setMessage("Carga un WhatsApp de contacto para recibir consultas de reserva.");
     const address = String(formData.get("venueAddress") || "").trim();
     if (!address) return setMessage("Carga el domicilio para ubicar bien la cancha en el mapa.");
+    const formatPrices = selectedVenueMode === "pro" ? readVenueFormatPrices(formData, selectedModes) : {};
+    let coverUrl: string | null = null;
+    if (selectedVenueMode === "pro") {
+      if (!venueProPlan) return setMessage("Cancha Pro no esta disponible en este momento.");
+      const proofFile = formData.get("venueProofFile");
+      if (!(proofFile instanceof File) || proofFile.size === 0) return setMessage("Adjunta el comprobante para enviar la solicitud Pro.");
+      const { data: block, error: blockError } = await supabase
+        .from("user_blocks")
+        .select("reason")
+        .eq("blocked_user_id", userId)
+        .maybeSingle();
+      if (blockError) return setMessage(blockError.message);
+      if (block) return setMessage(block.reason || "Tu cuenta esta bloqueada para enviar nuevos comprobantes.");
+      const { data: existingRequest, error: existingError } = await supabase
+        .from("payment_requests")
+        .select("id")
+        .eq("requester_id", userId)
+        .eq("plan_code", "featured_venue")
+        .eq("status", "pending_review")
+        .limit(1)
+        .maybeSingle();
+      if (existingError) return setMessage(existingError.message);
+      if (existingRequest) return setMessage("Ya tenes una solicitud de Cancha Pro pendiente. Espera la revision del admin.");
+      try {
+        coverUrl = await uploadArenaMedia(supabase, "venue-photos", userId, formData.get("venueCoverFile"));
+      } catch (error) {
+        return setMessage(error instanceof Error ? error.message : "No se pudo subir la foto de la cancha.");
+      }
+    }
     const payload = {
       owner_id: userId,
       name,
@@ -564,24 +762,38 @@ export function ArenaActions({
       address,
       surface: selectedModes.join(","),
       field_modes: selectedModes,
-      format_prices: {},
+      format_prices: formatPrices,
       phone: composeInternationalPhone(phoneCountry.iso, phoneNational),
       phone_country_iso: phoneCountry.iso,
       phone_country_code: phoneCountry.dialCode,
       phone_national: phoneNational || null,
       latitude,
       longitude,
-      price_per_hour: 0,
-      inscription_fee: 0,
-      cover_url: null,
-      status: "listed"
+      price_per_hour: selectedVenueMode === "pro" ? primaryVenuePrice(formatPrices, selectedModes) : 0,
+      inscription_fee: selectedVenueMode === "pro" ? Number(formData.get("reserveFee") || 0) : 0,
+      cover_url: coverUrl,
+      open_hours: selectedVenueMode === "pro" ? String(formData.get("openHours") || "").trim() || null : null,
+      status: selectedVenueMode === "pro" ? "pending_pro" : "listed"
     };
     const { data: venue, error } = await supabase.from("venues").insert(payload).select().single();
     if (error || !venue) return setMessage(error?.message || "No se pudo registrar la cancha.");
     window.dispatchEvent(new CustomEvent("fulbito:venue-created", { detail: venue }));
     if (selectedVenueMode === "pro") {
-      window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: { planCode: "featured_venue", targetId: venue.id } }));
-      setMessage("Sede guardada. Ahora adjunta el comprobante en Cancha Pro para habilitar foto, precios y publicidad.");
+      try {
+        await createVenueProPaymentRequest({
+          supabase,
+          userId,
+          venueId: venue.id,
+          venueName: venue.name,
+          proofFile: formData.get("venueProofFile"),
+          amount: venueProPlan?.amount ?? 0,
+          note: String(formData.get("payerNote") || "").trim() || `Cancha: ${venue.name}`
+        });
+      } catch (paymentError) {
+        return setMessage(paymentError instanceof Error ? paymentError.message : "La cancha se guardo, pero no se pudo enviar el comprobante.");
+      }
+      setVenueProofReady(false);
+      setMessage("Cancha Pro enviada. Fulbito revisa el comprobante y habilita foto, precios y publicidad.");
       return;
     }
     setMessage("Cancha registrada gratis. Ya queda visible con ubicacion, domicilio y WhatsApp.");
@@ -747,30 +959,48 @@ export function ArenaActions({
               <input name="venuePhoneNational" inputMode="tel" onChange={(event) => updateVenueDraft("phone", event.target.value)} placeholder={`WhatsApp ${selectedPhoneCountry.placeholder}`} required value={venueDraft.phone} />
               <small>Fulbito arma el prefijo {selectedPhoneCountry.dialCode}. En Argentina podes escribirlo con o sin 9.</small>
             </div>
-            {false && venueMode === "pro" ? (
-              <>
-                <input name="venueNeighborhood" placeholder="Barrio" />
-                <input name="venueAddress" placeholder="Direccion" />
-                <section className="venue-format-price-list">
-                  <span>Precio por formato</span>
-                  {venueSurfaces.map((surface) => {
-                    const option = venueSurfaceOptions.find((item) => item.value === surface);
-                    return (
-                      <label key={surface}>
-                        <small>{option?.label ?? surface}</small>
-                        <input inputMode="numeric" name={`price_${surface}`} placeholder={`Precio ${option?.label ?? surface}`} />
-                      </label>
-                    );
-                  })}
-                </section>
-                <input name="reserveFee" inputMode="numeric" placeholder="Seña para reservar (opcional)" />
-              </>
-            ) : null}
           </div>
-          {venueMode === "pro" ? (
+          {venueMode === "pro" && venueProPlan ? (
+            <section className="venue-pro-inline">
+              <div className="venue-pro-inline__headline">
+                <div>
+                  <strong>Cancha PRO</strong>
+                  <span>Foto, precios visibles, mapa destacado y carteleria LED.</span>
+                </div>
+                <b>{formatPaymentMoney(venueProPlan.amount)} / mes</b>
+              </div>
+              <MediaField
+                accept="image/png,image/jpeg,image/webp"
+                helper="Foto horizontal o logo. Fulbito lo optimiza en WebP liviano."
+                label="Foto o logo de la cancha"
+                name="venueCoverFile"
+                variant="wide"
+              />
+              <section className="venue-format-price-list">
+                <span>Precio por formato seleccionado</span>
+                {venueSurfaces.map((surface) => {
+                  const option = venueSurfaceOptions.find((item) => item.value === surface);
+                  return (
+                    <label key={surface}>
+                      <small>{option?.label ?? surface}</small>
+                      <input inputMode="numeric" name={`price_${surface}`} placeholder={`Precio ${option?.label ?? surface}`} />
+                    </label>
+                  );
+                })}
+              </section>
+              <div className="creator-inline venue-pro-extra-fields">
+                <input name="openHours" placeholder="Horarios visibles, ej. Lun a Dom 17 a 01" />
+                <input inputMode="numeric" name="reserveFee" placeholder="Seña o reserva sugerida (opcional)" />
+              </div>
+              <input name="payerNote" placeholder="Nota para Fulbito o alias desde donde pagaste" />
+              <InlineVenuePaymentAccount amount={venueProPlan.amount} />
+              <ProofUploadField ready={venueProofReady} onReady={setVenueProofReady} />
+              <small>{venueProofReady ? "Listo. Al deslizar se envia la sede y el comprobante al admin." : "El envio Pro se habilita cuando adjuntas el comprobante."}</small>
+            </section>
+          ) : venueMode === "pro" ? (
             <div className="pro-lock-note">
-              <strong>Primero fijamos la sede real</strong>
-              <span>Al deslizar, Fulbito guarda ubicacion, domicilio y WhatsApp. Despues abre Cancha Pro sobre esa misma sede para cargar comprobante, foto, precios y publicidad.</span>
+              <strong>Cancha Pro no disponible</strong>
+              <span>No encontramos el plan activo. Revisalo desde el panel administrador.</span>
             </div>
           ) : (
             <div className="pro-lock-note">
@@ -780,9 +1010,9 @@ export function ArenaActions({
           )}
           <SubmitButton
             disabled={!venueCanSubmit}
-            disabledLabel="Completa nombre, domicilio y WhatsApp"
-            idle={venueMode === "pro" ? "Guardar sede y activar Pro" : "Guardar cancha gratis"}
-            pending={venueMode === "pro" ? "Preparando Cancha Pro" : "Registrando cancha"}
+            disabledLabel={venueSubmitDisabledLabel}
+            idle={venueMode === "pro" ? "Enviar cancha Pro" : "Guardar cancha gratis"}
+            pending={venueMode === "pro" ? "Enviando Cancha Pro" : "Registrando cancha"}
           />
         </form> : null}
 

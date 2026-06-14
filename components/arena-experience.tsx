@@ -10,7 +10,6 @@ import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
-  Crown,
   ExternalLink,
   Flag,
   Gamepad2,
@@ -23,7 +22,6 @@ import {
   Megaphone,
   Plus,
   RadioTower,
-  Route,
   Shield,
   ShieldCheck,
   Star,
@@ -3427,7 +3425,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const [venueLocation, setVenueLocation] = useState<GeoPoint | null>(null);
   const [venueLocationAsked, setVenueLocationAsked] = useState(false);
   const [venueLocationStatus, setVenueLocationStatus] = useState("Mostrando canchas registradas.");
-  const [showVenueForm, setShowVenueForm] = useState(false);
+  const [showVenueForm, setShowVenueForm] = useState(true);
   const [friendlyFocus, setFriendlyFocus] = useState(Boolean(friendlyCode));
   const [tournamentFocus, setTournamentFocus] = useState(false);
   const [loginNextTarget, setLoginNextTarget] = useState("/");
@@ -4157,15 +4155,6 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             <p>Cuando quieras sumar una sede, abri este panel. Vas a marcar el punto en el mapa, completar precio, contacto y foto.</p>
           )}
         </section>
-        <section className="console-panel money-console">
-          <MiniStat icon={<Route />} label="Sedes cercanas" onClick={() => setActiveTab("venues")} value={nearbyVenues.length} />
-          <MiniStat icon={<MapPinned />} label="Registro simple" onClick={() => setShowVenueForm(true)} value="Gratis" />
-          <MiniStat icon={<Crown />} label="Cancha Pro" onClick={() => {
-            setShowVenueForm(true);
-            window.setTimeout(() => window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "featured_venue" })), 80);
-          }} value="Destacar" />
-        </section>
-        {data.user ? <PaymentConsole data={data} planCodes={["featured_venue"]} /> : null}
       </>
     );
   }
