@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { Ban, CheckCircle2, Clock3, ExternalLink, Flag, LoaderCircle, Megaphone, MessageCircle, RadioTower, Search, ShieldCheck, Trophy, Users, Send, Upload, Video, XCircle } from "lucide-react";
+import { sponsorSoundOptions } from "@/lib/ad-sounds";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AccountEntitlement, AdCampaign, AdCampaignEvent, AdCampaignScope, AdCampaignStatus, AppRole, ArenaMatch, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, MatchResultSubmission, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
@@ -537,10 +538,11 @@ function AdminAdFields({ campaign, defaultScope = "national" }: { campaign?: AdC
         <option value="none">Sin animacion</option>
       </select>
       <select name="splashSoundVariant" defaultValue={campaign?.splash_sound_variant ?? "stadium_whistle"}>
-        <option value="stadium_whistle">Silbato + estadio</option>
-        <option value="classic_whistle">Silbato clasico</option>
-        <option value="crowd_goal">Gol de tribuna</option>
-        <option value="off">Sin sonido</option>
+        {sponsorSoundOptions.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label} - {option.description}
+          </option>
+        ))}
       </select>
       <input defaultValue={campaign?.sort_order ?? 100} inputMode="numeric" name="sortOrder" placeholder="Orden" />
       <label className="admin-ad-check-field">

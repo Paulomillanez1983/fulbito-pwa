@@ -14,6 +14,17 @@ export type AdCampaignStatus = "pending" | "active" | "paused" | "rejected" | "e
 
 export type AdCampaignScope = "local" | "national";
 
+export type AdSplashSoundVariant =
+  | "off"
+  | "classic_whistle"
+  | "stadium_whistle"
+  | "double_whistle"
+  | "kickoff_hype"
+  | "crowd_goal"
+  | "final_whistle"
+  | "stadium_horn"
+  | "penalty_alert";
+
 export type MatchStatus =
   | "scheduled"
   | "live"
@@ -366,7 +377,7 @@ export type AdCampaign = {
   splash_creative_url: string | null;
   splash_creative_scale: number;
   splash_creative_animation: "none" | "soft_zoom" | "stadium_bounce" | "pulse_glow" | "slide_pan";
-  splash_sound_variant: "off" | "classic_whistle" | "stadium_whistle" | "crowd_goal";
+  splash_sound_variant: AdSplashSoundVariant;
   created_at: string;
   updated_at: string;
 };

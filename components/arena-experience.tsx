@@ -37,6 +37,7 @@ import { InstallAppButton } from "@/components/install-app-button";
 import { LoginPanel } from "@/components/login-panel";
 import { PaymentConsole } from "@/components/payment-console";
 import { VenueMap } from "@/components/venue-map";
+import { isSponsorSoundVariant } from "@/lib/ad-sounds";
 import { buildTournamentDraw, type DrawResult } from "@/lib/draw";
 import { roleCatalog } from "@/lib/demo";
 import { getRosterRule } from "@/lib/roster";
@@ -1033,6 +1034,7 @@ function AdBoardItem({ campaign }: { campaign: AdCampaign }) {
   const isYouTube = /youtube|youtu\.be/i.test(`${campaign.target_url ?? ""} ${campaign.advertiser_name} ${campaign.headline}`);
   const targetKind = sponsorTargetKind(campaign.target_url);
   const targetLabel = sponsorTargetLabel(targetKind);
+  const hasLogo = Boolean(campaign.logo_url || isYouTube);
   const ledText = `${campaign.headline} ${campaign.body ?? ""}`.trim();
   const shouldScroll = ledText.length > 24;
   const renderMessage = (suffix: string) => (
@@ -1042,12 +1044,12 @@ function AdBoardItem({ campaign }: { campaign: AdCampaign }) {
     </span>
   );
   return (
-    <span className={`arena-ad-board arena-ad-board--${targetKind} ${shouldScroll ? "is-marquee" : ""}`}>
+    <span className={`arena-ad-board arena-ad-board--${targetKind} ${hasLogo ? "arena-ad-board--with-logo" : ""} ${shouldScroll ? "is-marquee" : ""}`}>
       <span className="arena-ad-board__edge" />
       <span className="arena-ad-board__signal" />
-      {campaign.logo_url || isYouTube ? (
+      {hasLogo ? (
         <span className="arena-ad-board__icon">
-          {campaign.logo_url ? <img alt="" src={campaign.logo_url} /> : <YouTubeLogo size={15} />}
+          {campaign.logo_url ? <img alt="" src={campaign.logo_url} /> : <YouTubeLogo size={22} />}
         </span>
       ) : null}
       <span className="arena-ad-board__tag">{targetLabel}</span>
@@ -1421,8 +1423,59 @@ function addKick(audio: AudioContext, destination: AudioNode, startAt: number) {
   addFilteredNoise(audio, destination, startAt + 0.002, 0.09, 0.018, "highpass", 1150, 0.42, 0, true);
 }
 
+function addStadiumHorn(audio: AudioContext, destination: AudioNode, startAt: number, duration = 0.9, peak = 0.06) {
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(peak, startAt + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
+  connectWithPan(audio, gain, destination, -0.12);
+
+  const horn = audio.createOscillator();
+  horn.type = "sawtooth";
+  horn.frequency.setValueAtTime(172, startAt);
+  horn.frequency.linearRampToValueAtTime(196, startAt + duration * 0.26);
+  horn.frequency.linearRampToValueAtTime(146, startAt + duration * 0.78);
+  horn.connect(gain);
+  horn.start(startAt);
+  horn.stop(startAt + duration);
+
+  const body = audio.createOscillator();
+  body.type = "sine";
+  body.frequency.setValueAtTime(86, startAt);
+  body.frequency.linearRampToValueAtTime(74, startAt + duration);
+  body.connect(gain);
+  body.start(startAt);
+  body.stop(startAt + duration);
+}
+
+function addBrightRiser(audio: AudioContext, destination: AudioNode, startAt: number, duration = 0.72, peak = 0.026) {
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(peak, startAt + duration * 0.42);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
+  connectWithPan(audio, gain, destination, 0.18);
+
+  const riser = audio.createOscillator();
+  riser.type = "triangle";
+  riser.frequency.setValueAtTime(520, startAt);
+  riser.frequency.exponentialRampToValueAtTime(1680, startAt + duration);
+  riser.connect(gain);
+  riser.start(startAt);
+  riser.stop(startAt + duration);
+  addFilteredNoise(audio, destination, startAt, duration, peak * 0.38, "highpass", 2200, 0.55, -0.18, true);
+}
+
+function addPulseHits(audio: AudioContext, destination: AudioNode, startAt: number, count = 3, spacing = 0.16) {
+  for (let index = 0; index < count; index += 1) {
+    const offset = startAt + index * spacing;
+    addKick(audio, destination, offset);
+    addFilteredNoise(audio, destination, offset + 0.01, 0.08, 0.012, "bandpass", 1850 + index * 260, 0.9, index % 2 ? 0.36 : -0.36, true);
+  }
+}
+
 function playSponsorSound(variant: AdCampaign["splash_sound_variant"] = "stadium_whistle") {
-  if (variant === "off") return;
+  const soundVariant = isSponsorSoundVariant(variant) ? variant : "stadium_whistle";
+  if (soundVariant === "off") return;
   try {
     const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
@@ -1431,7 +1484,7 @@ function playSponsorSound(variant: AdCampaign["splash_sound_variant"] = "stadium
     const master = audio.createGain();
     master.gain.setValueAtTime(0.0001, now);
     master.gain.exponentialRampToValueAtTime(0.86, now + 0.025);
-    master.gain.exponentialRampToValueAtTime(0.001, now + 2.05);
+    master.gain.exponentialRampToValueAtTime(0.001, now + 2.65);
 
     const compressor = audio.createDynamicsCompressor();
     compressor.threshold.setValueAtTime(-18, now);
@@ -1459,15 +1512,39 @@ function playSponsorSound(variant: AdCampaign["splash_sound_variant"] = "stadium
     feedback.connect(delay);
     void audio.resume?.();
 
-    if (variant === "crowd_goal") {
+    if (soundVariant === "crowd_goal") {
       addKick(audio, master, now);
       addCrowdBurst(audio, master, now + 0.04, 1.75, 0.082, -0.55, 720, 1180);
       addCrowdBurst(audio, master, now + 0.11, 1.9, 0.074, 0.48, 1040, 1620);
       addCrowdBurst(audio, master, now + 0.2, 1.55, 0.052, 0.04, 1560, 2200);
       addFilteredNoise(audio, master, now + 0.16, 0.42, 0.02, "highpass", 2600, 0.5, 0.2, true);
+    } else if (soundVariant === "double_whistle") {
+      addWhistleTone(audio, master, now, 0.07, 0.42);
+      addWhistleTone(audio, master, now + 0.29, 0.055, 0.46);
+      addFilteredNoise(audio, master, now + 0.1, 0.55, 0.012, "highpass", 2800, 0.45, 0.2, true);
+    } else if (soundVariant === "kickoff_hype") {
+      addPulseHits(audio, master, now, 3, 0.18);
+      addBrightRiser(audio, master, now + 0.06, 0.82, 0.03);
+      addCrowdBurst(audio, master, now + 0.22, 1.35, 0.052, -0.42, 860, 1420);
+      addCrowdBurst(audio, master, now + 0.36, 1.32, 0.044, 0.44, 1240, 1880);
+    } else if (soundVariant === "final_whistle") {
+      addWhistleTone(audio, master, now, 0.072, 0.78);
+      addWhistleTone(audio, master, now + 0.52, 0.05, 0.58);
+      addKick(audio, master, now + 0.14);
+      addCrowdBurst(audio, master, now + 0.38, 1.78, 0.07, -0.52, 760, 1320);
+      addCrowdBurst(audio, master, now + 0.52, 1.85, 0.064, 0.5, 1120, 1760);
+    } else if (soundVariant === "stadium_horn") {
+      addStadiumHorn(audio, master, now, 0.92, 0.058);
+      addStadiumHorn(audio, master, now + 0.58, 0.72, 0.038);
+      addCrowdBurst(audio, master, now + 0.18, 1.45, 0.044, 0.38, 760, 1320);
+    } else if (soundVariant === "penalty_alert") {
+      addWhistleTone(audio, master, now, 0.076, 0.5);
+      addPulseHits(audio, master, now + 0.28, 2, 0.12);
+      addFilteredNoise(audio, master, now + 0.08, 0.64, 0.024, "highpass", 3400, 0.72, 0.05, true);
+      addCrowdBurst(audio, master, now + 0.42, 0.95, 0.034, -0.36, 980, 1520);
     } else {
-      addWhistleTone(audio, master, now, variant === "classic_whistle" ? 0.074 : 0.066, variant === "classic_whistle" ? 0.78 : 0.7);
-      if (variant === "stadium_whistle") {
+      addWhistleTone(audio, master, now, soundVariant === "classic_whistle" ? 0.074 : 0.066, soundVariant === "classic_whistle" ? 0.78 : 0.7);
+      if (soundVariant === "stadium_whistle") {
         addKick(audio, master, now + 0.04);
         addWhistleTone(audio, master, now + 0.34, 0.034, 0.36);
         addCrowdBurst(audio, master, now + 0.1, 1.35, 0.044, -0.5, 780, 1320);
@@ -1476,7 +1553,7 @@ function playSponsorSound(variant: AdCampaign["splash_sound_variant"] = "stadium
       }
     }
 
-    window.setTimeout(() => void audio.close(), 2500);
+    window.setTimeout(() => void audio.close(), 3200);
   } catch {
     // Browser audio permissions may block automatic sponsor sounds before user interaction.
   }
