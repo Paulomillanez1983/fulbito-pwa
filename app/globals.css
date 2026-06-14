@@ -4460,7 +4460,7 @@ body::after {
   position: fixed;
   left: 50%;
   bottom: calc(86px + env(safe-area-inset-bottom));
-  z-index: 1;
+  z-index: 8;
   width: min(1180px, 118vw);
   height: 76px;
   transform: translateX(-50%);
@@ -9361,6 +9361,14 @@ body::after,
 }
 
 @media (max-width: 520px) {
+  body {
+    padding-bottom: 142px;
+  }
+
+  .game-app-shell {
+    padding-bottom: 158px;
+  }
+
   .friendly-empty,
   .friendly-actions,
   .friendly-result-form {
