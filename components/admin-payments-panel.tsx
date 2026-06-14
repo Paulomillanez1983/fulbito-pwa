@@ -525,6 +525,23 @@ function AdminAdFields({ campaign, defaultScope = "national" }: { campaign?: AdC
       <input defaultValue={campaign?.splash_frequency_hours ?? 12} inputMode="numeric" name="splashFrequencyHours" placeholder="Frecuencia horas (0 cada apertura)" />
       <input defaultValue={campaign?.splash_close_after_seconds ?? 5} inputMode="numeric" name="splashCloseAfterSeconds" placeholder="Cerrar despues de seg." />
       <input defaultValue={campaign?.splash_cta_label ?? "Ver sponsor"} name="splashCtaLabel" placeholder="Texto del boton" />
+      <label className="admin-ad-range-field">
+        <span>Tamano arte tarjeta</span>
+        <input defaultValue={campaign?.splash_creative_scale ?? 1} max="1.55" min="0.55" name="splashCreativeScale" step="0.05" type="range" />
+      </label>
+      <select name="splashCreativeAnimation" defaultValue={campaign?.splash_creative_animation ?? "stadium_bounce"}>
+        <option value="stadium_bounce">Animacion estadio</option>
+        <option value="soft_zoom">Zoom suave</option>
+        <option value="pulse_glow">Pulso brillante</option>
+        <option value="slide_pan">Paneo lateral</option>
+        <option value="none">Sin animacion</option>
+      </select>
+      <select name="splashSoundVariant" defaultValue={campaign?.splash_sound_variant ?? "stadium_whistle"}>
+        <option value="stadium_whistle">Silbato + estadio</option>
+        <option value="classic_whistle">Silbato clasico</option>
+        <option value="crowd_goal">Gol de tribuna</option>
+        <option value="off">Sin sonido</option>
+      </select>
       <input defaultValue={campaign?.sort_order ?? 100} inputMode="numeric" name="sortOrder" placeholder="Orden" />
       <label className="admin-ad-check-field">
         <input defaultChecked={campaign?.splash_enabled ?? true} name="splashEnabled" type="checkbox" />
@@ -582,6 +599,12 @@ export function AdminAdCampaignPanel({
     return supabase.storage.from("ad-assets").getPublicUrl(path).data.publicUrl;
   }
 
+  function readCreativeScale(form: FormData, fallback = 1) {
+    const value = Number(form.get("splashCreativeScale") || fallback);
+    if (!Number.isFinite(value)) return fallback;
+    return Math.max(0.55, Math.min(1.55, Math.round(value * 100) / 100));
+  }
+
   async function createCampaign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setNotice("");
@@ -598,6 +621,7 @@ export function AdminAdCampaignPanel({
     const placement = String(form.get("placement") || "both");
     const splashCloseAfterSeconds = Number(form.get("splashCloseAfterSeconds") || 5);
     const splashFrequencyHours = Number(form.get("splashFrequencyHours") || 12);
+    const splashCreativeScale = readCreativeScale(form);
 
     try {
       if (!advertiserName || !headline) throw new Error("Carga nombre del comercio y texto del sponsor.");
@@ -630,6 +654,9 @@ export function AdminAdCampaignPanel({
           splash_cta_label: String(form.get("splashCtaLabel") || "").trim() || "Ver sponsor",
           splash_close_after_seconds: Number.isFinite(splashCloseAfterSeconds) ? Math.max(3, Math.min(30, Math.round(splashCloseAfterSeconds))) : 5,
           splash_frequency_hours: Number.isFinite(splashFrequencyHours) ? Math.max(0, Math.min(168, Math.round(splashFrequencyHours))) : 12,
+          splash_creative_scale: splashCreativeScale,
+          splash_creative_animation: String(form.get("splashCreativeAnimation") || "stadium_bounce"),
+          splash_sound_variant: String(form.get("splashSoundVariant") || "stadium_whistle"),
           splash_creative_url: null
         })
         .select()
@@ -703,6 +730,7 @@ export function AdminAdCampaignPanel({
     const placement = String(form.get("placement") || campaign.placement);
     const splashCloseAfterSeconds = Number(form.get("splashCloseAfterSeconds") || campaign.splash_close_after_seconds);
     const splashFrequencyHours = Number(form.get("splashFrequencyHours") || campaign.splash_frequency_hours);
+    const splashCreativeScale = readCreativeScale(form, campaign.splash_creative_scale ?? 1);
 
     try {
       if (!advertiserName || !headline) throw new Error("Carga nombre del comercio y texto del sponsor.");
@@ -734,6 +762,9 @@ export function AdminAdCampaignPanel({
           splash_cta_label: String(form.get("splashCtaLabel") || "").trim() || "Ver sponsor",
           splash_close_after_seconds: Number.isFinite(splashCloseAfterSeconds) ? Math.max(3, Math.min(30, Math.round(splashCloseAfterSeconds))) : campaign.splash_close_after_seconds,
           splash_frequency_hours: Number.isFinite(splashFrequencyHours) ? Math.max(0, Math.min(168, Math.round(splashFrequencyHours))) : campaign.splash_frequency_hours,
+          splash_creative_scale: splashCreativeScale,
+          splash_creative_animation: String(form.get("splashCreativeAnimation") || campaign.splash_creative_animation || "stadium_bounce"),
+          splash_sound_variant: String(form.get("splashSoundVariant") || campaign.splash_sound_variant || "stadium_whistle"),
           splash_creative_url: logoUrl ?? campaign.splash_creative_url
         })
         .eq("id", campaign.id)
@@ -792,6 +823,7 @@ export function AdminAdCampaignPanel({
               <small>
                 {localDateTime(campaign.starts_at) || "sin inicio"} / {localDateTime(campaign.ends_at) || "sin vencimiento"}
               </small>
+              <small>Tarjeta: x{campaign.splash_creative_scale ?? 1} / {campaign.splash_creative_animation ?? "stadium_bounce"} / {campaign.splash_sound_variant ?? "stadium_whistle"}</small>
               <div className="admin-ad-metrics">
                 <span><strong>{metrics.ledImpressions}</strong> LED</span>
                 <span><strong>{metrics.splashImpressions}</strong> Splash</span>

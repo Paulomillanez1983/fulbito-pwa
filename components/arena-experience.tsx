@@ -1091,6 +1091,9 @@ function ArenaAdBoards({ campaigns }: { campaigns: AdCampaign[] }) {
       splash_close_after_seconds: 5,
       splash_frequency_hours: 12,
       splash_creative_url: null,
+      splash_creative_scale: 1,
+      splash_creative_animation: "stadium_bounce",
+      splash_sound_variant: "stadium_whistle",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     },
@@ -1117,6 +1120,9 @@ function ArenaAdBoards({ campaigns }: { campaigns: AdCampaign[] }) {
       splash_close_after_seconds: 5,
       splash_frequency_hours: 12,
       splash_creative_url: null,
+      splash_creative_scale: 1,
+      splash_creative_animation: "stadium_bounce",
+      splash_sound_variant: "stadium_whistle",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
@@ -1280,7 +1286,80 @@ function SponsorTargetIcon({ url }: { url?: string | null }) {
   return <Globe2 aria-hidden="true" size={18} />;
 }
 
-function playSponsorWhistle() {
+function makeNoiseBuffer(audio: AudioContext, durationSeconds: number) {
+  const sampleRate = audio.sampleRate;
+  const frameCount = Math.max(1, Math.floor(sampleRate * durationSeconds));
+  const buffer = audio.createBuffer(1, frameCount, sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < frameCount; index += 1) {
+    data[index] = (Math.random() * 2 - 1) * (1 - index / frameCount);
+  }
+  return buffer;
+}
+
+function addCrowdBurst(audio: AudioContext, destination: AudioNode, startAt: number, duration = 1.05, peak = 0.045) {
+  const noise = audio.createBufferSource();
+  noise.buffer = makeNoiseBuffer(audio, duration);
+  const filter = audio.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(980, startAt);
+  filter.frequency.linearRampToValueAtTime(1420, startAt + duration * 0.45);
+  filter.Q.setValueAtTime(0.7, startAt);
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(peak, startAt + 0.08);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(destination);
+  noise.start(startAt);
+  noise.stop(startAt + duration);
+}
+
+function addWhistleTone(audio: AudioContext, destination: AudioNode, startAt: number, peak = 0.075) {
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(peak, startAt + 0.025);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + 0.82);
+  gain.connect(destination);
+
+  const main = audio.createOscillator();
+  main.type = "sine";
+  main.frequency.setValueAtTime(1880, startAt);
+  main.frequency.linearRampToValueAtTime(2440, startAt + 0.16);
+  main.frequency.linearRampToValueAtTime(2120, startAt + 0.36);
+  main.frequency.linearRampToValueAtTime(2580, startAt + 0.56);
+  main.connect(gain);
+  main.start(startAt);
+  main.stop(startAt + 0.82);
+
+  const overtone = audio.createOscillator();
+  overtone.type = "triangle";
+  overtone.frequency.setValueAtTime(2780, startAt + 0.02);
+  overtone.frequency.linearRampToValueAtTime(3260, startAt + 0.18);
+  overtone.frequency.linearRampToValueAtTime(2860, startAt + 0.58);
+  overtone.connect(gain);
+  overtone.start(startAt + 0.02);
+  overtone.stop(startAt + 0.68);
+}
+
+function addKick(audio: AudioContext, destination: AudioNode, startAt: number) {
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(0.06, startAt + 0.014);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + 0.28);
+  gain.connect(destination);
+  const kick = audio.createOscillator();
+  kick.type = "sine";
+  kick.frequency.setValueAtTime(138, startAt);
+  kick.frequency.exponentialRampToValueAtTime(52, startAt + 0.24);
+  kick.connect(gain);
+  kick.start(startAt);
+  kick.stop(startAt + 0.3);
+}
+
+function playSponsorSound(variant: AdCampaign["splash_sound_variant"] = "stadium_whistle") {
+  if (variant === "off") return;
   try {
     const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
@@ -1288,33 +1367,38 @@ function playSponsorWhistle() {
     const now = audio.currentTime;
     const master = audio.createGain();
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.09, now + 0.03);
-    master.gain.exponentialRampToValueAtTime(0.001, now + 0.78);
+    master.gain.exponentialRampToValueAtTime(0.95, now + 0.025);
+    master.gain.exponentialRampToValueAtTime(0.001, now + 1.45);
     master.connect(audio.destination);
+    void audio.resume?.();
 
-    const main = audio.createOscillator();
-    main.type = "sine";
-    main.frequency.setValueAtTime(1920, now);
-    main.frequency.linearRampToValueAtTime(2380, now + 0.16);
-    main.frequency.linearRampToValueAtTime(2100, now + 0.38);
-    main.frequency.linearRampToValueAtTime(2520, now + 0.56);
-    main.connect(master);
-    main.start(now);
-    main.stop(now + 0.78);
+    if (variant === "crowd_goal") {
+      addKick(audio, master, now);
+      addCrowdBurst(audio, master, now + 0.05, 1.35, 0.085);
+    } else {
+      addWhistleTone(audio, master, now, variant === "classic_whistle" ? 0.075 : 0.068);
+      if (variant === "stadium_whistle") {
+        addKick(audio, master, now + 0.04);
+        addCrowdBurst(audio, master, now + 0.12, 1.18, 0.045);
+      }
+    }
 
-    const overtone = audio.createOscillator();
-    overtone.type = "triangle";
-    overtone.frequency.setValueAtTime(2820, now + 0.02);
-    overtone.frequency.linearRampToValueAtTime(3180, now + 0.18);
-    overtone.frequency.linearRampToValueAtTime(2740, now + 0.52);
-    overtone.connect(master);
-    overtone.start(now + 0.02);
-    overtone.stop(now + 0.64);
-
-    window.setTimeout(() => void audio.close(), 1100);
+    window.setTimeout(() => void audio.close(), 1700);
   } catch {
     // Browser audio permissions may block automatic sponsor sounds before user interaction.
   }
+}
+
+function sponsorCreativeScale(campaign: AdCampaign) {
+  const value = Number(campaign.splash_creative_scale ?? 1);
+  if (!Number.isFinite(value)) return 1;
+  return Math.max(0.55, Math.min(1.55, Math.round(value * 100) / 100));
+}
+
+function sponsorCreativeAnimation(campaign: AdCampaign) {
+  const value = campaign.splash_creative_animation ?? "stadium_bounce";
+  if (["none", "soft_zoom", "stadium_bounce", "pulse_glow", "slide_pan"].includes(value)) return value;
+  return "stadium_bounce";
 }
 
 function SponsorSplashOverlay({
@@ -1366,7 +1450,7 @@ function SponsorSplashOverlay({
     markSponsorSplashShown(eligible, userKey);
     setCampaign(eligible);
     setSecondsLeft(Math.max(0, eligible.splash_close_after_seconds ?? 5));
-    window.setTimeout(playSponsorWhistle, 120);
+    window.setTimeout(() => playSponsorSound(eligible.splash_sound_variant ?? "stadium_whistle"), 120);
   }, [campaign, campaigns, enabled, triggerKey, userId]);
 
   useEffect(() => {
@@ -1385,6 +1469,9 @@ function SponsorSplashOverlay({
 
   const logoUrl = campaign.splash_creative_url || campaign.logo_url;
   const closeAllowed = secondsLeft <= 0;
+  const creativeScale = sponsorCreativeScale(campaign);
+  const creativeAnimation = sponsorCreativeAnimation(campaign);
+  const creativeStyle = { "--sponsor-creative-scale": creativeScale } as CSSProperties;
 
   function visitSponsor() {
     if (!campaign) return;
@@ -1411,7 +1498,7 @@ function SponsorSplashOverlay({
         <div className="sponsor-splash__stage" aria-hidden="true">
           <img alt="" className="sponsor-splash__photo" src="/assets/sponsor-yellow-card-hand.webp" />
           <span className="sponsor-splash__card-aura" />
-          <div className="sponsor-splash__brand">
+          <div className={`sponsor-splash__brand sponsor-splash__brand--${creativeAnimation}`} style={creativeStyle}>
             <span className="sponsor-splash__card-label">Sponsor</span>
             {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={46} />}
             <span className="sponsor-splash__card-footer">Fulbito Arena</span>

@@ -364,6 +364,9 @@ export type AdCampaign = {
   splash_close_after_seconds: number;
   splash_frequency_hours: number;
   splash_creative_url: string | null;
+  splash_creative_scale: number;
+  splash_creative_animation: "none" | "soft_zoom" | "stadium_bounce" | "pulse_glow" | "slide_pan";
+  splash_sound_variant: "off" | "classic_whistle" | "stadium_whistle" | "crowd_goal";
   created_at: string;
   updated_at: string;
 };

@@ -308,6 +308,9 @@ export const demoArenaData: ArenaData = {
       splash_close_after_seconds: 5,
       splash_frequency_hours: 12,
       splash_creative_url: null,
+      splash_creative_scale: 1,
+      splash_creative_animation: "stadium_bounce",
+      splash_sound_variant: "stadium_whistle",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     },
@@ -334,6 +337,9 @@ export const demoArenaData: ArenaData = {
       splash_close_after_seconds: 5,
       splash_frequency_hours: 12,
       splash_creative_url: null,
+      splash_creative_scale: 1,
+      splash_creative_animation: "stadium_bounce",
+      splash_sound_variant: "stadium_whistle",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
