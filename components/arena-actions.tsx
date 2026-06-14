@@ -121,6 +121,36 @@ function MediaField({
   );
 }
 
+function VenueGalleryField({
+  previews,
+  onPreviewsChange
+}: {
+  previews: string[];
+  onPreviewsChange: (previews: string[]) => void;
+}) {
+  const [filename, setFilename] = useState("");
+
+  function onFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []).slice(0, 3);
+    setFilename(files.length ? `${files.length} imagen${files.length === 1 ? "" : "es"} seleccionada${files.length === 1 ? "" : "s"}` : "");
+    onPreviewsChange(files.map((file) => URL.createObjectURL(file)));
+  }
+
+  return (
+    <label className="venue-gallery-field">
+      <input accept="image/png,image/jpeg,image/webp" multiple name="venueGalleryFiles" onChange={onFileChange} type="file" />
+      <span className="venue-gallery-field__stack">
+        {previews[0] ? <img alt="" src={previews[0]} /> : <Camera size={20} />}
+        {previews.slice(1, 3).map((preview) => <img alt="" key={preview} src={preview} />)}
+      </span>
+      <span className="venue-gallery-field__copy">
+        <strong>Fotos o logo de la cancha</strong>
+        <small>{filename || "Hasta 3 imagenes. JPG, PNG o WebP; Fulbito las convierte a WebP liviano."}</small>
+      </span>
+    </label>
+  );
+}
+
 function ProofUploadField({
   ready,
   onReady
@@ -170,6 +200,82 @@ function InlineVenuePaymentAccount({ amount }: { amount: number }) {
       </button>
       {copied ? <small>{copied}</small> : null}
     </div>
+  );
+}
+
+function VenueModePreview({
+  mode,
+  surfaces,
+  amount,
+  images = [],
+  name,
+  address,
+  phone
+}: {
+  mode: "simple" | "pro";
+  surfaces: VenueSurfaceValue[];
+  amount?: number;
+  images?: string[];
+  name?: string;
+  address?: string;
+  phone?: string;
+}) {
+  const pro = mode === "pro";
+  const displayName = name?.trim() || (pro ? "Arena Fulbito Norte" : "Cancha del barrio");
+  const displayAddress = address?.trim() || "Direccion visible en el mapa";
+  const displayPhone = phone?.trim() || "WhatsApp visible";
+  const selectedLabels = surfaces
+    .map((surface) => venueSurfaceOptions.find((option) => option.value === surface)?.label ?? surface)
+    .join(" + ");
+
+  return (
+    <section className={`venue-mode-preview venue-mode-preview--${mode}`} aria-live="polite">
+      <div className="venue-mode-preview__copy">
+        <span>{pro ? "Vista Cancha PRO" : "Vista gratis"}</span>
+        <strong>{pro ? "Asi queda publicada destacada" : "Asi queda publicada simple"}</strong>
+        <p>
+          {pro
+            ? "Foto o logo, precios por formato, boton de WhatsApp, mapa destacado y aparicion en carteleria LED."
+            : "Ubicacion real, nombre de la sede y WhatsApp. Sin foto ni publicidad para cuidar storage."}
+        </p>
+      </div>
+      <div className="venue-preview-card" aria-hidden="true">
+        <div className="venue-preview-card__media">
+          <span>{pro ? "PRO" : "GRATIS"}</span>
+          {pro && images[0] ? (
+            <img alt="" src={images[0]} />
+          ) : (
+            <div className="venue-preview-field">
+              <i />
+              <b>{pro ? "FOTO / LOGO" : "PIN"}</b>
+            </div>
+          )}
+        </div>
+        <div className="venue-preview-card__info">
+          <small>{pro ? "Cancha destacada" : "Registro basico"}</small>
+          <strong>{displayName}</strong>
+          <em>{displayAddress}</em>
+          <span>{selectedLabels || "5 vs 5"}</span>
+          <div>
+            <b>{pro && amount ? `${formatPaymentMoney(amount)} / mes` : displayPhone}</b>
+            <b>{pro ? "Precio por hora" : "Mapa 50 km"}</b>
+          </div>
+        </div>
+      </div>
+      {pro ? (
+        <div className="venue-preview-gallery" aria-hidden="true">
+          {[0, 1, 2].map((index) => (
+            <span key={index}>
+              {images[index] ? <img alt="" src={images[index]} /> : <i>{index + 1}</i>}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      <div className="venue-preview-strip" aria-hidden="true">
+        <span>{pro ? "LED SPONSOR" : "SIN LED"}</span>
+        <strong>{pro ? "TU CANCHA EN FULBITO ARENA" : "UBICACION + CONTACTO"}</strong>
+      </div>
+    </section>
   );
 }
 
@@ -469,7 +575,11 @@ export function ArenaActions({
   const [venuePhoneCountryIso, setVenuePhoneCountryIso] = useState<SouthAmericanPhoneCountryIso>(southAmericanPhoneCountries[0].iso);
   const [venueDraft, setVenueDraft] = useState({ name: "", address: "", phone: "" });
   const [venueProofReady, setVenueProofReady] = useState(false);
+  const [venueImagePreviews, setVenueImagePreviews] = useState<string[]>([]);
   const selectedPhoneCountry = getPhoneCountry(venuePhoneCountryIso);
+  const venuePreviewPhone = normalizeVenuePhoneForCountry(venuePhoneCountryIso, venueDraft.phone)
+    ? composeInternationalPhone(venuePhoneCountryIso, normalizeVenuePhoneForCountry(venuePhoneCountryIso, venueDraft.phone))
+    : "";
   const venueProPlan = mergePaymentPlans(data.billingPlans).find((plan) => plan.code === "featured_venue");
   const venueCanSubmit = Boolean(
     venueDraft.name.trim() &&
@@ -494,9 +604,20 @@ export function ArenaActions({
     setVenueDraft((current) => ({ ...current, [field]: value }));
   }
 
+  function updateVenueImagePreviews(nextPreviews: string[]) {
+    setVenueImagePreviews((current) => {
+      current.forEach((preview) => URL.revokeObjectURL(preview));
+      return nextPreviews;
+    });
+  }
+
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
+
+  useEffect(() => () => {
+    venueImagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
+  }, [venueImagePreviews]);
 
   useEffect(() => {
     if (!ownedTeams.length) {
@@ -551,6 +672,22 @@ export function ArenaActions({
     });
     if (error) throw error;
     return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  }
+
+  async function uploadVenueGallery(
+    supabase: ReturnType<typeof createSupabaseBrowserClient>,
+    userId: string,
+    fileValues: FormDataEntryValue[]
+  ) {
+    const files = fileValues
+      .filter((fileValue): fileValue is File => fileValue instanceof File && fileValue.size > 0)
+      .slice(0, 3);
+    const urls: string[] = [];
+    for (const file of files) {
+      const url = await uploadArenaMedia(supabase, "venue-photos", userId, file);
+      if (url) urls.push(url);
+    }
+    return urls;
   }
 
   async function uploadPaymentProof(
@@ -727,6 +864,7 @@ export function ArenaActions({
     if (!address) return setMessage("Carga el domicilio para ubicar bien la cancha en el mapa.");
     const formatPrices = selectedVenueMode === "pro" ? readVenueFormatPrices(formData, selectedModes) : {};
     let coverUrl: string | null = null;
+    let galleryUrls: string[] = [];
     if (selectedVenueMode === "pro") {
       if (!venueProPlan) return setMessage("Cancha Pro no esta disponible en este momento.");
       const proofFile = formData.get("venueProofFile");
@@ -749,9 +887,10 @@ export function ArenaActions({
       if (existingError) return setMessage(existingError.message);
       if (existingRequest) return setMessage("Ya tenes una solicitud de Cancha Pro pendiente. Espera la revision del admin.");
       try {
-        coverUrl = await uploadArenaMedia(supabase, "venue-photos", userId, formData.get("venueCoverFile"));
+        galleryUrls = await uploadVenueGallery(supabase, userId, formData.getAll("venueGalleryFiles"));
+        coverUrl = galleryUrls[0] ?? null;
       } catch (error) {
-        return setMessage(error instanceof Error ? error.message : "No se pudo subir la foto de la cancha.");
+        return setMessage(error instanceof Error ? error.message : "No se pudieron subir las fotos de la cancha.");
       }
     }
     const payload = {
@@ -772,6 +911,7 @@ export function ArenaActions({
       price_per_hour: selectedVenueMode === "pro" ? primaryVenuePrice(formatPrices, selectedModes) : 0,
       inscription_fee: selectedVenueMode === "pro" ? Number(formData.get("reserveFee") || 0) : 0,
       cover_url: coverUrl,
+      gallery_urls: galleryUrls,
       open_hours: selectedVenueMode === "pro" ? String(formData.get("openHours") || "").trim() || null : null,
       status: selectedVenueMode === "pro" ? "pending_pro" : "listed"
     };
@@ -931,6 +1071,15 @@ export function ArenaActions({
               <small>Foto, precios y publicidad</small>
             </button>
           </div>
+          <VenueModePreview
+            address={venueDraft.address}
+            amount={venueProPlan?.amount}
+            images={venueImagePreviews}
+            mode={venueMode}
+            name={venueDraft.name}
+            phone={venuePreviewPhone ?? ""}
+            surfaces={venueSurfaces}
+          />
           <VenueLocationPicker />
           <section className="venue-surface-panel" aria-label="Formato de cancha">
             {venueSurfaces.map((surface) => <input key={surface} name="venueSurface" type="hidden" value={surface} />)}
@@ -969,13 +1118,7 @@ export function ArenaActions({
                 </div>
                 <b>{formatPaymentMoney(venueProPlan.amount)} / mes</b>
               </div>
-              <MediaField
-                accept="image/png,image/jpeg,image/webp"
-                helper="Foto horizontal o logo. Fulbito lo optimiza en WebP liviano."
-                label="Foto o logo de la cancha"
-                name="venueCoverFile"
-                variant="wide"
-              />
+              <VenueGalleryField previews={venueImagePreviews} onPreviewsChange={updateVenueImagePreviews} />
               <section className="venue-format-price-list">
                 <span>Precio por formato seleccionado</span>
                 {venueSurfaces.map((surface) => {

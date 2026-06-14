@@ -59,6 +59,7 @@ export type ArenaVenue = {
   phone_country_code?: string | null;
   phone_national?: string | null;
   cover_url?: string | null;
+  gallery_urls?: string[] | null;
   latitude?: number | null;
   longitude?: number | null;
   price_per_hour: number;

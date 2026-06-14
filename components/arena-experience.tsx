@@ -3103,15 +3103,26 @@ function CompetitionBracket({
 function VenueSpotlight({ venue }: { venue?: ArenaVenue }) {
   if (!venue) return null;
   const whatsappUrl = venueWhatsappUrl(venue.phone);
+  const gallery = (venue.gallery_urls?.length ? venue.gallery_urls : venue.cover_url ? [venue.cover_url] : []).slice(0, 3);
   return (
-    <section className="venue-spotlight">
-      <div>
+    <section className={`venue-spotlight ${gallery.length ? "venue-spotlight--with-gallery" : ""}`}>
+      {gallery.length ? (
+        <div className="venue-spotlight__gallery" aria-label={`Fotos de ${venue.name}`}>
+          <img alt="" src={gallery[0]} />
+          {gallery.length > 1 ? (
+            <div>
+              {gallery.slice(1).map((photo) => <img alt="" key={photo} src={photo} />)}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+      <div className="venue-spotlight__body">
         <span>{venue.status === "verified" ? "Cancha verificada" : "Cancha partner"}</span>
         <h2>{venue.name}</h2>
         <p>{venue.address ?? venue.neighborhood} / {venueSurfaceSummary(venue.field_modes, venue.surface)} / {venue.open_hours ?? "Horario a cargar"}</p>
         {venue.phone ? <small>Contacto: {venue.phone}</small> : null}
       </div>
-      <div>
+      <div className="venue-spotlight__cta">
         <strong>{venuePriceSummary(venue)}<small>{venue.price_per_hour ? "por hora" : "precio"}</small></strong>
         {whatsappUrl ? <a className="venue-contact-link" href={whatsappUrl} rel="noreferrer" target="_blank">Consultar turno</a> : null}
       </div>
