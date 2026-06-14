@@ -1031,6 +1031,7 @@ function YouTubeFollowStrip() {
 
 function AdBoardItem({ campaign }: { campaign: AdCampaign }) {
   const isYouTube = /youtube|youtu\.be/i.test(`${campaign.target_url ?? ""} ${campaign.advertiser_name} ${campaign.headline}`);
+  const targetKind = sponsorTargetKind(campaign.target_url);
   const ledText = `${campaign.headline} ${campaign.body ?? ""}`.trim();
   const shouldScroll = ledText.length > 24;
   const renderMessage = (suffix: string) => (
@@ -1040,7 +1041,8 @@ function AdBoardItem({ campaign }: { campaign: AdCampaign }) {
     </span>
   );
   return (
-    <span className={`arena-ad-board ${shouldScroll ? "is-marquee" : ""}`}>
+    <span className={`arena-ad-board arena-ad-board--${targetKind} ${shouldScroll ? "is-marquee" : ""}`}>
+      <span className="arena-ad-board__signal" />
       {campaign.logo_url || isYouTube ? (
         <span className="arena-ad-board__icon">
           {campaign.logo_url ? <img alt="" src={campaign.logo_url} /> : <YouTubeLogo size={15} />}
@@ -1122,9 +1124,11 @@ function ArenaAdBoards({ campaigns }: { campaigns: AdCampaign[] }) {
 
   return (
     <div aria-hidden="true" className="arena-ad-boards">
+      <div className="arena-ad-boards__rail" />
       <div className="arena-ad-boards__lane arena-ad-boards__lane--front">
         {repeatedCampaigns.map((campaign, index) => <AdBoardItem campaign={campaign} key={`${campaign.id}-${index}`} />)}
       </div>
+      <div className="arena-ad-boards__reflection" />
     </div>
   );
 }
@@ -1220,7 +1224,7 @@ function SponsorTargetIcon({ url }: { url?: string | null }) {
   if (kind === "youtube") return <YouTubeLogo size={18} />;
   if (kind === "instagram") return <span aria-hidden="true" className="sponsor-social-icon sponsor-social-icon--instagram" />;
   if (kind === "facebook") return <span aria-hidden="true" className="sponsor-social-icon sponsor-social-icon--facebook">f</span>;
-  if (kind === "tiktok") return <span aria-hidden="true" className="sponsor-social-icon sponsor-social-icon--tiktok">♪</span>;
+  if (kind === "tiktok") return <span aria-hidden="true" className="sponsor-social-icon sponsor-social-icon--tiktok">T</span>;
   return <Globe2 aria-hidden="true" size={18} />;
 }
 
@@ -1345,10 +1349,16 @@ function SponsorSplashOverlay({
   return (
     <section className="sponsor-splash" aria-label={`Auspicia Fulbito Arena: ${campaign.advertiser_name}`} aria-modal="true" role="dialog">
       <button className="sponsor-splash__hitbox" onClick={visitSponsor} type="button" aria-label={`Abrir sponsor ${campaign.advertiser_name}`} />
+      <span className="sponsor-splash__beam sponsor-splash__beam--left" aria-hidden="true" />
+      <span className="sponsor-splash__beam sponsor-splash__beam--right" aria-hidden="true" />
       <article className="sponsor-splash__card">
-        <span className="sponsor-splash__eyebrow">Auspicia Fulbito Arena</span>
+        <div className="sponsor-splash__match-ribbon">
+          <span className="sponsor-splash__eyebrow">Auspicia Fulbito Arena</span>
+          <span>Publicidad oficial</span>
+        </div>
         <div className="sponsor-splash__stage" aria-hidden="true">
           <img alt="" className="sponsor-splash__photo" src="/assets/sponsor-yellow-card-hand.webp" />
+          <span className="sponsor-splash__card-aura" />
           <div className="sponsor-splash__brand">
             <span className="sponsor-splash__card-label">Sponsor</span>
             {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={46} />}
@@ -1356,6 +1366,7 @@ function SponsorSplashOverlay({
           </div>
         </div>
         <div className="sponsor-splash__copy">
+          <span className="sponsor-splash__presented">Presenta esta jugada</span>
           <strong>{campaign.advertiser_name}</strong>
           <h2>{campaign.headline}</h2>
           {campaign.body ? <p>{campaign.body}</p> : null}
