@@ -4462,30 +4462,80 @@ body::after {
   bottom: calc(86px + env(safe-area-inset-bottom));
   z-index: 1;
   width: min(1180px, 118vw);
-  height: 68px;
+  height: 76px;
   transform: translateX(-50%);
   opacity: .98;
   overflow: hidden;
-  filter: drop-shadow(0 10px 26px rgba(0,0,0,.72));
+  isolation: isolate;
+  filter: drop-shadow(0 12px 30px rgba(0,0,0,.78));
   mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+}
+
+.arena-ad-boards__truss {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  bottom: 47px;
+  height: 10px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255,255,255,.2) 0 2px, transparent 2px 38px),
+    linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.02)),
+    rgba(4,9,17,.72);
+  box-shadow:
+    0 10px 18px rgba(0,0,0,.42),
+    inset 0 1px 0 rgba(255,255,255,.16);
+  transform: perspective(900px) rotateX(54deg);
 }
 
 .arena-ad-boards__rail {
   position: absolute;
-  left: 2%;
-  right: 2%;
-  bottom: 8px;
-  height: 42px;
-  border: 1px solid rgba(255,255,255,.16);
-  border-radius: 7px;
+  left: 1.5%;
+  right: 1.5%;
+  bottom: 7px;
+  height: 48px;
+  border: 1px solid rgba(241,199,91,.25);
+  border-radius: 9px;
   background:
-    linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.03) 34%, rgba(0,0,0,.32)),
-    rgba(3,8,15,.72);
+    radial-gradient(circle at 8% 0, rgba(255,226,133,.18), transparent 30%),
+    radial-gradient(circle at 92% 100%, rgba(52,201,255,.14), transparent 32%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 25px),
+    linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.04) 34%, rgba(0,0,0,.42)),
+    rgba(3,8,15,.82);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.18),
-    inset 0 -12px 18px rgba(0,0,0,.34),
-    0 16px 30px rgba(0,0,0,.4);
-  transform: perspective(760px) rotateX(43deg);
+    inset 0 -14px 20px rgba(0,0,0,.42),
+    0 16px 34px rgba(0,0,0,.5);
+  transform: perspective(860px) rotateX(43deg);
+}
+
+.arena-ad-boards__glow {
+  position: absolute;
+  left: 2%;
+  right: 2%;
+  bottom: 15px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(241,199,91,.22), rgba(52,201,255,.2), rgba(255,64,94,.18), rgba(241,199,91,.22));
+  filter: blur(16px);
+  opacity: .52;
+  animation: arena-board-ambient 6s ease-in-out infinite alternate;
+}
+
+.arena-ad-boards__glass {
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  bottom: 9px;
+  height: 43px;
+  border-radius: 7px;
+  background:
+    linear-gradient(105deg, transparent 0 14%, rgba(255,255,255,.12) 15%, transparent 29%),
+    linear-gradient(180deg, rgba(255,255,255,.16), transparent 38%, rgba(255,255,255,.05));
+  opacity: .55;
+  transform: perspective(860px) rotateX(43deg);
+  mix-blend-mode: screen;
 }
 
 .arena-ad-boards__reflection {
@@ -4493,18 +4543,18 @@ body::after {
   left: 6%;
   right: 6%;
   bottom: 0;
-  height: 11px;
+  height: 12px;
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(241,199,91,.18), transparent 70%);
+  background: radial-gradient(ellipse, rgba(241,199,91,.2), rgba(52,201,255,.1), transparent 72%);
   filter: blur(5px);
-  opacity: .78;
+  opacity: .82;
 }
 
 .arena-ad-boards__lane {
   position: absolute;
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   width: max-content;
   min-width: 220%;
   overflow: visible;
@@ -4513,9 +4563,9 @@ body::after {
 
 .arena-ad-boards__lane--front {
   left: -32%;
-  bottom: 10px;
+  bottom: 13px;
   transform-origin: 50% 100%;
-  animation: arena-board-scroll-front 46s linear infinite;
+  animation: arena-board-scroll-front 54s linear infinite;
 }
 
 .arena-ad-boards .arena-ad-board {
@@ -4523,24 +4573,25 @@ body::after {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 7px;
   flex: 0 0 auto;
-  width: 226px;
-  min-height: 38px;
-  border: 1px solid rgba(241,199,91,.72);
-  border-radius: 6px;
-  padding: 0 12px 0 10px;
+  width: 246px;
+  min-height: 40px;
+  border: 1px solid rgba(241,199,91,.76);
+  border-radius: 7px;
+  padding: 0 12px 0 11px;
   background:
-    radial-gradient(circle at 12% 50%, rgba(255,231,153,.2), transparent 24%),
-    repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 5px),
-    repeating-linear-gradient(0deg, rgba(255,231,153,.08) 0 1px, transparent 1px 4px),
+    radial-gradient(circle at 10% 50%, rgba(255,231,153,.28), transparent 25%),
+    radial-gradient(circle at 92% 0, rgba(52,201,255,.16), transparent 28%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.1) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(255,231,153,.1) 0 1px, transparent 1px 4px),
     linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.035) 38%, rgba(0,0,0,.18)),
-    linear-gradient(90deg, rgba(255,255,255,.2), rgba(255,255,255,.06)),
+    linear-gradient(90deg, rgba(255,255,255,.2), rgba(255,255,255,.04)),
     rgba(2,7,14,.99);
   color: #ffe799;
   font-size: .74rem;
   font-weight: 1000;
-  letter-spacing: .03em;
+  letter-spacing: .02em;
   line-height: 1;
   text-shadow: 0 1px 2px rgba(0,0,0,1), 0 0 12px rgba(255,231,153,.3);
   text-transform: uppercase;
@@ -4549,8 +4600,23 @@ body::after {
   overflow: hidden;
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.18),
-    inset 0 -8px 12px rgba(0,0,0,.26),
-    0 8px 16px rgba(0,0,0,.24);
+    inset 0 -9px 13px rgba(0,0,0,.32),
+    0 9px 18px rgba(0,0,0,.3);
+  clip-path: polygon(5px 0, calc(100% - 5px) 0, 100% 50%, calc(100% - 5px) 100%, 5px 100%, 0 50%);
+}
+
+.arena-ad-boards .arena-ad-board::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 5px;
+  background:
+    linear-gradient(90deg, transparent, rgba(255,255,255,.12), transparent),
+    repeating-linear-gradient(90deg, transparent 0 18px, rgba(255,255,255,.06) 18px 19px);
+  opacity: .54;
+  transform: translateX(-45%);
+  animation: arena-board-sweep 5.2s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .arena-ad-boards .arena-ad-board::after {
@@ -4561,6 +4627,16 @@ body::after {
     linear-gradient(90deg, rgba(255,255,255,.22), transparent 18%, transparent 82%, rgba(255,255,255,.13)),
     radial-gradient(circle at 18% 0, rgba(255,231,153,.24), transparent 30%);
   opacity: .58;
+  pointer-events: none;
+}
+
+.arena-ad-board__edge {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow:
+    inset 4px 0 0 rgba(255,255,255,.12),
+    inset -4px 0 0 rgba(0,0,0,.3);
   pointer-events: none;
 }
 
@@ -4586,6 +4662,25 @@ body::after {
   height: 22px;
   border-radius: 5px;
   background: rgba(0,0,0,.18);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.1),
+    0 0 12px rgba(0,0,0,.22);
+}
+
+.arena-ad-board__tag {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 999px;
+  padding: 4px 6px 3px;
+  background: rgba(0,0,0,.23);
+  color: rgba(255,255,255,.78);
+  font-size: .49rem;
+  font-weight: 1000;
+  letter-spacing: .04em;
+  line-height: 1;
+  text-shadow: none;
 }
 
 .arena-ad-board__viewport {
@@ -4600,7 +4695,7 @@ body::after {
 .arena-ad-board__track {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   max-width: 100%;
   will-change: transform;
   transform: translateZ(0);
@@ -4609,7 +4704,7 @@ body::after {
 .arena-ad-board__message {
   display: inline-flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
 }
 
@@ -4637,7 +4732,7 @@ body::after {
 .arena-ad-board__message small {
   display: inline-block;
   overflow: hidden;
-  max-width: 146px;
+  max-width: 142px;
   text-overflow: ellipsis;
 }
 
@@ -4671,21 +4766,47 @@ body::after {
 .arena-ad-board--youtube {
   border-color: rgba(255,52,78,.72);
   color: #fff2f2;
+  background:
+    radial-gradient(circle at 10% 50%, rgba(255,52,78,.28), transparent 25%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(255,52,78,.1) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.035) 38%, rgba(0,0,0,.18)),
+    rgba(12,3,7,.99);
 }
 
 .arena-ad-board--instagram {
   border-color: rgba(255,104,186,.62);
   color: #ffd8f0;
+  background:
+    radial-gradient(circle at 10% 50%, rgba(255,104,186,.24), transparent 25%),
+    radial-gradient(circle at 90% 0, rgba(255,194,74,.16), transparent 28%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(255,104,186,.1) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.035) 38%, rgba(0,0,0,.18)),
+    rgba(13,4,15,.99);
 }
 
 .arena-ad-board--facebook {
   border-color: rgba(74,152,255,.62);
   color: #dcecff;
+  background:
+    radial-gradient(circle at 10% 50%, rgba(74,152,255,.24), transparent 25%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(74,152,255,.1) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.035) 38%, rgba(0,0,0,.18)),
+    rgba(3,8,18,.99);
 }
 
 .arena-ad-board--tiktok {
   border-color: rgba(52,255,239,.58);
   color: #d9fffb;
+  background:
+    radial-gradient(circle at 10% 50%, rgba(52,255,239,.2), transparent 25%),
+    radial-gradient(circle at 92% 100%, rgba(255,48,91,.16), transparent 28%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.08) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(0deg, rgba(52,255,239,.09) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.035) 38%, rgba(0,0,0,.18)),
+    rgba(2,11,13,.99);
 }
 
 .game-screen {
@@ -4702,6 +4823,17 @@ body::after {
   }
 }
 
+@keyframes arena-board-ambient {
+  from {
+    opacity: .34;
+    transform: translateX(-2%);
+  }
+  to {
+    opacity: .62;
+    transform: translateX(2%);
+  }
+}
+
 @keyframes arena-board-signal {
   0%,
   100% {
@@ -4714,12 +4846,22 @@ body::after {
   }
 }
 
+@keyframes arena-board-sweep {
+  0%,
+  52% {
+    transform: translateX(-55%);
+  }
+  100% {
+    transform: translateX(55%);
+  }
+}
+
 @keyframes arena-board-scroll-front {
   from {
-    transform: translateX(0) perspective(760px) rotateX(43deg);
+    transform: translateX(0) perspective(860px) rotateX(43deg);
   }
   to {
-    transform: translateX(-34%) perspective(760px) rotateX(43deg);
+    transform: translateX(-34%) perspective(860px) rotateX(43deg);
   }
 }
 
@@ -9228,13 +9370,28 @@ body::after,
   .arena-ad-boards {
     bottom: calc(82px + env(safe-area-inset-bottom));
     width: 128vw;
-    height: 58px;
+    height: 62px;
     opacity: .96;
   }
 
+  .arena-ad-boards__truss {
+    bottom: 39px;
+    height: 7px;
+  }
+
   .arena-ad-boards__rail {
+    bottom: 7px;
+    height: 35px;
+  }
+
+  .arena-ad-boards__glow {
+    bottom: 13px;
+    height: 22px;
+  }
+
+  .arena-ad-boards__glass {
     bottom: 8px;
-    height: 34px;
+    height: 33px;
   }
 
   .arena-ad-boards__lane {
@@ -9248,10 +9405,10 @@ body::after,
   }
 
   .arena-ad-boards .arena-ad-board {
-    width: 170px;
-    min-height: 31px;
+    width: 184px;
+    min-height: 32px;
     padding: 0 8px;
-    font-size: .64rem;
+    font-size: .62rem;
   }
 
   .arena-ad-board__signal {
@@ -9262,6 +9419,11 @@ body::after,
   .arena-ad-board__icon {
     width: 18px;
     height: 18px;
+  }
+
+  .arena-ad-board__tag {
+    padding: 3px 5px 2px;
+    font-size: .42rem;
   }
 
   .arena-ad-boards img {
@@ -9275,11 +9437,11 @@ body::after,
 
   .arena-ad-board__message b,
   .arena-ad-board__message small {
-    max-width: 104px;
+    max-width: 94px;
   }
 
   .arena-ad-board.is-marquee .arena-ad-board__track {
-    animation-duration: 12s;
+    animation-duration: 13s;
   }
 
   .draw-live-teaser {
@@ -11378,7 +11540,7 @@ body::after,
 
 .admin-ad-metrics {
   display: grid !important;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
   gap: 7px !important;
 }
 

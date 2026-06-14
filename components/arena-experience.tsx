@@ -1032,6 +1032,7 @@ function YouTubeFollowStrip() {
 function AdBoardItem({ campaign }: { campaign: AdCampaign }) {
   const isYouTube = /youtube|youtu\.be/i.test(`${campaign.target_url ?? ""} ${campaign.advertiser_name} ${campaign.headline}`);
   const targetKind = sponsorTargetKind(campaign.target_url);
+  const targetLabel = sponsorTargetLabel(targetKind);
   const ledText = `${campaign.headline} ${campaign.body ?? ""}`.trim();
   const shouldScroll = ledText.length > 24;
   const renderMessage = (suffix: string) => (
@@ -1042,12 +1043,14 @@ function AdBoardItem({ campaign }: { campaign: AdCampaign }) {
   );
   return (
     <span className={`arena-ad-board arena-ad-board--${targetKind} ${shouldScroll ? "is-marquee" : ""}`}>
+      <span className="arena-ad-board__edge" />
       <span className="arena-ad-board__signal" />
       {campaign.logo_url || isYouTube ? (
         <span className="arena-ad-board__icon">
           {campaign.logo_url ? <img alt="" src={campaign.logo_url} /> : <YouTubeLogo size={15} />}
         </span>
       ) : null}
+      <span className="arena-ad-board__tag">{targetLabel}</span>
       <span className="arena-ad-board__viewport">
         <span className="arena-ad-board__track">
           {renderMessage("primary")}
@@ -1064,7 +1067,7 @@ function AdBoardItem({ campaign }: { campaign: AdCampaign }) {
 }
 
 function ArenaAdBoards({ campaigns }: { campaigns: AdCampaign[] }) {
-  const fallbackCampaigns: AdCampaign[] = [
+  const fallbackCampaigns = useMemo<AdCampaign[]>(() => [
     {
       id: "fallback-fulbito-tv",
       created_by: null,
@@ -1117,17 +1120,58 @@ function ArenaAdBoards({ campaigns }: { campaigns: AdCampaign[] }) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
-  ];
-  const ledCampaigns = campaigns.filter((campaign) => campaign.placement !== "sponsor_splash");
-  const visibleCampaigns = ledCampaigns.length ? ledCampaigns : fallbackCampaigns;
-  const repeatedCampaigns = [...visibleCampaigns, ...visibleCampaigns, ...visibleCampaigns, ...visibleCampaigns];
+  ], []);
+  const ledCampaigns = useMemo(() => campaigns.filter((campaign) => campaign.placement !== "sponsor_splash"), [campaigns]);
+  const visibleCampaigns = useMemo(() => ledCampaigns.length ? ledCampaigns : fallbackCampaigns, [fallbackCampaigns, ledCampaigns]);
+  const repeatedCampaigns = useMemo(() => [...visibleCampaigns, ...visibleCampaigns, ...visibleCampaigns, ...visibleCampaigns], [visibleCampaigns]);
+  const impressionKey = useMemo(() => visibleCampaigns
+    .filter((campaign) => !campaign.id.startsWith("fallback-"))
+    .map((campaign) => campaign.id)
+    .sort()
+    .join("|"), [visibleCampaigns]);
+
+  useEffect(() => {
+    const campaignsToLog = visibleCampaigns.filter((campaign) => !campaign.id.startsWith("fallback-"));
+    if (!campaignsToLog.length) return;
+    const sessionKey = "fulbito:arena-led-impressions";
+    const loggedIds = new Set((window.sessionStorage.getItem(sessionKey) ?? "").split("|").filter(Boolean));
+    const pending = campaignsToLog.filter((campaign) => !loggedIds.has(campaign.id));
+    if (!pending.length) return;
+
+    const anonId = getSponsorDeviceId();
+    const supabase = createSupabaseBrowserClient();
+    const rows = pending.map((campaign) => ({
+      campaign_id: campaign.id,
+      anon_id: anonId,
+      event_type: "impression",
+      placement: "arena_led",
+      source_path: `${window.location.pathname}${window.location.search}`,
+      metadata: {
+        advertiserName: campaign.advertiser_name,
+        headline: campaign.headline,
+        board: "stadium_led"
+      }
+    }));
+    pending.forEach((campaign) => loggedIds.add(campaign.id));
+    window.sessionStorage.setItem(sessionKey, Array.from(loggedIds).join("|"));
+    void (async () => {
+      try {
+        await supabase.from("ad_campaign_events").insert(rows);
+      } catch {
+        // LED metrics must never block navigation or rendering.
+      }
+    })();
+  }, [impressionKey, visibleCampaigns]);
 
   return (
     <div aria-hidden="true" className="arena-ad-boards">
+      <div className="arena-ad-boards__truss" />
       <div className="arena-ad-boards__rail" />
+      <div className="arena-ad-boards__glow" />
       <div className="arena-ad-boards__lane arena-ad-boards__lane--front">
         {repeatedCampaigns.map((campaign, index) => <AdBoardItem campaign={campaign} key={`${campaign.id}-${index}`} />)}
       </div>
+      <div className="arena-ad-boards__glass" />
       <div className="arena-ad-boards__reflection" />
     </div>
   );
@@ -1208,6 +1252,14 @@ function sponsorTargetKind(url?: string | null) {
   if (value.includes("facebook.com") || value.includes("fb.com")) return "facebook";
   if (value.includes("tiktok.com")) return "tiktok";
   return "web";
+}
+
+function sponsorTargetLabel(kind: ReturnType<typeof sponsorTargetKind>) {
+  if (kind === "youtube") return "YouTube";
+  if (kind === "instagram") return "Instagram";
+  if (kind === "facebook") return "Facebook";
+  if (kind === "tiktok") return "TikTok";
+  return "Sponsor";
 }
 
 function sponsorDefaultCta(url?: string | null) {

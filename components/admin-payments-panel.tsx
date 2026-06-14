@@ -556,9 +556,11 @@ export function AdminAdCampaignPanel({
   const [editingId, setEditingId] = useState("");
   const [notice, setNotice] = useState("");
   const metricsByCampaign = useMemo(() => {
-    return events.reduce<Record<string, { impressions: number; clicks: number; dismisses: number }>>((groups, event) => {
-      groups[event.campaign_id] = groups[event.campaign_id] ?? { impressions: 0, clicks: 0, dismisses: 0 };
+    return events.reduce<Record<string, { impressions: number; ledImpressions: number; splashImpressions: number; clicks: number; dismisses: number }>>((groups, event) => {
+      groups[event.campaign_id] = groups[event.campaign_id] ?? { impressions: 0, ledImpressions: 0, splashImpressions: 0, clicks: 0, dismisses: 0 };
       if (event.event_type === "impression") groups[event.campaign_id].impressions += 1;
+      if (event.event_type === "impression" && event.placement === "arena_led") groups[event.campaign_id].ledImpressions += 1;
+      if (event.event_type === "impression" && event.placement === "sponsor_splash") groups[event.campaign_id].splashImpressions += 1;
       if (event.event_type === "click") groups[event.campaign_id].clicks += 1;
       if (event.event_type === "dismiss") groups[event.campaign_id].dismisses += 1;
       return groups;
@@ -769,7 +771,7 @@ export function AdminAdCampaignPanel({
 
       <div className="admin-ad-list">
         {campaigns.length ? campaigns.map((campaign) => {
-          const metrics = metricsByCampaign[campaign.id] ?? { impressions: 0, clicks: 0, dismisses: 0 };
+          const metrics = metricsByCampaign[campaign.id] ?? { impressions: 0, ledImpressions: 0, splashImpressions: 0, clicks: 0, dismisses: 0 };
           const ctr = metrics.impressions ? Math.round((metrics.clicks / metrics.impressions) * 1000) / 10 : 0;
           const isSplash = campaign.splash_enabled || campaign.placement === "sponsor_splash" || campaign.placement === "both";
           const placementLabel = campaign.placement === "both" ? "LED + Splash" : campaign.placement === "sponsor_splash" ? "Splash" : "LED";
@@ -790,14 +792,13 @@ export function AdminAdCampaignPanel({
               <small>
                 {localDateTime(campaign.starts_at) || "sin inicio"} / {localDateTime(campaign.ends_at) || "sin vencimiento"}
               </small>
-              {isSplash ? (
-                <div className="admin-ad-metrics">
-                  <span><strong>{metrics.impressions}</strong> vistas</span>
-                  <span><strong>{metrics.clicks}</strong> clicks</span>
-                  <span><strong>{ctr}%</strong> CTR</span>
-                  <span><strong>{campaign.splash_frequency_hours ?? 12}h</strong> frecuencia</span>
-                </div>
-              ) : null}
+              <div className="admin-ad-metrics">
+                <span><strong>{metrics.ledImpressions}</strong> LED</span>
+                <span><strong>{metrics.splashImpressions}</strong> Splash</span>
+                <span><strong>{metrics.clicks}</strong> clicks</span>
+                <span><strong>{ctr}%</strong> CTR</span>
+                {isSplash ? <span><strong>{campaign.splash_frequency_hours ?? 12}h</strong> frecuencia</span> : null}
+              </div>
               <div className="admin-ad-actions">
                 <button disabled={busyId === campaign.id || campaign.status === "active"} onClick={() => updateCampaignStatus(campaign, "active")} type="button">Activar</button>
                 <button disabled={busyId === campaign.id || campaign.status === "paused"} onClick={() => updateCampaignStatus(campaign, "paused")} type="button">Pausar</button>
