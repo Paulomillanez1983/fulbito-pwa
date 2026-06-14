@@ -1286,24 +1286,74 @@ function SponsorTargetIcon({ url }: { url?: string | null }) {
   return <Globe2 aria-hidden="true" size={18} />;
 }
 
-function makeNoiseBuffer(audio: AudioContext, durationSeconds: number) {
+function makeNoiseBuffer(audio: AudioContext, durationSeconds: number, decay = true) {
   const sampleRate = audio.sampleRate;
   const frameCount = Math.max(1, Math.floor(sampleRate * durationSeconds));
   const buffer = audio.createBuffer(1, frameCount, sampleRate);
   const data = buffer.getChannelData(0);
   for (let index = 0; index < frameCount; index += 1) {
-    data[index] = (Math.random() * 2 - 1) * (1 - index / frameCount);
+    const envelope = decay ? 1 - index / frameCount : 1;
+    data[index] = (Math.random() * 2 - 1) * envelope;
   }
   return buffer;
 }
 
-function addCrowdBurst(audio: AudioContext, destination: AudioNode, startAt: number, duration = 1.05, peak = 0.045) {
+function connectWithPan(audio: AudioContext, node: AudioNode, destination: AudioNode, pan = 0) {
+  if (typeof audio.createStereoPanner === "function") {
+    const panner = audio.createStereoPanner();
+    panner.pan.setValueAtTime(Math.max(-1, Math.min(1, pan)), audio.currentTime);
+    node.connect(panner);
+    panner.connect(destination);
+    return;
+  }
+  node.connect(destination);
+}
+
+function addFilteredNoise(
+  audio: AudioContext,
+  destination: AudioNode,
+  startAt: number,
+  duration: number,
+  peak: number,
+  type: BiquadFilterType,
+  frequency: number,
+  q = 0.7,
+  pan = 0,
+  decay = false
+) {
   const noise = audio.createBufferSource();
-  noise.buffer = makeNoiseBuffer(audio, duration);
+  noise.buffer = makeNoiseBuffer(audio, duration, decay);
+  const filter = audio.createBiquadFilter();
+  filter.type = type;
+  filter.frequency.setValueAtTime(frequency, startAt);
+  filter.Q.setValueAtTime(q, startAt);
+  const gain = audio.createGain();
+  gain.gain.setValueAtTime(0.0001, startAt);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), startAt + 0.035);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
+  noise.connect(filter);
+  filter.connect(gain);
+  connectWithPan(audio, gain, destination, pan);
+  noise.start(startAt);
+  noise.stop(startAt + duration);
+}
+
+function addCrowdBurst(
+  audio: AudioContext,
+  destination: AudioNode,
+  startAt: number,
+  duration = 1.05,
+  peak = 0.045,
+  pan = 0,
+  frequencyStart = 980,
+  frequencyEnd = 1420
+) {
+  const noise = audio.createBufferSource();
+  noise.buffer = makeNoiseBuffer(audio, duration, false);
   const filter = audio.createBiquadFilter();
   filter.type = "bandpass";
-  filter.frequency.setValueAtTime(980, startAt);
-  filter.frequency.linearRampToValueAtTime(1420, startAt + duration * 0.45);
+  filter.frequency.setValueAtTime(frequencyStart, startAt);
+  filter.frequency.linearRampToValueAtTime(frequencyEnd, startAt + duration * 0.45);
   filter.Q.setValueAtTime(0.7, startAt);
   const gain = audio.createGain();
   gain.gain.setValueAtTime(0.0001, startAt);
@@ -1311,36 +1361,48 @@ function addCrowdBurst(audio: AudioContext, destination: AudioNode, startAt: num
   gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
   noise.connect(filter);
   filter.connect(gain);
-  gain.connect(destination);
+  connectWithPan(audio, gain, destination, pan);
   noise.start(startAt);
   noise.stop(startAt + duration);
 }
 
-function addWhistleTone(audio: AudioContext, destination: AudioNode, startAt: number, peak = 0.075) {
+function addWhistleTone(audio: AudioContext, destination: AudioNode, startAt: number, peak = 0.075, duration = 0.82) {
   const gain = audio.createGain();
   gain.gain.setValueAtTime(0.0001, startAt);
   gain.gain.exponentialRampToValueAtTime(peak, startAt + 0.025);
-  gain.gain.exponentialRampToValueAtTime(0.001, startAt + 0.82);
-  gain.connect(destination);
+  gain.gain.exponentialRampToValueAtTime(0.001, startAt + duration);
+  connectWithPan(audio, gain, destination, -0.08);
 
   const main = audio.createOscillator();
   main.type = "sine";
   main.frequency.setValueAtTime(1880, startAt);
-  main.frequency.linearRampToValueAtTime(2440, startAt + 0.16);
-  main.frequency.linearRampToValueAtTime(2120, startAt + 0.36);
-  main.frequency.linearRampToValueAtTime(2580, startAt + 0.56);
+  main.frequency.linearRampToValueAtTime(2440, startAt + duration * 0.2);
+  main.frequency.linearRampToValueAtTime(2120, startAt + duration * 0.48);
+  main.frequency.linearRampToValueAtTime(2580, startAt + duration * 0.74);
   main.connect(gain);
   main.start(startAt);
-  main.stop(startAt + 0.82);
+  main.stop(startAt + duration);
+
+  const vibrato = audio.createOscillator();
+  vibrato.type = "sine";
+  vibrato.frequency.setValueAtTime(17, startAt);
+  const vibratoDepth = audio.createGain();
+  vibratoDepth.gain.setValueAtTime(22, startAt);
+  vibrato.connect(vibratoDepth);
+  vibratoDepth.connect(main.frequency);
+  vibrato.start(startAt);
+  vibrato.stop(startAt + duration);
 
   const overtone = audio.createOscillator();
   overtone.type = "triangle";
   overtone.frequency.setValueAtTime(2780, startAt + 0.02);
-  overtone.frequency.linearRampToValueAtTime(3260, startAt + 0.18);
-  overtone.frequency.linearRampToValueAtTime(2860, startAt + 0.58);
+  overtone.frequency.linearRampToValueAtTime(3260, startAt + duration * 0.26);
+  overtone.frequency.linearRampToValueAtTime(2860, startAt + duration * 0.72);
   overtone.connect(gain);
   overtone.start(startAt + 0.02);
-  overtone.stop(startAt + 0.68);
+  overtone.stop(startAt + Math.max(0.28, duration * 0.86));
+
+  addFilteredNoise(audio, destination, startAt + 0.01, Math.min(0.48, duration * 0.72), peak * 0.28, "highpass", 2700, 0.45, 0.08, true);
 }
 
 function addKick(audio: AudioContext, destination: AudioNode, startAt: number) {
@@ -1356,6 +1418,7 @@ function addKick(audio: AudioContext, destination: AudioNode, startAt: number) {
   kick.connect(gain);
   kick.start(startAt);
   kick.stop(startAt + 0.3);
+  addFilteredNoise(audio, destination, startAt + 0.002, 0.09, 0.018, "highpass", 1150, 0.42, 0, true);
 }
 
 function playSponsorSound(variant: AdCampaign["splash_sound_variant"] = "stadium_whistle") {
@@ -1364,26 +1427,56 @@ function playSponsorSound(variant: AdCampaign["splash_sound_variant"] = "stadium
     const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
     const audio = new AudioContextClass();
-    const now = audio.currentTime;
+    const now = audio.currentTime + 0.02;
     const master = audio.createGain();
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.95, now + 0.025);
-    master.gain.exponentialRampToValueAtTime(0.001, now + 1.45);
-    master.connect(audio.destination);
+    master.gain.exponentialRampToValueAtTime(0.86, now + 0.025);
+    master.gain.exponentialRampToValueAtTime(0.001, now + 2.05);
+
+    const compressor = audio.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-18, now);
+    compressor.knee.setValueAtTime(18, now);
+    compressor.ratio.setValueAtTime(5, now);
+    compressor.attack.setValueAtTime(0.006, now);
+    compressor.release.setValueAtTime(0.18, now);
+
+    const dry = audio.createGain();
+    dry.gain.setValueAtTime(0.82, now);
+    const delay = audio.createDelay(0.65);
+    delay.delayTime.setValueAtTime(0.115, now);
+    const wet = audio.createGain();
+    wet.gain.setValueAtTime(0.13, now);
+    const feedback = audio.createGain();
+    feedback.gain.setValueAtTime(0.18, now);
+
+    master.connect(compressor);
+    compressor.connect(dry);
+    dry.connect(audio.destination);
+    compressor.connect(delay);
+    delay.connect(wet);
+    wet.connect(audio.destination);
+    delay.connect(feedback);
+    feedback.connect(delay);
     void audio.resume?.();
 
     if (variant === "crowd_goal") {
       addKick(audio, master, now);
-      addCrowdBurst(audio, master, now + 0.05, 1.35, 0.085);
+      addCrowdBurst(audio, master, now + 0.04, 1.75, 0.082, -0.55, 720, 1180);
+      addCrowdBurst(audio, master, now + 0.11, 1.9, 0.074, 0.48, 1040, 1620);
+      addCrowdBurst(audio, master, now + 0.2, 1.55, 0.052, 0.04, 1560, 2200);
+      addFilteredNoise(audio, master, now + 0.16, 0.42, 0.02, "highpass", 2600, 0.5, 0.2, true);
     } else {
-      addWhistleTone(audio, master, now, variant === "classic_whistle" ? 0.075 : 0.068);
+      addWhistleTone(audio, master, now, variant === "classic_whistle" ? 0.074 : 0.066, variant === "classic_whistle" ? 0.78 : 0.7);
       if (variant === "stadium_whistle") {
         addKick(audio, master, now + 0.04);
-        addCrowdBurst(audio, master, now + 0.12, 1.18, 0.045);
+        addWhistleTone(audio, master, now + 0.34, 0.034, 0.36);
+        addCrowdBurst(audio, master, now + 0.1, 1.35, 0.044, -0.5, 780, 1320);
+        addCrowdBurst(audio, master, now + 0.24, 1.42, 0.038, 0.52, 1240, 1720);
+        addFilteredNoise(audio, master, now + 0.42, 0.32, 0.014, "highpass", 3100, 0.55, 0.14, true);
       }
     }
 
-    window.setTimeout(() => void audio.close(), 1700);
+    window.setTimeout(() => void audio.close(), 2500);
   } catch {
     // Browser audio permissions may block automatic sponsor sounds before user interaction.
   }
@@ -1587,7 +1680,8 @@ function UserMenu({
   const [open, setOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [origin, setOrigin] = useState("");
-  const [menuRequests, setMenuRequests] = useState(paymentRequests);
+  const ownInitialRequests = useMemo(() => paymentRequests.filter((request) => !user || request.requester_id === user.id), [paymentRequests, user?.id]);
+  const [menuRequests, setMenuRequests] = useState(ownInitialRequests);
   const freshRequests = useMemo(() => menuRequests.filter((request) => isFreshNotification(request)), [menuRequests]);
   const approvedCount = freshRequests.filter((request) => request.status === "approved").length;
   const pendingCount = freshRequests.filter((request) => request.status === "pending_review").length;
@@ -1604,16 +1698,18 @@ function UserMenu({
   }, [approvedCount, user]);
 
   useEffect(() => {
-    setMenuRequests(paymentRequests);
-  }, [paymentRequests]);
+    setMenuRequests(ownInitialRequests);
+  }, [ownInitialRequests]);
 
   useEffect(() => {
     if (!user) return;
+    const currentUserId = user.id;
     let mounted = true;
 
     function handleCreated(event: Event) {
       const request = (event as CustomEvent<PaymentRequest>).detail;
       if (!request) return;
+      if (request.requester_id !== currentUserId) return;
       setMenuRequests((current) => [request, ...current.filter((item) => item.id !== request.id)]);
       setNotificationsOpen(true);
       setOpen(false);
@@ -1624,6 +1720,7 @@ function UserMenu({
       const { data: nextRequests } = await supabase
         .from("payment_requests")
         .select("*")
+        .eq("requester_id", currentUserId)
         .order("created_at", { ascending: false })
         .limit(40);
       if (mounted && nextRequests) setMenuRequests(nextRequests as PaymentRequest[]);

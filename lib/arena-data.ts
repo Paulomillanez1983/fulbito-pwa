@@ -84,7 +84,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       friendlyQuery,
       user || normalizedJoinCode ? supabase.from("tournament_teams").select("tournament_id,team_id,group_code,seed,status,created_at") : emptyResult,
       user || normalizedJoinCode ? supabase.from("tournament_draws").select("*").order("created_at", { ascending: false }) : emptyResult,
-      user ? supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(12) : emptyResult,
+      user ? supabase.from("payment_requests").select("*").eq("requester_id", user.id).order("created_at", { ascending: false }).limit(12) : emptyResult,
       user ? supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(80) : emptyResult,
       user ? supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }) : emptyResult,
       supabase.from("billing_plan_settings").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
@@ -221,6 +221,12 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       ? matches.filter((match) => match.tournament_id === activeTournament?.id && (match.phase === "groups" || match.phase === "league"))
       : matches;
 
+    const paymentRequests = ((paymentRequestsResult.data ?? []) as PaymentRequest[])
+      .filter((request) => !user || request.requester_id === user.id);
+    const paymentRequestIds = new Set(paymentRequests.map((request) => request.id));
+    const paymentMessages = ((paymentMessagesResult.data ?? []) as PaymentMessage[])
+      .filter((message) => paymentRequestIds.has(message.payment_request_id));
+
     return {
       source: "supabase",
       configured: true,
@@ -235,8 +241,8 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       matches,
       friendlyMatches,
       standings: computeStandings(standingsTeams, standingsMatches),
-      paymentRequests: (paymentRequestsResult.data ?? []) as PaymentRequest[],
-      paymentMessages: (paymentMessagesResult.data ?? []) as PaymentMessage[],
+      paymentRequests,
+      paymentMessages,
       entitlements: (entitlementsResult.data ?? []) as AccountEntitlement[],
       billingPlans: (billingPlansResult.data ?? []) as BillingPlanSetting[],
       adCampaigns: (adCampaignsResult.data ?? []) as AdCampaign[],
