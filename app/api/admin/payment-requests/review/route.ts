@@ -86,6 +86,14 @@ export async function POST(request: NextRequest) {
         }, { onConflict: "user_id,tournament_id" });
       if (livePermissionError) return NextResponse.json({ error: livePermissionError.message }, { status: 400 });
     }
+
+    if (existing.plan_code === "featured_venue" && existing.target_type === "venue" && existing.target_id) {
+      const { error: venueError } = await supabase
+        .from("venues")
+        .update({ status: "verified" })
+        .eq("id", existing.target_id);
+      if (venueError) return NextResponse.json({ error: venueError.message }, { status: 400 });
+    }
   }
 
   const messageBody = status === "approved"

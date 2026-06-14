@@ -11751,6 +11751,166 @@ body::after,
   color: #d7fbff;
 }
 
+.admin-venues-shell {
+  width: min(1160px, calc(100% - 24px));
+}
+
+.admin-venues-dashboard {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.admin-venue-requests,
+.admin-venues-list-panel {
+  border-color: rgba(52,201,255,.18);
+}
+
+.admin-venue-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-venue-card {
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 84% 0, rgba(52,201,255,.12), transparent 30%),
+    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,.025)),
+    rgba(5, 10, 18, .78);
+  box-shadow: 0 18px 42px rgba(0,0,0,.22);
+}
+
+.admin-venue-card.is-pro {
+  border-color: rgba(241,199,91,.36);
+  box-shadow:
+    0 18px 44px rgba(0,0,0,.28),
+    0 0 0 1px rgba(241,199,91,.08) inset;
+}
+
+.admin-venue-cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 170px;
+  background:
+    linear-gradient(135deg, rgba(52,201,255,.13), transparent 38%),
+    radial-gradient(circle at 50% 50%, rgba(241,199,91,.1), transparent 34%),
+    rgba(2, 6, 12, .82);
+  color: rgba(255,255,255,.72);
+}
+
+.admin-venue-cover img {
+  display: block;
+  width: 100%;
+  height: 190px;
+  object-fit: cover;
+}
+
+.admin-venue-cover b {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  border: 1px solid rgba(241,199,91,.36);
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: rgba(5, 9, 17, .74);
+  color: #ffe39a;
+  font-size: .72rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+
+.admin-venue-card form {
+  display: grid;
+  gap: 11px;
+  padding: 12px;
+}
+
+.admin-venue-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-venue-card header span {
+  display: inline-flex;
+  width: max-content;
+  max-width: 100%;
+  border: 1px solid rgba(52,201,255,.22);
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: rgba(52,201,255,.08);
+  color: #9df6ff;
+  font-size: .7rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.admin-venue-card h3,
+.admin-venue-card small {
+  display: block;
+  margin: 0;
+}
+
+.admin-venue-card h3 {
+  margin-top: 6px;
+  color: #fff8e8;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+}
+
+.admin-venue-card small {
+  color: var(--muted);
+}
+
+.admin-venue-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.admin-venue-fields input,
+.admin-venue-fields select {
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 11px;
+  padding: 0 11px;
+  background: rgba(2, 6, 12, .66);
+  color: var(--ink);
+  font: inherit;
+}
+
+.admin-venue-fields select {
+  color: #fff8e8;
+}
+
+.admin-venue-photo-field {
+  grid-column: 1 / -1;
+}
+
+.admin-venue-card button[type="submit"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border: 1px solid rgba(241,199,91,.34);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255,231,134,.96), rgba(184,116,27,.95));
+  color: #05070b;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.admin-venue-card button[type="submit"]:disabled {
+  cursor: wait;
+  opacity: .62;
+}
+
 .admin-team-audit {
   display: grid;
   gap: 12px;
@@ -12300,6 +12460,8 @@ body::after,
   .admin-live-channels,
   .admin-team-summary,
   .admin-team-grid,
+  .admin-venue-grid,
+  .admin-venue-fields,
   .admin-request-tabs,
   .admin-review-toolbar {
     grid-template-columns: 1fr;

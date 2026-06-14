@@ -158,6 +158,7 @@ export function AdminAdvertisingPanel({
         </a>
         <div className="admin-topbar-actions">
           <span>Admin activo</span>
+          <a href="/admin/canchas">Canchas</a>
           <a href="/admin">Panel completo</a>
           <a href="/">Ver app</a>
         </div>
@@ -170,6 +171,7 @@ export function AdminAdvertisingPanel({
         <div className="admin-hero-actions">
           <a href="#solicitudes">Solicitudes</a>
           <a href="#publicidad">Publicar sponsor</a>
+          <a href="/admin/canchas">Gestionar canchas</a>
         </div>
       </section>
 

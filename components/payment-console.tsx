@@ -797,7 +797,7 @@ function FeaturedVenueForm({
             phone: String(form.get("phone") || "").trim() || null,
             surface: String(form.get("surface") || "").trim() || "Sintetico",
             price_per_hour: Number(form.get("pricePerHour") || 0),
-            status: "pending"
+            status: "pending_pro"
           })
           .select("id,name")
           .single();

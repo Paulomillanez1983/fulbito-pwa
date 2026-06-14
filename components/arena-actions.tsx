@@ -484,14 +484,6 @@ export function ArenaActions({
     }
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Entra con Google para continuar.");
-    let coverUrl: string | null = null;
-    if (selectedVenueMode === "pro") {
-      try {
-        coverUrl = await uploadArenaMedia(supabase, "venue-photos", userId, formData.get("venuePhoto"));
-      } catch (error) {
-        return setMessage(error instanceof Error ? error.message : "No se pudo subir la foto de cancha.");
-      }
-    }
     const payload = {
       owner_id: userId,
       name,
@@ -504,11 +496,14 @@ export function ArenaActions({
       longitude,
       price_per_hour: selectedVenueMode === "pro" ? Number(formData.get("pricePerHour") || 0) : 0,
       inscription_fee: selectedVenueMode === "pro" ? Number(formData.get("inscriptionFee") || 0) : 0,
-      cover_url: coverUrl,
-      status: "pending"
+      cover_url: null,
+      status: selectedVenueMode === "pro" ? "pending_pro" : "listed"
     };
     const { error } = await supabase.from("venues").insert(payload);
-    setMessage(error ? error.message : selectedVenueMode === "pro" ? "Cancha Pro registrada. Queda pendiente de verificacion." : "Cancha registrada gratis. Queda pendiente de verificacion.");
+    if (!error && selectedVenueMode === "pro") {
+      window.setTimeout(() => window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "featured_venue" })), 250);
+    }
+    setMessage(error ? error.message : selectedVenueMode === "pro" ? "Cancha cargada como pendiente Pro. Envia el comprobante desde Cancha Pro para que admin valide pago y foto." : "Cancha registrada gratis. Ya queda visible con ubicacion, nombre y WhatsApp.");
   }
 
   async function submitResult(formData: FormData) {
@@ -657,7 +652,10 @@ export function ArenaActions({
             )}
           </div>
           {venueMode === "pro" ? (
-            <MediaField accept="image/png,image/jpeg,image/webp" helper="Foto horizontal optimizada para portada y LED." label="Foto de la cancha" name="venuePhoto" variant="wide" />
+            <div className="pro-lock-note">
+              <strong>Foto gestionada por admin</strong>
+              <span>Primero registra la sede y adjunta el comprobante en Cancha Pro. Fulbito valida el pago, optimiza la imagen y la publica en mapa/LED.</span>
+            </div>
           ) : (
             <div className="pro-lock-note">
               <strong>Sin fotos en registro gratis</strong>
