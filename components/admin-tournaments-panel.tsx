@@ -228,6 +228,8 @@ export function AdminTournamentsPanel({
   const [query, setQuery] = useState("");
   const [zone, setZone] = useState("all");
   const [sort, setSort] = useState<TournamentSort>("recent");
+  const [busyReminderId, setBusyReminderId] = useState("");
+  const [notice, setNotice] = useState("");
 
   const profileMap = useMemo(() => new Map(profiles.map((profile) => [profile.id, profile])), [profiles]);
   const venueMap = useMemo(() => new Map(venues.map((venue) => [venue.id, venue])), [venues]);
@@ -353,6 +355,25 @@ export function AdminTournamentsPanel({
     });
   }, [bucket, query, sort, tournamentRows, zone]);
 
+  async function sendTournamentReminder(tournamentId: string) {
+    setNotice("");
+    setBusyReminderId(tournamentId);
+    try {
+      const response = await fetch("/api/admin/notifications", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "tournament_reminder", tournamentId })
+      });
+      const result = (await response.json()) as { sent?: number; error?: string };
+      if (!response.ok) throw new Error(result.error || "No se pudo enviar el recordatorio.");
+      setNotice(`Recordatorio enviado a ${result.sent ?? 0} integrante${(result.sent ?? 0) === 1 ? "" : "s"} del torneo.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "No se pudo enviar el recordatorio.");
+    } finally {
+      setBusyReminderId("");
+    }
+  }
+
   return (
     <main className="admin-shell admin-tournaments-shell">
       <a className="admin-floating-app-link" href="/">Ver app</a>
@@ -367,6 +388,7 @@ export function AdminTournamentsPanel({
         <div className="admin-topbar-actions">
           <span>Admin activo</span>
           <a href="/admin">Panel completo</a>
+          <a href="/admin/precios">Precios</a>
           <a href="/admin/publicidad">Publicidad</a>
           <a href="/admin/canchas">Canchas</a>
           <a href="/">Ver app</a>
@@ -380,6 +402,7 @@ export function AdminTournamentsPanel({
         <div className="admin-hero-actions">
           <a href="#torneos">Ver torneos</a>
           <a href="#ranking">Ranking deportivo</a>
+          <a href="/admin/precios">Precios y renovacion</a>
           <a href="/admin">Pagos y resultados</a>
         </div>
       </section>
@@ -436,6 +459,8 @@ export function AdminTournamentsPanel({
         </div>
       </section>
 
+      {notice ? <p className="admin-notice">{notice}</p> : null}
+
       <section className="admin-tournament-grid">
         {visibleRows.length ? visibleRows.map((row) => {
           const status = statusCopy[row.tournament.status] ?? { label: row.tournament.status, tone: "pending" };
@@ -465,6 +490,13 @@ export function AdminTournamentsPanel({
                 <span className={row.hasTournamentPro ? "is-pro" : ""}>{row.hasTournamentPro ? "Torneo Pro activo" : "Sin Torneo Pro activo"}</span>
                 <span>{row.officialDraw ? "Sorteo oficial guardado" : "Sin sorteo oficial"}</span>
                 <span>{row.tournament.starts_on ? `Inicio ${formatDate(row.tournament.starts_on)}` : "Sin fecha de inicio"}</span>
+              </div>
+
+              <div className="admin-tournament-actions">
+                <button disabled={busyReminderId === row.tournament.id || row.enrolledTeams.length === 0} onClick={() => sendTournamentReminder(row.tournament.id)} type="button">
+                  {busyReminderId === row.tournament.id ? "Enviando..." : "Enviar recordatorio"}
+                </button>
+                <small>{row.enrolledTeams.length ? "Notifica organizador, equipos y jugadores." : "Sin equipos para notificar."}</small>
               </div>
 
               <section className="admin-tournament-champion">

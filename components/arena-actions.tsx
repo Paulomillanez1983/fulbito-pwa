@@ -580,7 +580,7 @@ export function ArenaActions({
   const venuePreviewPhone = normalizeVenuePhoneForCountry(venuePhoneCountryIso, venueDraft.phone)
     ? composeInternationalPhone(venuePhoneCountryIso, normalizeVenuePhoneForCountry(venuePhoneCountryIso, venueDraft.phone))
     : "";
-  const venueProPlan = mergePaymentPlans(data.billingPlans).find((plan) => plan.code === "featured_venue");
+  const venueProPlan = mergePaymentPlans(data.billingPlans, data.billingPromotions).find((plan) => plan.code === "featured_venue");
   const venueCanSubmit = Boolean(
     venueDraft.name.trim() &&
     venueDraft.address.trim() &&

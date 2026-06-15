@@ -357,6 +357,41 @@ export type BillingPlanSetting = {
   updated_at: string;
 };
 
+export type BillingPromotion = {
+  id: string;
+  plan_code: BillingPlanCode;
+  title: string;
+  badge: string;
+  description: string | null;
+  discount_type: "percent" | "fixed";
+  discount_value: number;
+  applies_to_renewals: boolean;
+  is_active: boolean;
+  starts_at: string;
+  ends_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UserNotification = {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  notification_type: string;
+  target_type: string | null;
+  target_id: string | null;
+  action_url: string | null;
+  priority: "low" | "normal" | "high";
+  status: "unread" | "read" | "dismissed";
+  metadata: Record<string, unknown>;
+  created_by: string | null;
+  expires_at: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
 export type AdCampaign = {
   id: string;
   created_by: string | null;
@@ -417,6 +452,8 @@ export type ArenaData = {
   paymentMessages: PaymentMessage[];
   entitlements: AccountEntitlement[];
   billingPlans: BillingPlanSetting[];
+  billingPromotions: BillingPromotion[];
+  userNotifications: UserNotification[];
   adCampaigns: AdCampaign[];
   liveChannels: LiveStreamChannel[];
   livePermissions: LiveStreamPermission[];

@@ -41,7 +41,7 @@ import { roleCatalog } from "@/lib/demo";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { getKnockoutBracketSize } from "@/lib/tournament-structure";
-import type { AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, FieldMode, FriendlyMatch, LiveStreamEvent, LiveStreamMode, PaymentRequest } from "@/lib/types";
+import type { AccountEntitlement, AdCampaign, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, FieldMode, FriendlyMatch, LiveStreamEvent, LiveStreamMode, PaymentRequest, UserNotification } from "@/lib/types";
 import { primaryVenuePrice, venueSurfaceSummary, venueSurfacesFromStored } from "@/lib/venue-options";
 
 type TabId = "home" | "matches" | "league" | "squad" | "venues";
@@ -1784,6 +1784,27 @@ function isFreshNotification(request: PaymentRequest, maxDays = 30) {
   return Date.now() - createdAt <= maxDays * 24 * 60 * 60 * 1000;
 }
 
+function isNotificationVisible(notification: UserNotification) {
+  if (notification.status === "dismissed") return false;
+  if (!notification.expires_at) return true;
+  const expiresAt = new Date(notification.expires_at).getTime();
+  return !Number.isFinite(expiresAt) || expiresAt > Date.now();
+}
+
+function entitlementDaysRemaining(entitlement: AccountEntitlement) {
+  if (!entitlement.expires_at) return null;
+  const diff = new Date(entitlement.expires_at).getTime() - Date.now();
+  if (!Number.isFinite(diff)) return null;
+  return Math.ceil(diff / 86400000);
+}
+
+function entitlementNoticeTitle(entitlement: AccountEntitlement) {
+  if (entitlement.plan_code === "tournament_pro") return "Torneo Pro";
+  if (entitlement.plan_code === "team_pro") return "Equipo Pro";
+  if (entitlement.plan_code === "featured_venue") return "Cancha Pro";
+  return "Sponsor";
+}
+
 function tournamentInviteCode(activeTournament: ArenaTournament | null, request: PaymentRequest) {
   if (request.target_type !== "tournament") return "";
   if (activeTournament?.id === request.target_id) return activeTournament.slug;
@@ -1796,6 +1817,8 @@ function UserMenu({
   team,
   activeTournament,
   paymentRequests,
+  entitlements,
+  userNotifications,
   onLogin
 }: {
   user: ArenaData["user"];
@@ -1803,6 +1826,8 @@ function UserMenu({
   team?: ArenaTeam | null;
   activeTournament: ArenaTournament | null;
   paymentRequests: PaymentRequest[];
+  entitlements: AccountEntitlement[];
+  userNotifications: UserNotification[];
   onLogin: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1811,10 +1836,47 @@ function UserMenu({
   const ownInitialRequests = useMemo(() => paymentRequests.filter((request) => !user || request.requester_id === user.id), [paymentRequests, user?.id]);
   const [menuRequests, setMenuRequests] = useState(ownInitialRequests);
   const freshRequests = useMemo(() => menuRequests.filter((request) => isFreshNotification(request)), [menuRequests]);
+  const visibleUserNotifications = useMemo(() => userNotifications.filter(isNotificationVisible), [userNotifications]);
+  const renewalNotices = useMemo(() => {
+    if (!user) return [];
+    return entitlements
+      .filter((entitlement) => entitlement.owner_id === user.id)
+      .map((entitlement) => {
+        const days = entitlementDaysRemaining(entitlement);
+        if (days === null) return null;
+        const title = entitlementNoticeTitle(entitlement);
+        if (days > 0 && days <= 3) {
+          return {
+            id: `renewal-${entitlement.id}`,
+            status: "pending_review" as PaymentRequest["status"],
+            label: "Vence pronto",
+            title: `${title} vence en ${days} dia${days === 1 ? "" : "s"}`,
+            body: "Podes renovarlo con una promo activa desde la pantalla correspondiente.",
+            href: "",
+            actionLabel: ""
+          };
+        }
+        if (days <= 0) {
+          return {
+            id: `expired-${entitlement.id}`,
+            status: "rejected" as PaymentRequest["status"],
+            label: "Beneficio pausado",
+            title: `${title} sin renovar`,
+            body: "No se recibio el pago de renovacion. Tus datos quedan guardados, pero los beneficios Pro quedan bloqueados hasta renovar.",
+            href: "",
+            actionLabel: ""
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) as Array<{ id: string; status: PaymentRequest["status"]; label: string; title: string; body: string; href: string; actionLabel: string }>;
+  }, [entitlements, user]);
   const approvedCount = freshRequests.filter((request) => request.status === "approved").length;
   const pendingCount = freshRequests.filter((request) => request.status === "pending_review").length;
+  const userNotificationCount = visibleUserNotifications.filter((notification) => notification.status === "unread").length;
   const latestRequests = freshRequests;
   const approvedTournamentRequests = freshRequests.filter((request) => request.status === "approved" && request.target_type === "tournament");
+  const totalNotificationCount = approvedCount + pendingCount + userNotificationCount + renewalNotices.length;
 
   useEffect(() => {
     if (!user) return;
@@ -1891,7 +1953,7 @@ function UserMenu({
       <button
         aria-expanded={notificationsOpen}
         aria-label="Abrir notificaciones"
-        className={`top-notification-button ${approvedCount ? "is-approved" : pendingCount ? "is-pending" : ""}`}
+        className={`top-notification-button ${approvedCount || userNotificationCount ? "is-approved" : pendingCount || renewalNotices.length ? "is-pending" : ""}`}
         onClick={() => {
           setNotificationsOpen((current) => !current);
           setOpen(false);
@@ -1899,7 +1961,7 @@ function UserMenu({
         type="button"
       >
         <BellRing size={17} />
-        {approvedCount + pendingCount > 0 ? <span>{approvedCount + pendingCount}</span> : null}
+        {totalNotificationCount > 0 ? <span>{totalNotificationCount}</span> : null}
       </button>
       <button
         aria-expanded={open}
@@ -1917,10 +1979,25 @@ function UserMenu({
         <div className="top-notification-popover">
           <header>
             <strong>Notificaciones</strong>
-            <small>{approvedCount ? "Hay beneficios aprobados." : pendingCount ? "Tenes comprobantes en revision." : "Sin novedades."}</small>
+            <small>{approvedCount ? "Hay beneficios aprobados." : pendingCount ? "Tenes comprobantes en revision." : visibleUserNotifications.length ? "Tenes avisos del administrador." : renewalNotices.length ? "Hay vencimientos para revisar." : "Sin novedades."}</small>
           </header>
-          {latestRequests.length ? (
+          {visibleUserNotifications.length || renewalNotices.length || latestRequests.length ? (
             <div className="notification-list">
+              {visibleUserNotifications.map((notification) => (
+                <article className={`notification-item notification-item--${notification.priority === "high" ? "approved" : "pending_review"}`} key={notification.id}>
+                  <span>{notification.notification_type.replaceAll("_", " ")}</span>
+                  <strong>{notification.title}</strong>
+                  <small>{notification.body}</small>
+                  {notification.action_url ? <a href={notification.action_url}>Abrir</a> : null}
+                </article>
+              ))}
+              {renewalNotices.map((notice) => (
+                <article className={`notification-item notification-item--${notice.status}`} key={notice.id}>
+                  <span>{notice.label}</span>
+                  <strong>{notice.title}</strong>
+                  <small>{notice.body}</small>
+                </article>
+              ))}
               {latestRequests.map((request) => {
                 const invite = request.status === "approved" ? inviteHref(request) : "";
                 return (
@@ -4393,10 +4470,12 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
         <UserMenu
           activeTournament={data.activeTournament}
           configured={data.configured}
+          entitlements={data.entitlements}
           onLogin={openLoginPanel}
           paymentRequests={data.paymentRequests}
           team={myTeam}
           user={data.user}
+          userNotifications={data.userNotifications}
         />
       </header>
 

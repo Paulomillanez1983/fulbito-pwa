@@ -1,7 +1,7 @@
 import { attachFriendlyRelations, attachMatchRelations, computeStandings, demoArenaData } from "@/lib/demo";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AccountEntitlement, AdCampaign, AppFeatureFlag, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, BillingPlanSetting, FriendlyMatch, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, SessionUser } from "@/lib/types";
+import type { AccountEntitlement, AdCampaign, AppFeatureFlag, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, BillingPlanSetting, BillingPromotion, FriendlyMatch, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, SessionUser, UserNotification } from "@/lib/types";
 
 type TournamentTeamRow = {
   tournament_id: string;
@@ -33,6 +33,8 @@ function emptyUserArenaData(user: SessionUser | null): ArenaData {
     paymentMessages: [],
     entitlements: [],
     billingPlans: [],
+    billingPromotions: [],
+    userNotifications: [],
     adCampaigns: [],
     liveChannels: [],
     livePermissions: [],
@@ -74,7 +76,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
     const friendlyQuery = normalizedFriendlyCode
       ? supabase.from("friendly_matches").select("*").eq("invite_code", normalizedFriendlyCode).limit(1)
       : supabase.from("friendly_matches").select("*").order("scheduled_at", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }).limit(user ? 80 : 12);
-    const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, matchesResult, friendlyMatchesResult, tournamentTeamsResult, tournamentDrawsResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult, adCampaignsResult, liveChannelsResult, livePermissionsResult, liveEventsResult, featureFlagsResult] = await Promise.all([
+    const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, matchesResult, friendlyMatchesResult, tournamentTeamsResult, tournamentDrawsResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult, billingPromotionsResult, userNotificationsResult, adCampaignsResult, liveChannelsResult, livePermissionsResult, liveEventsResult, featureFlagsResult] = await Promise.all([
       user ? supabase.from("user_roles").select("role").eq("user_id", user.id) : Promise.resolve({ data: [] }),
       tournamentQuery,
       supabase.from("venues").select("*").order("created_at", { ascending: true }),
@@ -88,6 +90,8 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       user ? supabase.from("payment_messages").select("*").order("created_at", { ascending: true }).limit(80) : emptyResult,
       user ? supabase.from("account_entitlements").select("*").order("created_at", { ascending: false }) : emptyResult,
       supabase.from("billing_plan_settings").select("*").eq("is_active", true).order("sort_order", { ascending: true }),
+      supabase.from("billing_promotions").select("*").order("created_at", { ascending: false }).limit(80),
+      user ? supabase.from("user_notifications").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(40) : emptyResult,
       supabase.from("ad_campaigns").select("*").in("placement", ["arena_led", "sponsor_splash", "both"]).order("sort_order", { ascending: true }).order("created_at", { ascending: false }).limit(32),
       supabase.from("live_stream_channels").select("*").order("created_at", { ascending: true }),
       user ? supabase.from("live_stream_permissions").select("*").order("created_at", { ascending: false }) : emptyResult,
@@ -245,6 +249,8 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       paymentMessages,
       entitlements: (entitlementsResult.data ?? []) as AccountEntitlement[],
       billingPlans: (billingPlansResult.data ?? []) as BillingPlanSetting[],
+      billingPromotions: (billingPromotionsResult.data ?? []) as BillingPromotion[],
+      userNotifications: (userNotificationsResult.data ?? []) as UserNotification[],
       adCampaigns: (adCampaignsResult.data ?? []) as AdCampaign[],
       liveChannels: (liveChannelsResult.data ?? []) as LiveStreamChannel[],
       livePermissions: (livePermissionsResult.data ?? []) as LiveStreamPermission[],

@@ -216,6 +216,10 @@ async function createPaymentRequest({
   if (existingRequest) throw new Error("Ya tenes un comprobante pendiente para este plan. Espera la revision del admin.");
 
   const proof = await uploadProof(userId, proofFile);
+  const promotionNote = plan.promotion
+    ? `Promo ${plan.promotion.badge}: ${formatPaymentMoney(plan.regularAmount ?? plan.amount)} -> ${formatPaymentMoney(plan.amount)}`
+    : "";
+  const payerNote = [note, promotionNote].filter(Boolean).join(" / ") || null;
   const { data: request, error: requestError } = await supabase
     .from("payment_requests")
     .insert({
@@ -227,7 +231,7 @@ async function createPaymentRequest({
       amount: plan.amount,
       proof_path: proof.proofPath,
       proof_filename: proof.proofFilename,
-      payer_note: note || null
+      payer_note: payerNote
     })
     .select()
     .single();
@@ -1159,8 +1163,13 @@ function CreatorPaymentCard({
           <small>{plan.kicker}</small>
           <b>{plan.title}</b>
           <em>{plan.description}</em>
+          {plan.promotion ? <i>{plan.promotion.badge}: {plan.promotion.title}</i> : null}
         </span>
-        <span className="payment-plan-card__price">{formatPaymentMoney(plan.amount)}<small>/ mes</small></span>
+        <span className="payment-plan-card__price">
+          {plan.regularAmount ? <del>{formatPaymentMoney(plan.regularAmount)}</del> : null}
+          {formatPaymentMoney(plan.amount)}
+          <small>/ mes</small>
+        </span>
         <span className={`payment-plan-card__status ${statusTone}`}>{statusLabel}</span>
         <ChevronDown className="payment-plan-card__chevron" size={20} />
       </button>
@@ -1375,10 +1384,10 @@ export function PaymentConsole({
     return new Set(data.teams.filter((team) => team.owner_id === data.user?.id).map((team) => team.id));
   }, [data.teams, data.user]);
   const plans = useMemo(() => {
-    const merged = mergePaymentPlans(data.billingPlans);
+    const merged = mergePaymentPlans(data.billingPlans, data.billingPromotions);
     if (planCodes?.length) return merged.filter((plan) => planCodes.includes(plan.code));
     return merged.filter((plan) => plan.code !== "featured_venue");
-  }, [data.billingPlans, planCodes]);
+  }, [data.billingPlans, data.billingPromotions, planCodes]);
   const teamOnly = planCodes?.length === 1 && planCodes[0] === "team_pro";
   const tournamentOnly = planCodes?.length === 1 && planCodes[0] === "tournament_pro";
   const venueOnly = planCodes?.length === 1 && planCodes[0] === "featured_venue";

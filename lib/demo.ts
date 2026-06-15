@@ -284,6 +284,8 @@ export const demoArenaData: ArenaData = {
   paymentMessages: [],
   entitlements: [],
   billingPlans: [],
+  billingPromotions: [],
+  userNotifications: [],
   adCampaigns: [
     {
       id: "demo-ad-fulbito-tv",

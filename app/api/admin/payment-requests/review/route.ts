@@ -99,6 +99,23 @@ export async function POST(request: NextRequest) {
   const messageBody = status === "approved"
     ? "Comprobante aprobado. Tu beneficio premium ya esta activo."
     : `Comprobante rechazado: ${note || "necesitamos revisar el archivo."}`;
+  await supabase
+    .from("user_notifications")
+    .insert({
+      user_id: existing.requester_id,
+      title: status === "approved" ? "Beneficio Pro aprobado" : "Comprobante rechazado",
+      body: messageBody,
+      notification_type: status === "approved" ? "payment_approved" : "payment_rejected",
+      target_type: "payment_request",
+      target_id: existing.id,
+      priority: status === "approved" ? "high" : "normal",
+      created_by: userId,
+      metadata: {
+        plan_code: existing.plan_code,
+        target_type: existing.target_type,
+        target_id: existing.target_id
+      }
+    });
   const { data: message, error: messageError } = await supabase
     .from("payment_messages")
     .insert({
