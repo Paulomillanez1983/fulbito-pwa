@@ -1401,6 +1401,7 @@ export function AdminPaymentsPanel({
         </a>
         <div className="admin-topbar-actions">
           <span>{roles.includes("admin") ? "Admin activo" : "Sin rol admin"}</span>
+          <a href="/admin/torneos">Torneos</a>
           <a href="/admin/publicidad">Publicidad</a>
           <a href="/admin/canchas">Canchas</a>
           <a href="/">Ver app</a>
@@ -1414,6 +1415,7 @@ export function AdminPaymentsPanel({
         <div className="admin-hero-actions">
           <a href="#pagos">Revisar pagos</a>
           <a href="#resultados">Validar resultados</a>
+          <a href="/admin/torneos">Panel torneos</a>
           <a href="/admin/publicidad">Panel publicidad</a>
           <a href="/admin/canchas">Panel canchas</a>
         </div>
@@ -1431,10 +1433,11 @@ export function AdminPaymentsPanel({
         items={[
           { href: "#pagos", label: "Pagos", meta: `${filterCounts.pending_review} pendientes`, Icon: Clock3 },
           { href: "#resultados", label: "Resultados", meta: `${matchResults.filter((item) => item.status === "pending").length} por validar`, Icon: Flag },
+          { href: "/admin/torneos", label: "Torneos", meta: `${tournaments.length} copas`, Icon: Trophy },
           { href: "#live", label: "Fulbito Live", meta: `${liveEvents.filter((event) => event.lifecycle_status === "live" || event.lifecycle_status === "testing").length} activos`, Icon: RadioTower },
           { href: "/admin/publicidad", label: "Publicidad", meta: `${adCampaigns.filter((item) => item.status === "active").length} activas`, Icon: Megaphone },
           { href: "/admin/canchas", label: "Canchas", meta: "Mapa y Pro", Icon: MapPin },
-          { href: "#precios", label: "Precios", meta: "Planes Pro", Icon: Trophy },
+          { href: "#precios", label: "Precios", meta: "Planes Pro", Icon: ShieldCheck },
           { href: "#clubes", label: "Clubes", meta: `${teamAudit.length} equipos`, Icon: Users }
         ]}
       />

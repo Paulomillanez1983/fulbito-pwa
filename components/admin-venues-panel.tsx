@@ -271,6 +271,7 @@ export function AdminVenuesPanel({
         </a>
         <div className="admin-topbar-actions">
           <span>Admin activo</span>
+          <a href="/admin/torneos">Torneos</a>
           <a href="/admin/publicidad">Publicidad</a>
           <a href="/admin">Panel completo</a>
           <a href="/">Ver app</a>
@@ -284,6 +285,7 @@ export function AdminVenuesPanel({
         <div className="admin-hero-actions">
           <a href="#solicitudes-cancha">Solicitudes Pro</a>
           <a href="#listado-canchas">Editar canchas</a>
+          <a href="/admin/torneos">Panel torneos</a>
           <a href="/admin/publicidad">Cartelería LED</a>
         </div>
       </section>
