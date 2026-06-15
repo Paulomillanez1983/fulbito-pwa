@@ -15973,6 +15973,293 @@ body::after,
   }
 }
 
+/* Enterprise responsive media and layout hardening */
+.team-crest img {
+  width: calc(100% - 10px);
+  height: calc(100% - 10px);
+  padding: 2px;
+  object-fit: contain;
+  object-position: center;
+  transform: none;
+}
+
+.player-disc img,
+.player-card-portrait img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.venue-map-marker > img,
+.venue-map-fallback button > img,
+.venue-row__photo img,
+.venue-map-popover__crest img,
+.media-field--crest .media-field__preview img,
+.venue-pro-panel__header img,
+.admin-venue-cover img {
+  object-fit: contain;
+  object-position: center;
+}
+
+.venue-stack {
+  align-items: stretch;
+}
+
+.venue-row.venue-row--button {
+  grid-template-columns: 74px minmax(0, 1fr) 18px;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 10px 12px;
+  min-height: 158px;
+  padding: 13px;
+}
+
+.venue-row__photo {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 70px;
+  height: 70px;
+  align-self: start;
+}
+
+.venue-row__main {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  gap: 6px;
+  padding-right: 2px;
+}
+
+.venue-row__main strong,
+.venue-row__main > span:not(.venue-row__badge) {
+  display: -webkit-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+}
+
+.venue-row__main strong {
+  -webkit-line-clamp: 2;
+  font-size: clamp(1.04rem, 2.1vw, 1.28rem);
+  line-height: 1.04;
+}
+
+.venue-row__main > span:not(.venue-row__badge) {
+  -webkit-line-clamp: 1;
+  font-size: .78rem;
+}
+
+.venue-row__badge {
+  max-width: min(100%, 150px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venue-row__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  max-height: 52px;
+  overflow: hidden;
+}
+
+.venue-row__chips i {
+  max-width: 100%;
+  padding: 4px 7px;
+  font-size: .62rem;
+}
+
+.venue-row.venue-row--button > b {
+  grid-column: 2;
+  grid-row: 2;
+  justify-items: start;
+  align-self: start;
+  width: 100%;
+  max-width: 100%;
+  border-top: 1px solid rgba(255,255,255,.1);
+  padding-top: 8px;
+  color: #ffe49c;
+  font-size: .78rem;
+  line-height: 1.16;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.venue-row.venue-row--button > b small {
+  margin-top: 2px;
+}
+
+.venue-row.venue-row--button > svg {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  align-self: center;
+  justify-self: end;
+}
+
+.venue-row__ghost {
+  width: min(46%, 220px);
+  opacity: .1;
+  pointer-events: none;
+}
+
+.venue-spotlight {
+  grid-template-columns: minmax(260px, .96fr) minmax(0, 1.08fr) minmax(168px, .62fr);
+}
+
+.venue-spotlight__hero > img {
+  padding: 8px;
+  object-fit: contain;
+  background: rgba(2, 7, 14, .42);
+}
+
+.venue-spotlight__body h2 {
+  overflow-wrap: anywhere;
+}
+
+.venue-spotlight__cta > strong {
+  overflow-wrap: anywhere;
+}
+
+.venue-map-popover__photos img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.venue-map-popover__body strong,
+.venue-map-popover__body small {
+  min-width: 0;
+}
+
+.classification-console {
+  gap: 14px;
+}
+
+.classification-group {
+  min-width: 0;
+}
+
+.classification-group > header,
+.classification-row {
+  grid-template-columns: 30px 42px minmax(76px, 1fr) minmax(210px, .9fr);
+  gap: 9px;
+}
+
+.classification-row .team-crest {
+  justify-self: center;
+  width: 42px;
+  height: 48px;
+}
+
+.classification-row strong {
+  padding-left: 2px;
+  line-height: 1;
+}
+
+.classification-group > header div,
+.classification-row div {
+  grid-template-columns: repeat(6, minmax(26px, 1fr));
+}
+
+.classification-row div span,
+.classification-row div b {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+}
+
+@media (min-width: 900px) {
+  .venue-stack {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  .venue-row.venue-row--button {
+    min-height: 166px;
+  }
+}
+
+@media (max-width: 760px) {
+  .venue-spotlight {
+    grid-template-columns: 1fr;
+  }
+
+  .venue-spotlight__hero {
+    min-height: 210px;
+  }
+
+  .venue-spotlight__cta > strong {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .venue-map-popover {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .venue-row.venue-row--button {
+    grid-template-columns: 60px minmax(0, 1fr) 16px;
+    min-height: 146px;
+    padding: 12px;
+  }
+
+  .venue-row__photo {
+    width: 58px;
+    height: 58px;
+  }
+
+  .venue-row__badge {
+    max-width: 132px;
+    font-size: .56rem;
+  }
+
+  .venue-row__main strong {
+    font-size: 1rem;
+  }
+
+  .venue-row__chips {
+    max-height: 44px;
+  }
+
+  .venue-row.venue-row--button > b {
+    font-size: .72rem;
+  }
+
+  .classification-console {
+    gap: 12px;
+  }
+
+  .classification-group {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .classification-group > header,
+  .classification-row {
+    min-width: 520px;
+    grid-template-columns: 28px 38px minmax(74px, 1fr) minmax(190px, .95fr);
+  }
+
+  .classification-row .team-crest {
+    width: 38px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 420px) {
+  .venue-row.venue-row--button {
+    grid-template-columns: 54px minmax(0, 1fr) 14px;
+    gap: 8px;
+  }
+
+  .venue-row__photo {
+    width: 52px;
+    height: 52px;
+    border-radius: 15px;
+  }
+}
+
 /* Admin tournaments control room */
 .admin-tournaments-shell {
   width: min(1180px, calc(100% - 24px));

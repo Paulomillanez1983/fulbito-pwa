@@ -51,7 +51,8 @@ const imageTargets: Record<UploadImagePreset, ImageTarget> = {
     minQuality: 0.52,
     minScale: 0.68,
     maxBytes: 430 * 1024,
-    fit: "cover",
+    fit: "contain",
+    padding: 0.02,
     background: "#071018",
     fallbackName: "cancha"
   },

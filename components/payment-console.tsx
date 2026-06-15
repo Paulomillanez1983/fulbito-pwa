@@ -108,22 +108,7 @@ function FlagCountrySelect({
 
 async function optimizeProofFile(file: File) {
   if (file.type === "application/pdf" || !file.type.startsWith("image/")) return file;
-  const bitmap = await createImageBitmap(file);
-  const maxSide = 1400;
-  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
-  const width = Math.round(bitmap.width * scale);
-  const height = Math.round(bitmap.height * scale);
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) return file;
-  context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.8));
-  if (!blob) return file;
-  const filename = file.name.replace(/\.[^.]+$/, "") || "comprobante";
-  return new File([blob], `${filename}.webp`, { type: "image/webp" });
+  return optimizeImageForUpload(file, "payment_proof");
 }
 
 async function uploadProof(userId: string, fileValue: FormDataEntryValue | null) {
