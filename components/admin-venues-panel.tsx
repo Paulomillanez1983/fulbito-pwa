@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { CheckCircle2, Clock3, ExternalLink, ImagePlus, LoaderCircle, MapPin, ShieldCheck, Upload, XCircle } from "lucide-react";
+import { optimizeImageForUpload } from "@/lib/image-optimizer";
 import { formatPaymentMoney, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AccountEntitlement, ArenaVenue, PaymentMessage, PaymentRequest, PaymentRequestStatus } from "@/lib/types";
@@ -66,51 +67,6 @@ function FlagCountrySelect({ defaultValue, name }: { defaultValue: string; name:
   );
 }
 
-async function optimizeVenueCover(file: File) {
-  if (!file.type.startsWith("image/")) return file;
-  const bitmap = await createImageBitmap(file);
-  const targetRatio = 16 / 9;
-  let sourceWidth = bitmap.width;
-  let sourceHeight = bitmap.height;
-  let sourceX = 0;
-  let sourceY = 0;
-  const currentRatio = bitmap.width / bitmap.height;
-
-  if (currentRatio > targetRatio) {
-    sourceWidth = Math.round(bitmap.height * targetRatio);
-    sourceX = Math.round((bitmap.width - sourceWidth) / 2);
-  } else if (currentRatio < targetRatio) {
-    sourceHeight = Math.round(bitmap.width / targetRatio);
-    sourceY = Math.round((bitmap.height - sourceHeight) / 2);
-  }
-
-  const canvas = document.createElement("canvas");
-  canvas.width = 1280;
-  canvas.height = 720;
-  const context = canvas.getContext("2d", { alpha: false });
-  if (!context) {
-    bitmap.close();
-    return file;
-  }
-  context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = "high";
-  context.fillStyle = "#071018";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(bitmap, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-
-  let quality = 0.76;
-  let blob: Blob | null = null;
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", quality));
-    if (blob && blob.size <= 430 * 1024) break;
-    quality -= 0.08;
-  }
-  if (!blob) return file;
-  const filename = file.name.replace(/\.[^.]+$/, "") || "cancha";
-  return new File([blob], `${filename}.webp`, { type: "image/webp" });
-}
-
 function ownerLabel(profile?: AdminProfile | null) {
   return profile?.display_name || "Usuario Fulbito";
 }
@@ -158,7 +114,7 @@ export function AdminVenuesPanel({
 
   async function uploadCover(venue: AdminVenue, fileValue: FormDataEntryValue | null) {
     if (!(fileValue instanceof File) || fileValue.size === 0) return venue.cover_url ?? null;
-    const optimized = await optimizeVenueCover(fileValue);
+    const optimized = await optimizeImageForUpload(fileValue, "venue_photo");
     const supabase = createSupabaseBrowserClient();
     const path = `${adminId}/${venue.id}-${Date.now().toString(36)}.webp`;
     const { error } = await supabase.storage.from("venue-photos").upload(path, optimized, {

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
 import { Ban, CheckCircle2, Clock3, ExternalLink, Flag, LoaderCircle, MapPin, Megaphone, MessageCircle, RadioTower, Search, ShieldCheck, Trophy, Users, Send, Upload, Video, XCircle } from "lucide-react";
 import { sponsorSoundOptions } from "@/lib/ad-sounds";
+import { optimizeImageForUpload } from "@/lib/image-optimizer";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AccountEntitlement, AdCampaign, AdCampaignEvent, AdCampaignScope, AdCampaignStatus, AppRole, ArenaMatch, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, MatchResultSubmission, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
@@ -443,52 +444,6 @@ function AdminPlanPrices({
   );
 }
 
-async function optimizeAdLogo(file: File) {
-  if (file.type === "image/svg+xml") throw new Error("Para publicidad subi PNG, JPG o WebP. Fulbito lo convierte a WebP liviano.");
-  if (!file.type.startsWith("image/")) throw new Error("El logo debe ser PNG, JPG o WebP.");
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image", resizeQuality: "high" });
-  const maxSide = 512;
-  const maxBytes = 70 * 1024;
-  let scale = 1;
-  let bestBlob: Blob | null = null;
-
-  while (scale >= 0.5) {
-    const side = Math.max(220, Math.round(maxSide * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = side;
-    canvas.height = side;
-    const context = canvas.getContext("2d", { alpha: true });
-    if (!context) break;
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = "high";
-    context.clearRect(0, 0, side, side);
-    const padding = side * 0.1;
-    const drawScale = Math.min((side - padding * 2) / bitmap.width, (side - padding * 2) / bitmap.height);
-    const drawWidth = bitmap.width * drawScale;
-    const drawHeight = bitmap.height * drawScale;
-    context.drawImage(bitmap, (side - drawWidth) / 2, (side - drawHeight) / 2, drawWidth, drawHeight);
-
-    for (let quality = 0.78; quality >= 0.42; quality -= 0.08) {
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", Number(quality.toFixed(2))));
-      if (!blob) continue;
-      if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
-      if (blob.size <= maxBytes) {
-        bitmap.close();
-        const filename = file.name.replace(/\.[^.]+$/, "") || "sponsor";
-        return new File([blob], `${filename}.webp`, { type: "image/webp" });
-      }
-    }
-
-    scale *= 0.82;
-  }
-
-  bitmap.close();
-  const blob = bestBlob;
-  if (!blob) return file;
-  const filename = file.name.replace(/\.[^.]+$/, "") || "sponsor";
-  return new File([blob], `${filename}.webp`, { type: "image/webp" });
-}
-
 function localDateTime(value?: string | null) {
   if (!value) return "";
   const date = new Date(value);
@@ -589,7 +544,7 @@ export function AdminAdCampaignPanel({
   async function uploadLogo(fileValue: FormDataEntryValue | null) {
     if (!(fileValue instanceof File) || fileValue.size === 0) return null;
     const supabase = createSupabaseBrowserClient();
-    const optimized = await optimizeAdLogo(fileValue);
+    const optimized = await optimizeImageForUpload(fileValue, "ad_logo");
     const extension = "webp";
     const path = `${adminId}/${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
     const { error } = await supabase.storage.from("ad-assets").upload(path, optimized, {

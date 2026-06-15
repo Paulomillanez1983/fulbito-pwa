@@ -15861,6 +15861,118 @@ body::after,
   }
 }
 
+/* Uploaded media fit guardrail */
+.media-field__preview img,
+.venue-gallery-field__stack > img,
+.venue-map-marker > img,
+.venue-map-fallback button > img,
+.venue-row__photo img,
+.venue-spotlight__hero > img,
+.venue-spotlight__thumbs img,
+.venue-map-popover__photos img,
+.venue-map-popover__crest img,
+.venue-pro-panel__header img,
+.admin-venue-cover img {
+  object-position: center;
+}
+
+.venue-row__ghost {
+  inset: 10px 12px 10px auto;
+  width: min(50%, 260px);
+  height: calc(100% - 20px);
+  object-fit: contain;
+  object-position: center right;
+  opacity: .18;
+  filter: saturate(1.08) contrast(1.02) drop-shadow(0 16px 26px rgba(0,0,0,.46));
+  mask-image: linear-gradient(90deg, transparent, #000 24%, #000);
+}
+
+.venue-row__photo {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255,255,255,.14), transparent 42%),
+    linear-gradient(90deg, transparent 49%, rgba(255,255,255,.48) 49% 51%, transparent 51%),
+    repeating-linear-gradient(90deg, rgba(40,174,93,.98) 0 22%, rgba(16,118,64,.98) 22% 44%);
+}
+
+.venue-row__photo img,
+.venue-map-marker > img,
+.venue-map-fallback button > img,
+.venue-pro-panel__header img {
+  padding: 5px;
+  object-fit: contain;
+}
+
+.venue-row.venue-row--button {
+  background-blend-mode: normal;
+}
+
+.venue-row__main {
+  position: relative;
+  z-index: 1;
+}
+
+.venue-row__main strong {
+  text-shadow: 0 2px 16px rgba(0,0,0,.54);
+}
+
+.venue-row__chips {
+  max-width: 100%;
+}
+
+.venue-row__chips i {
+  min-width: 0;
+}
+
+.venue-spotlight__backdrop,
+.venue-map-popover__backdrop {
+  inset: 0 0 0 auto;
+  width: min(54%, 520px);
+  height: 100%;
+  object-fit: contain;
+  object-position: center right;
+  opacity: .13;
+  mask-image: linear-gradient(90deg, transparent 0, #000 32%, #000 100%);
+}
+
+.venue-spotlight__hero,
+.venue-map-popover__media,
+.admin-venue-cover {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(85,246,255,.14), transparent 36%),
+    linear-gradient(90deg, transparent 49%, rgba(255,255,255,.42) 49% 51%, transparent 51%),
+    repeating-linear-gradient(90deg, rgba(36,178,93,.9) 0 22%, rgba(13,111,59,.92) 22% 44%);
+}
+
+.venue-spotlight__hero > img {
+  object-fit: cover;
+}
+
+.venue-map-popover__crest img {
+  object-fit: contain;
+}
+
+.venue-pro-panel__header img,
+.admin-venue-cover img {
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255,255,255,.08), transparent 36%),
+    rgba(3, 8, 16, .88);
+}
+
+.admin-venue-cover img {
+  height: 190px;
+  padding: 8px;
+  object-fit: contain;
+}
+
+@media (max-width: 620px) {
+  .venue-row__ghost {
+    inset: 8px 10px auto auto;
+    width: 42%;
+    height: 72%;
+    opacity: .14;
+  }
+}
+
 /* Admin tournaments control room */
 .admin-tournaments-shell {
   width: min(1180px, calc(100% - 24px));

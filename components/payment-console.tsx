@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { CalendarDays, CheckCircle2, ChevronDown, Clipboard, MapPinned, PlusCircle, Sparkles, Trophy, Upload, Users } from "lucide-react";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
+import { optimizeImageForUpload } from "@/lib/image-optimizer";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
 import { getRosterRule } from "@/lib/roster";
@@ -140,33 +141,10 @@ async function uploadProof(userId: string, fileValue: FormDataEntryValue | null)
   return { proofPath, proofFilename: fileValue.name };
 }
 
-async function optimizeVenueCover(file: File) {
-  if (!file.type.startsWith("image/")) return file;
-  const bitmap = await createImageBitmap(file);
-  const maxWidth = 1280;
-  const maxHeight = 720;
-  const scale = Math.min(1, maxWidth / bitmap.width, maxHeight / bitmap.height);
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) return file;
-  context.imageSmoothingEnabled = true;
-  context.imageSmoothingQuality = "high";
-  context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.76));
-  if (!blob) return file;
-  const filename = file.name.replace(/\.[^.]+$/, "") || "cancha";
-  return new File([blob], `${filename}.webp`, { type: "image/webp" });
-}
-
 async function uploadVenueCover(userId: string, venueId: string, fileValue: FormDataEntryValue | null) {
   if (!(fileValue instanceof File) || fileValue.size === 0) return null;
   const supabase = createSupabaseBrowserClient();
-  const optimizedCover = await optimizeVenueCover(fileValue);
+  const optimizedCover = await optimizeImageForUpload(fileValue, "venue_photo");
   const extension = optimizedCover.type === "image/webp" ? "webp" : optimizedCover.name.split(".").pop()?.toLowerCase() || "jpg";
   const path = `${userId}/${venueId}-${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
   const { error } = await supabase.storage.from("venue-photos").upload(path, optimizedCover, {

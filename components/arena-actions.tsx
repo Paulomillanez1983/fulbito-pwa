@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { Camera, Clipboard, Flag, LoaderCircle, LocateFixed, MapPinned, ShieldPlus, Upload, UserPlus } from "lucide-react";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
+import { optimizeImageForUpload, type UploadImagePreset } from "@/lib/image-optimizer";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -23,6 +24,12 @@ import type { Map, Marker } from "maplibre-gl";
 
 type ActionMode = "all" | "squad" | "venue" | "result" | "slot" | "self-player";
 type MediaBucket = "team-badges" | "player-photos" | "venue-photos";
+
+const mediaPresetByBucket: Record<MediaBucket, UploadImagePreset> = {
+  "team-badges": "team_badge",
+  "player-photos": "player_photo",
+  "venue-photos": "venue_photo"
+};
 
 type SlotDraft = {
   label: string;
@@ -296,86 +303,6 @@ async function optimizeProofFile(file: File) {
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.8));
   if (!blob) return file;
   const filename = file.name.replace(/\.[^.]+$/, "") || "comprobante";
-  return new File([blob], `${filename}.webp`, { type: "image/webp" });
-}
-
-const imageTargets: Record<MediaBucket, { width: number; height: number; quality: number; fit: "cover" | "contain" }> = {
-  "team-badges": { width: 512, height: 512, quality: 0.82, fit: "contain" },
-  "player-photos": { width: 640, height: 640, quality: 0.8, fit: "cover" },
-  "venue-photos": { width: 1280, height: 720, quality: 0.76, fit: "cover" }
-};
-
-const imageBudgets: Record<MediaBucket, { maxBytes: number; minQuality: number; minScale: number }> = {
-  "team-badges": { maxBytes: 120 * 1024, minQuality: 0.58, minScale: 0.74 },
-  "player-photos": { maxBytes: 170 * 1024, minQuality: 0.58, minScale: 0.68 },
-  "venue-photos": { maxBytes: 430 * 1024, minQuality: 0.55, minScale: 0.72 }
-};
-
-async function optimizeImageFile(file: File, bucket: MediaBucket) {
-  if (file.type === "image/svg+xml") {
-    throw new Error("Subi PNG, JPG o WebP. Fulbito convierte la imagen a WebP liviano antes de guardarla.");
-  }
-  if (!file.type.startsWith("image/")) return file;
-
-  const target = imageTargets[bucket];
-  const budget = imageBudgets[bucket];
-  const bitmap = await createImageBitmap(file, { imageOrientation: "from-image", resizeQuality: "high" });
-  let bestBlob: Blob | null = null;
-  let scale = 1;
-
-  while (scale >= budget.minScale) {
-    const width = Math.max(320, Math.round(target.width * scale));
-    const height = Math.max(320, Math.round(target.height * scale));
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d", { alpha: target.fit === "contain" });
-    if (!context) break;
-    context.imageSmoothingEnabled = true;
-    context.imageSmoothingQuality = "high";
-
-    if (target.fit === "contain") {
-      const drawScale = Math.min(width / bitmap.width, height / bitmap.height) * 0.94;
-      const dw = bitmap.width * drawScale;
-      const dh = bitmap.height * drawScale;
-      context.clearRect(0, 0, width, height);
-      context.drawImage(bitmap, (width - dw) / 2, (height - dh) / 2, dw, dh);
-    } else {
-      const sourceRatio = bitmap.width / bitmap.height;
-      const targetRatio = width / height;
-      let sx = 0;
-      let sy = 0;
-      let sw = bitmap.width;
-      let sh = bitmap.height;
-
-      if (sourceRatio > targetRatio) {
-        sw = bitmap.height * targetRatio;
-        sx = (bitmap.width - sw) / 2;
-      } else {
-        sh = bitmap.width / targetRatio;
-        sy = (bitmap.height - sh) / 2;
-      }
-      context.drawImage(bitmap, sx, sy, sw, sh, 0, 0, width, height);
-    }
-
-    for (let quality = target.quality; quality >= budget.minQuality; quality -= 0.07) {
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", Number(quality.toFixed(2))));
-      if (!blob) continue;
-      if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
-      if (blob.size <= budget.maxBytes) {
-        bitmap.close();
-        const filename = file.name.replace(/\.[^.]+$/, "") || "arena-media";
-        return new File([blob], `${filename}.webp`, { type: "image/webp" });
-      }
-    }
-
-    scale *= 0.86;
-  }
-
-  bitmap.close();
-  const blob = bestBlob;
-  if (!blob) return file;
-  const filename = file.name.replace(/\.[^.]+$/, "") || "arena-media";
   return new File([blob], `${filename}.webp`, { type: "image/webp" });
 }
 
@@ -662,7 +589,7 @@ export function ArenaActions({
     fileValue: FormDataEntryValue | null
   ) {
     if (!(fileValue instanceof File) || fileValue.size === 0) return null;
-    const optimizedFile = await optimizeImageFile(fileValue, bucket);
+    const optimizedFile = await optimizeImageForUpload(fileValue, mediaPresetByBucket[bucket]);
     const extension = optimizedFile.type === "image/webp" ? "webp" : optimizedFile.name.split(".").pop()?.toLowerCase() || "png";
     const path = `${userId}/${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
     const { error } = await supabase.storage.from(bucket).upload(path, optimizedFile, {
