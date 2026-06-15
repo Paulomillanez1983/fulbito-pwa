@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createSupabaseServerClient, createSupabaseServiceClient } from "@/lib/supabase/server";
 import type { AccountEntitlement } from "@/lib/types";
 
 async function requireAdmin() {
@@ -39,7 +40,7 @@ type NotificationInsert = {
   target_type: string;
   target_id: string;
   priority: string;
-  created_by: string;
+  created_by: string | null;
   metadata: {
     plan_code: AccountEntitlement["plan_code"];
     target_type: AccountEntitlement["target_type"];
@@ -56,6 +57,26 @@ export async function POST() {
   const { supabase, userId, error } = await requireAdmin();
   if (error || !supabase) return error;
 
+  const result = await generateRenewalNotifications(supabase, userId);
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
+  return NextResponse.json(result);
+}
+
+export async function GET(request: Request) {
+  const expected = process.env.CRON_SECRET;
+  const authHeader = request.headers.get("authorization");
+  if (!expected) return NextResponse.json({ error: "CRON_SECRET no esta configurado." }, { status: 503 });
+  if (authHeader !== `Bearer ${expected}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const supabase = createSupabaseServiceClient();
+  if (!supabase) return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY no esta configurado." }, { status: 503 });
+
+  const result = await generateRenewalNotifications(supabase, null);
+  if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
+  return NextResponse.json(result);
+}
+
+async function generateRenewalNotifications(supabase: SupabaseClient, userId: string | null) {
   const now = new Date();
   const inThreeDays = new Date(now.getTime() + 3 * 86400000);
   const expiredSince = new Date(now.getTime() - 30 * 86400000);
@@ -68,7 +89,7 @@ export async function POST() {
     .gte("expires_at", expiredSince.toISOString())
     .lte("expires_at", inThreeDays.toISOString())
     .limit(2000);
-  if (entitlementsError) return NextResponse.json({ error: entitlementsError.message }, { status: 400 });
+  if (entitlementsError) return { error: entitlementsError.message };
 
   const entitlements = (entitlementsData ?? []) as AccountEntitlement[];
   const { data: existingData, error: existingError } = await supabase
@@ -77,7 +98,7 @@ export async function POST() {
     .in("notification_type", ["renewal_expiring", "renewal_expired"])
     .gte("created_at", duplicateWindow)
     .limit(4000);
-  if (existingError) return NextResponse.json({ error: existingError.message }, { status: 400 });
+  if (existingError) return { error: existingError.message };
 
   const existingKeys = new Set((existingData ?? []).map((item) => notificationKey(item.notification_type, String(item.target_id))));
   const rows = entitlements
@@ -127,11 +148,11 @@ export async function POST() {
 
   if (rows.length) {
     const { error: insertError } = await supabase.from("user_notifications").insert(rows);
-    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 400 });
+    if (insertError) return { error: insertError.message };
   }
 
-  return NextResponse.json({
+  return {
     expiring: rows.filter((row) => row && row.notification_type === "renewal_expiring").length,
     expired: rows.filter((row) => row && row.notification_type === "renewal_expired").length
-  });
+  };
 }
