@@ -52,8 +52,7 @@ const imageTargets: Record<UploadImagePreset, ImageTarget> = {
     minScale: 0.68,
     maxBytes: 430 * 1024,
     fit: "contain",
-    padding: 0.02,
-    background: "#071018",
+    padding: 0.055,
     fallbackName: "cancha"
   },
   ad_logo: {
