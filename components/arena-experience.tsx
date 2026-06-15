@@ -3200,6 +3200,58 @@ function VenueSpotlight({ venue }: { venue?: ArenaVenue }) {
   );
 }
 
+function VenueMapPreview({
+  onClose,
+  onOpen,
+  venue
+}: {
+  onClose: () => void;
+  onOpen: () => void;
+  venue: ArenaVenue;
+}) {
+  const gallery = venueGallery(venue);
+  const whatsappUrl = venueWhatsappUrl(venue.phone);
+  const mapsUrl = venueMapsUrl(venue);
+  const modePrices = venueModePriceItems(venue).slice(0, 3);
+  const heroPhotos = gallery.slice(0, 3);
+
+  return (
+    <section className="venue-map-popover" aria-live="polite">
+      {gallery[0] ? <img alt="" className="venue-map-popover__backdrop" src={gallery[0]} /> : null}
+      <button className="venue-map-popover__close" onClick={onClose} type="button" aria-label="Cerrar vista previa">
+        <X size={16} />
+      </button>
+      <div className="venue-map-popover__media" aria-label={`Vista previa de ${venue.name}`}>
+        {heroPhotos.length ? (
+          <div className="venue-map-popover__photos">
+            {heroPhotos.map((photo, index) => <img alt="" key={`${photo}-${index}`} src={photo} />)}
+          </div>
+        ) : (
+          <div className="venue-map-popover__field">
+            <MapPinned size={34} />
+          </div>
+        )}
+        <span className="venue-map-popover__crest">
+          {gallery[0] ? <img alt="" src={gallery[0]} /> : venue.name.slice(0, 2).toUpperCase()}
+        </span>
+      </div>
+      <div className="venue-map-popover__body">
+        <span>{venueIsPro(venue) ? "Cancha PRO cercana" : "Sede cercana"}</span>
+        <strong>{venue.name}</strong>
+        <small>{venueAddressLine(venue)}</small>
+        <div className="venue-map-popover__chips">
+          {modePrices.map((item) => <b key={item.mode}>{item.label} <i>{item.price}</i></b>)}
+        </div>
+      </div>
+      <div className="venue-map-popover__actions">
+        {whatsappUrl ? <a href={whatsappUrl} rel="noreferrer" target="_blank">Consultar</a> : null}
+        {mapsUrl ? <a href={mapsUrl} rel="noreferrer" target="_blank">Maps <ExternalLink size={13} /></a> : null}
+        <button onClick={onOpen} type="button">Ver ficha</button>
+      </div>
+    </section>
+  );
+}
+
 function EmptyState({
   icon,
   title,
@@ -3494,7 +3546,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const [formationMode, setFormationMode] = useState<FieldMode>(data.activeTournament?.field_mode ?? "7v7");
   const [formationPresetId, setFormationPresetId] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].id);
   const [selectedTeamId, setSelectedTeamId] = useState(inferredTeam?.id ?? "");
-  const [selectedVenueId, setSelectedVenueId] = useState(data.venues[0]?.id ?? "");
+  const [selectedVenueId, setSelectedVenueId] = useState("");
+  const [venuePreviewId, setVenuePreviewId] = useState("");
   const [selectedMatchId, setSelectedMatchId] = useState(data.matches.find((match) => match.status !== "final")?.id ?? data.matches[0]?.id ?? "");
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].slots.length - 1);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
@@ -3627,7 +3680,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const sponsorSplashCampaigns = useMemo(() => {
     return visibleAdCampaigns.filter((campaign) => campaign.splash_enabled || ["sponsor_splash", "arena_led", "both"].includes(campaign.placement));
   }, [visibleAdCampaigns]);
-  const selectedVenue = nearbyVenues.find((venue) => venue.id === selectedVenueId) ?? nearbyVenues[0];
+  const selectedVenue = selectedVenueId ? nearbyVenues.find((venue) => venue.id === selectedVenueId) : undefined;
+  const previewVenue = venuePreviewId ? nearbyVenues.find((venue) => venue.id === venuePreviewId) : undefined;
   const selectedPlayers = data.players.filter((player) => player.team_id === selectedTeam?.id);
   const selectedPlayer = selectedPlayers.find((player) => player.id === selectedPlayerId) ?? null;
   const selectedTeamEnrolledInActiveTournament = Boolean(
@@ -3677,8 +3731,17 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   }, [data.user, inferredTeam?.id]);
 
   useEffect(() => {
-    if (selectedVenue?.id) setSelectedVenueId((current) => current || selectedVenue.id);
-  }, [selectedVenue?.id]);
+    if (selectedVenueId && !nearbyVenues.some((venue) => venue.id === selectedVenueId)) setSelectedVenueId("");
+    if (venuePreviewId && !nearbyVenues.some((venue) => venue.id === venuePreviewId)) setVenuePreviewId("");
+  }, [nearbyVenues, selectedVenueId, venuePreviewId]);
+
+  useEffect(() => {
+    if (!venuePreviewId) return;
+    const timer = window.setTimeout(() => {
+      setVenuePreviewId((current) => current === venuePreviewId ? "" : current);
+    }, 8500);
+    return () => window.clearTimeout(timer);
+  }, [venuePreviewId]);
 
   const requestVenueLocation = useCallback(() => {
     setVenueLocationAsked(true);
@@ -3799,10 +3862,17 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
 
   const openVenue = useCallback((venueId: string) => {
     setSelectedVenueId(venueId);
+    setVenuePreviewId("");
     setActiveTab("venues");
     window.setTimeout(() => {
       document.getElementById("venue-spotlight")?.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 90);
+  }, [setActiveTab]);
+
+  const previewVenueFromMap = useCallback((venueId: string) => {
+    setVenuePreviewId(venueId);
+    setSelectedVenueId("");
+    setActiveTab("venues");
   }, [setActiveTab]);
 
   const openMatch = useCallback((match: ArenaMatch) => {
@@ -4215,10 +4285,27 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             <span>Sedes activas</span>
             <strong>{venueLocation ? `${nearbyVenues.length} a 50 km` : "Primero ubicate"}</strong>
           </header>
-          <VenueMap onSelectVenue={openVenue} selectedVenueId={selectedVenue?.id} userLocation={venueLocation} venues={nearbyVenues} />
+          <VenueMap onSelectVenue={previewVenueFromMap} selectedVenueId={previewVenue?.id ?? selectedVenue?.id} userLocation={venueLocation} venues={nearbyVenues} />
           {nearbyVenues.length ? (
             <>
-              <VenueSpotlight venue={selectedVenue} />
+              {previewVenue ? (
+                <VenueMapPreview
+                  onClose={() => setVenuePreviewId("")}
+                  onOpen={() => openVenue(previewVenue.id)}
+                  venue={previewVenue}
+                />
+              ) : null}
+              {selectedVenue ? (
+                <VenueSpotlight venue={selectedVenue} />
+              ) : (
+                <section className="venue-select-hint">
+                  <MapPinned size={20} />
+                  <div>
+                    <strong>Toca una sede del mapa</strong>
+                    <span>Vas a ver una vista previa con fotos, precios, WhatsApp y Maps. Despues podes abrir la ficha completa.</span>
+                  </div>
+                </section>
+              )}
               <section className="venue-stack">{nearbyVenues.map((venue) => <VenueRow key={venue.id} onOpen={() => openVenue(venue.id)} venue={venue} />)}</section>
             </>
           ) : (
