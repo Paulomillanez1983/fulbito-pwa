@@ -4268,22 +4268,50 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   }
 
   function renderVenues() {
+    const proVenueCount = nearbyVenues.filter(venueIsPro).length;
+    const locationSummary = venueLocation
+      ? `${nearbyVenues.length} sedes hasta 50 km`
+      : data.venues.length
+        ? `${data.venues.length} sedes cargadas`
+        : "Mapa listo";
+    const marketplaceState = venueLocation ? `${nearbyVenues.length} a 50 km` : "Activa ubicacion";
     return (
       <>
         <ScreenHeader eyebrow="Alta de sede" title="Canchas">
-          Marca tu ubicacion para ver canchas registradas en un radio de 50 km, o registra una sede con precio, contacto y foto.
+          Busca canchas cercanas, mira fotos, consulta por WhatsApp y registra tu sede para aparecer en el mapa de Fulbito.
         </ScreenHeader>
-        <section className="venue-nearby-toolbar">
+        <section className="venue-discovery-console">
+          <div className="venue-discovery-console__copy">
+            <span>Mapa barrial</span>
+            <strong>Encontra sede, precio y contacto sin salir de Fulbito.</strong>
+            <p>{venueLocationStatus}</p>
+          </div>
           <button onClick={requestVenueLocation} type="button">
-            <LocateFixed size={16} />
-            {venueLocation ? "Actualizar ubicacion" : "Usar mi ubicacion"}
+            <LocateFixed size={17} />
+            {venueLocation ? "Actualizar zona" : "Activar ubicacion"}
           </button>
-          <span>{venueLocationStatus}</span>
+          <div className="venue-discovery-console__stats">
+            <article>
+              <b>{locationSummary}</b>
+              <small>{venueLocation ? "Radio real" : "Vista general"}</small>
+            </article>
+            <article>
+              <b>{proVenueCount}</b>
+              <small>Canchas PRO</small>
+            </article>
+            <article>
+              <b>WhatsApp</b>
+              <small>Consulta directa</small>
+            </article>
+          </div>
         </section>
         <section className="venues-marketplace">
           <header>
-            <span>Sedes activas</span>
-            <strong>{venueLocation ? `${nearbyVenues.length} a 50 km` : "Primero ubicate"}</strong>
+            <div>
+              <span>Sedes activas</span>
+              <small>Toca un pin para ver fotos, precios y acceso a Maps.</small>
+            </div>
+            <strong>{marketplaceState}</strong>
           </header>
           <VenueMap onSelectVenue={previewVenueFromMap} selectedVenueId={previewVenue?.id ?? selectedVenue?.id} userLocation={venueLocation} venues={nearbyVenues} />
           {nearbyVenues.length ? (
@@ -4306,7 +4334,9 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
                   </div>
                 </section>
               )}
-              <section className="venue-stack">{nearbyVenues.map((venue) => <VenueRow key={venue.id} onOpen={() => openVenue(venue.id)} venue={venue} />)}</section>
+              <section className="venue-stack" aria-label="Canchas cercanas">
+                {nearbyVenues.map((venue) => <VenueRow key={venue.id} onOpen={() => openVenue(venue.id)} venue={venue} />)}
+              </section>
             </>
           ) : (
             <EmptyState icon={<MapPinned />} title="No hay canchas registradas cerca">
