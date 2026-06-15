@@ -10,6 +10,20 @@ type VenuePoint = {
   coordinates: [number, number];
 };
 
+function venueMarkerVisual(venue: ArenaVenue) {
+  return venue.cover_url || venue.gallery_urls?.[0] || "";
+}
+
+function venueMarkerLabel(venue: ArenaVenue) {
+  return venue.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase() || "F";
+}
+
 const buenosAiresCoordinates: Array<[number, number]> = [
   [-58.4894, -34.6009],
   [-58.3772, -34.6412],
@@ -87,10 +101,27 @@ export function VenueMap({
         }
         points.forEach((point) => {
           const markerNode = document.createElement("button");
+          const visualUrl = venueMarkerVisual(point.venue);
           markerNode.type = "button";
-          markerNode.className = point.venue.id === selectedVenueId ? "venue-map-marker is-active" : "venue-map-marker";
-          markerNode.innerHTML = "<i></i>";
+          markerNode.className = [
+            "venue-map-marker",
+            visualUrl ? "venue-map-marker--photo" : "",
+            point.venue.id === selectedVenueId ? "is-active" : ""
+          ].filter(Boolean).join(" ");
           markerNode.setAttribute("aria-label", point.venue.name);
+          markerNode.setAttribute("title", point.venue.name);
+          if (visualUrl) {
+            const image = document.createElement("img");
+            image.alt = "";
+            image.src = visualUrl;
+            markerNode.appendChild(image);
+          } else {
+            const pitch = document.createElement("i");
+            const label = document.createElement("span");
+            label.textContent = venueMarkerLabel(point.venue);
+            markerNode.appendChild(pitch);
+            markerNode.appendChild(label);
+          }
           markerNode.addEventListener("click", () => onSelectVenue(point.venue.id));
 
           new maplibregl.Marker({ element: markerNode, anchor: "bottom" })
@@ -135,7 +166,7 @@ export function VenueMap({
                 style={{ "--x": `${18 + (index % 3) * 30}%`, "--y": `${28 + Math.floor(index / 3) * 34}%` } as CSSProperties}
                 type="button"
               >
-                <i />
+                {venueMarkerVisual(point.venue) ? <img alt="" src={venueMarkerVisual(point.venue)} /> : <><i /><span>{venueMarkerLabel(point.venue)}</span></>}
               </button>
             ))}
           </div>

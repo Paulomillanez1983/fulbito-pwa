@@ -413,6 +413,44 @@ function venueWhatsappUrl(phone?: string | null) {
   return digits ? `https://wa.me/${digits}` : "";
 }
 
+function venueMapsUrl(venue?: ArenaVenue | null) {
+  if (!venue) return "";
+  if (typeof venue.latitude === "number" && typeof venue.longitude === "number") {
+    return `https://www.google.com/maps/dir/?api=1&destination=${venue.latitude},${venue.longitude}`;
+  }
+  const query = [venue.name, venue.address, venue.neighborhood].filter(Boolean).join(", ");
+  return query ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}` : "";
+}
+
+function venueGallery(venue: ArenaVenue) {
+  return (venue.gallery_urls?.length ? venue.gallery_urls : venue.cover_url ? [venue.cover_url] : []).filter(Boolean).slice(0, 5) as string[];
+}
+
+function venueIsPro(venue: ArenaVenue) {
+  return Boolean(venueGallery(venue).length || venue.price_per_hour > 0 || ["verified", "pending_pro"].includes(venue.status));
+}
+
+function venueAddressLine(venue: ArenaVenue) {
+  return [venue.address, venue.neighborhood].filter(Boolean).join(" / ") || "Domicilio pendiente";
+}
+
+function venuePhoneLabel(venue: ArenaVenue) {
+  return venue.phone?.replace(/\s+/g, " ").trim() || "WhatsApp a cargar";
+}
+
+function venueModePriceItems(venue: ArenaVenue) {
+  const modes = venueSurfacesFromStored(venue.field_modes, venue.surface);
+  const prices = venue.format_prices ?? {};
+  return modes.map((mode) => {
+    const value = Number(prices[mode] || 0);
+    return {
+      mode,
+      label: mode.replace("v", " vs "),
+      price: value > 0 ? money(value) : venue.price_per_hour > 0 ? money(venue.price_per_hour) : "Consultar"
+    };
+  });
+}
+
 function venueReservationWhatsappUrl(venue?: ArenaVenue | null) {
   const baseUrl = venueWhatsappUrl(venue?.phone);
   if (!baseUrl || !venue) return "";
@@ -2025,13 +2063,27 @@ function TeamCarousel({
 }
 
 function VenueRow({ venue, onOpen }: { venue: ArenaVenue; onOpen: () => void }) {
+  const gallery = venueGallery(venue);
+  const pro = venueIsPro(venue);
+  const modePrices = venueModePriceItems(venue).slice(0, 3);
   return (
-    <button className="venue-row venue-row--button" onClick={onOpen} type="button">
-      <div>
+    <button className={`venue-row venue-row--button ${pro ? "venue-row--pro" : "venue-row--free"}`} onClick={onOpen} type="button">
+      {gallery[0] ? <img alt="" className="venue-row__ghost" src={gallery[0]} /> : null}
+      <span className="venue-row__photo">
+        {gallery[0] ? <img alt="" src={gallery[0]} /> : <MapPinned size={18} />}
+      </span>
+      <div className="venue-row__main">
+        <span className="venue-row__badge">{pro ? "Cancha partner" : "Sede gratis"}</span>
         <strong>{venue.name}</strong>
-        <span>{venue.neighborhood} / {venueSurfaceSummary(venue.field_modes, venue.surface)} / {venue.phone ? `Contacto ${venue.phone}` : venue.address ?? "Direccion pendiente"}</span>
+        <span>{venueAddressLine(venue)}</span>
+        <div className="venue-row__chips">
+          {modePrices.map((item) => <i key={item.mode}>{item.label} {item.price}</i>)}
+          {venue.phone ? <i>WhatsApp</i> : null}
+          {gallery.length ? <i>{gallery.length} fotos</i> : null}
+        </div>
       </div>
-      <b>{venuePriceSummary(venue)}</b>
+      <b>{venuePriceSummary(venue)}<small>{venue.price_per_hour ? "por hora" : pro ? "precio pro" : "gratis"}</small></b>
+      <ChevronRight size={17} />
     </button>
   );
 }
@@ -3103,28 +3155,46 @@ function CompetitionBracket({
 function VenueSpotlight({ venue }: { venue?: ArenaVenue }) {
   if (!venue) return null;
   const whatsappUrl = venueWhatsappUrl(venue.phone);
-  const gallery = (venue.gallery_urls?.length ? venue.gallery_urls : venue.cover_url ? [venue.cover_url] : []).slice(0, 3);
+  const gallery = venueGallery(venue);
+  const mapsUrl = venueMapsUrl(venue);
+  const pro = venueIsPro(venue);
+  const modePrices = venueModePriceItems(venue);
   return (
-    <section className={`venue-spotlight ${gallery.length ? "venue-spotlight--with-gallery" : ""}`}>
-      {gallery.length ? (
-        <div className="venue-spotlight__gallery" aria-label={`Fotos de ${venue.name}`}>
-          <img alt="" src={gallery[0]} />
-          {gallery.length > 1 ? (
-            <div>
-              {gallery.slice(1).map((photo) => <img alt="" key={photo} src={photo} />)}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+    <section className={`venue-spotlight ${gallery.length ? "venue-spotlight--with-gallery" : ""} ${pro ? "venue-spotlight--pro" : "venue-spotlight--free"}`} id="venue-spotlight">
+      {gallery[0] ? <img alt="" className="venue-spotlight__backdrop" src={gallery[0]} /> : null}
+      <div className="venue-spotlight__hero" aria-label={`Fotos de ${venue.name}`}>
+        {gallery[0] ? <img alt="" src={gallery[0]} /> : <MapPinned size={34} />}
+        <span>{pro ? "Cancha destacada" : "Sede registrada"}</span>
+        {gallery.length > 1 ? (
+          <div className="venue-spotlight__thumbs">
+            {gallery.slice(0, 5).map((photo, index) => <img alt="" key={`${photo}-${index}`} src={photo} />)}
+          </div>
+        ) : null}
+      </div>
       <div className="venue-spotlight__body">
-        <span>{venue.status === "verified" ? "Cancha verificada" : "Cancha partner"}</span>
+        <span>{venue.status === "verified" ? "Cancha verificada" : pro ? "Cancha PRO" : "Cancha gratis"}</span>
         <h2>{venue.name}</h2>
-        <p>{venue.address ?? venue.neighborhood} / {venueSurfaceSummary(venue.field_modes, venue.surface)} / {venue.open_hours ?? "Horario a cargar"}</p>
-        {venue.phone ? <small>Contacto: {venue.phone}</small> : null}
+        <p>{venueAddressLine(venue)}</p>
+        <div className="venue-spotlight__details">
+          <small>{venueSurfaceSummary(venue.field_modes, venue.surface)}</small>
+          <small>{venue.open_hours ?? "Horario a cargar"}</small>
+          <small>{venuePhoneLabel(venue)}</small>
+        </div>
+        <div className="venue-spotlight__prices">
+          {modePrices.map((item) => (
+            <span key={item.mode}>
+              <b>{item.label}</b>
+              <small>{item.price}</small>
+            </span>
+          ))}
+        </div>
       </div>
       <div className="venue-spotlight__cta">
         <strong>{venuePriceSummary(venue)}<small>{venue.price_per_hour ? "por hora" : "precio"}</small></strong>
-        {whatsappUrl ? <a className="venue-contact-link" href={whatsappUrl} rel="noreferrer" target="_blank">Consultar turno</a> : null}
+        <div>
+          {whatsappUrl ? <a className="venue-contact-link" href={whatsappUrl} rel="noreferrer" target="_blank">Consultar turno</a> : null}
+          {mapsUrl ? <a className="venue-map-link" href={mapsUrl} rel="noreferrer" target="_blank">Abrir en Maps <ExternalLink size={14} /></a> : null}
+        </div>
       </div>
     </section>
   );
@@ -3730,6 +3800,9 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const openVenue = useCallback((venueId: string) => {
     setSelectedVenueId(venueId);
     setActiveTab("venues");
+    window.setTimeout(() => {
+      document.getElementById("venue-spotlight")?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 90);
   }, [setActiveTab]);
 
   const openMatch = useCallback((match: ArenaMatch) => {
@@ -4146,7 +4219,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           {nearbyVenues.length ? (
             <>
               <VenueSpotlight venue={selectedVenue} />
-              <section className="venue-stack">{nearbyVenues.map((venue) => <VenueRow key={venue.id} onOpen={() => setSelectedVenueId(venue.id)} venue={venue} />)}</section>
+              <section className="venue-stack">{nearbyVenues.map((venue) => <VenueRow key={venue.id} onOpen={() => openVenue(venue.id)} venue={venue} />)}</section>
             </>
           ) : (
             <EmptyState icon={<MapPinned />} title="No hay canchas registradas cerca">
