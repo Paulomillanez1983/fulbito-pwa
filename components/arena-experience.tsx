@@ -2371,6 +2371,34 @@ function sponsorCreativeAnimation(campaign: AdCampaign) {
   return "stadium_bounce";
 }
 
+type SponsorSplashScene = "yellow_card" | "free_kick" | "goal_impact" | "keeper_save" | "stadium_spotlight" | "confetti_final";
+
+const sponsorSplashScenes: SponsorSplashScene[] = ["yellow_card", "free_kick", "goal_impact", "keeper_save", "stadium_spotlight", "confetti_final"];
+
+function pickSponsorSplashScene(): SponsorSplashScene {
+  const fallback = "yellow_card";
+  if (typeof window === "undefined") return fallback;
+  try {
+    const storageKey = "fulbito:sponsor-splash-last-scene";
+    const lastScene = window.localStorage.getItem(storageKey) as SponsorSplashScene | null;
+    const candidates = sponsorSplashScenes.filter((scene) => scene !== lastScene);
+    const nextScene = candidates[Math.floor(Math.random() * candidates.length)] ?? fallback;
+    window.localStorage.setItem(storageKey, nextScene);
+    return nextScene;
+  } catch {
+    return sponsorSplashScenes[Math.floor(Math.random() * sponsorSplashScenes.length)] ?? fallback;
+  }
+}
+
+function sponsorSplashSceneLabel(scene: SponsorSplashScene) {
+  if (scene === "free_kick") return "Tiro libre Fulbito";
+  if (scene === "goal_impact") return "Gol contra la pantalla";
+  if (scene === "keeper_save") return "Atajada de barrio";
+  if (scene === "stadium_spotlight") return "Noche de estadio";
+  if (scene === "confetti_final") return "Festejo de final";
+  return "Tarjeta del arbitro";
+}
+
 function SponsorSplashOverlay({
   campaigns,
   enabled,
@@ -2383,6 +2411,7 @@ function SponsorSplashOverlay({
   userId?: string | null;
 }) {
   const [campaign, setCampaign] = useState<AdCampaign | null>(null);
+  const [scene, setScene] = useState<SponsorSplashScene>("yellow_card");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const loggedImpressionRef = useRef("");
   const shownTriggerRef = useRef<number | null>(null);
@@ -2418,6 +2447,7 @@ function SponsorSplashOverlay({
     if (!eligible) return;
     shownTriggerRef.current = triggerKey;
     markSponsorSplashShown(eligible, userKey);
+    setScene(pickSponsorSplashScene());
     setCampaign(eligible);
     setSecondsLeft(Math.max(0, eligible.splash_close_after_seconds ?? 5));
     window.setTimeout(() => playSponsorSound(eligible.splash_sound_variant ?? "stadium_whistle"), 120);
@@ -2442,6 +2472,7 @@ function SponsorSplashOverlay({
   const creativeScale = sponsorCreativeScale(campaign);
   const creativeAnimation = sponsorCreativeAnimation(campaign);
   const creativeStyle = { "--sponsor-creative-scale": creativeScale } as CSSProperties;
+  const sceneLabel = sponsorSplashSceneLabel(scene);
 
   function visitSponsor() {
     if (!campaign) return;
@@ -2456,7 +2487,7 @@ function SponsorSplashOverlay({
   }
 
   return (
-    <section className="sponsor-splash" aria-label={`Auspicia Fulbito Arena: ${campaign.advertiser_name}`} aria-modal="true" role="dialog">
+    <section className={`sponsor-splash sponsor-splash--${scene}`} aria-label={`Auspicia Fulbito Arena: ${campaign.advertiser_name}`} aria-modal="true" role="dialog">
       <button className="sponsor-splash__hitbox" onClick={visitSponsor} type="button" aria-label={`Abrir sponsor ${campaign.advertiser_name}`} />
       <span className="sponsor-splash__beam sponsor-splash__beam--left" aria-hidden="true" />
       <span className="sponsor-splash__beam sponsor-splash__beam--right" aria-hidden="true" />
@@ -2465,8 +2496,18 @@ function SponsorSplashOverlay({
           <span className="sponsor-splash__eyebrow">Auspicia Fulbito Arena</span>
           <span>Publicidad oficial</span>
         </div>
-        <div className="sponsor-splash__stage" aria-hidden="true">
-          <img alt="" className="sponsor-splash__photo" src="/assets/sponsor-yellow-card-hand.webp" />
+        <div className={`sponsor-splash__stage sponsor-splash__stage--${scene}`} aria-hidden="true">
+          <div className={`sponsor-splash__scene sponsor-splash__scene--${scene}`}>
+            {scene === "yellow_card" ? <img alt="" className="sponsor-splash__photo" src="/assets/sponsor-yellow-card-hand.webp" /> : null}
+            <span className="sponsor-splash__pitch" />
+            <span className="sponsor-splash__goal" />
+            <span className="sponsor-splash__ball-hit" />
+            <span className="sponsor-splash__impact" />
+            <span className="sponsor-splash__glove" />
+            <span className="sponsor-splash__spotlight" />
+            <span className="sponsor-splash__confetti sponsor-splash__confetti--one" />
+            <span className="sponsor-splash__confetti sponsor-splash__confetti--two" />
+          </div>
           <span className="sponsor-splash__card-aura" />
           <div className={`sponsor-splash__brand sponsor-splash__brand--${creativeAnimation}`} style={creativeStyle}>
             <span className="sponsor-splash__card-label">Sponsor</span>
@@ -2475,7 +2516,7 @@ function SponsorSplashOverlay({
           </div>
         </div>
         <div className="sponsor-splash__copy">
-          <span className="sponsor-splash__presented">Presenta esta jugada</span>
+          <span className="sponsor-splash__presented">{sceneLabel}</span>
           <strong>{campaign.advertiser_name}</strong>
           <h2>{campaign.headline}</h2>
           {campaign.body ? <p>{campaign.body}</p> : null}
@@ -4742,7 +4783,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const sponsorTabSwitchCountRef = useRef(0);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setShowSplash(false), 2600);
+    const timer = window.setTimeout(() => setShowSplash(false), 3400);
     return () => window.clearTimeout(timer);
   }, []);
 
