@@ -783,6 +783,11 @@ function shareFileName(value: string) {
   return slug ? `fulbito-card-${slug}.webp` : "fulbito-card.webp";
 }
 
+function teamLineupFileName(value: string) {
+  const slug = slugify(value || "equipo");
+  return slug ? `fulbito-plantel-${slug}.webp` : "fulbito-plantel.webp";
+}
+
 function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
   const safeRadius = Math.min(radius, width / 2, height / 2);
   ctx.beginPath();
@@ -959,6 +964,164 @@ async function createPlayerCardShareFile(player: ArenaPlayer, team?: ArenaTeam) 
   const blob = await canvasToBlob(canvas, "image/webp", .9) ?? await canvasToBlob(canvas, "image/png");
   if (!blob) throw new Error("No se pudo generar la imagen.");
   return new File([blob], shareFileName(player.alias || player.display_name), { type: blob.type || "image/webp" });
+}
+
+async function createTeamLineupShareFile(
+  team: ArenaTeam,
+  slots: FormationSlot[],
+  players: Array<ArenaPlayer | null>,
+  benchPlayers: ArenaPlayer[],
+  mode: FieldMode,
+  preset: FormationPreset
+) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1520;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No se pudo preparar la plantilla.");
+
+  const badgeUrl = teamBadgeCardImage(team);
+  const badge = await loadCanvasImage(badgeUrl);
+  const starterImages = await Promise.all(players.map((player) => loadCanvasImage(playerAvatarImage(player) || playerCardImage(player))));
+  const bench = benchPlayers.slice(0, 8);
+  const benchImages = await Promise.all(bench.map((player) => loadCanvasImage(playerAvatarImage(player) || playerCardImage(player))));
+
+  const bg = ctx.createLinearGradient(0, 0, 1080, 1520);
+  bg.addColorStop(0, "#061b2c");
+  bg.addColorStop(.48, "#07121f");
+  bg.addColorStop(1, "#02060b");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, 1080, 1520);
+
+  ctx.globalAlpha = .36;
+  ctx.fillStyle = "#132a40";
+  for (let x = -80; x < 1160; x += 92) {
+    ctx.fillRect(x, 0, 18, 1520);
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = "#ffdf6f";
+  ctx.font = "900 34px Arial";
+  ctx.fillText("FULBITO ARENA", 70, 82);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 78px Arial";
+  ctx.fillText(team.name.toUpperCase().slice(0, 19), 70, 166);
+  ctx.fillStyle = "rgba(255,255,255,.76)";
+  ctx.font = "800 30px Arial";
+  ctx.fillText(`${mode} / ${preset.shape} / ${players.filter(Boolean).length} titulares`, 72, 216);
+
+  if (badge) {
+    ctx.save();
+    roundRectPath(ctx, 884, 48, 126, 126, 34);
+    ctx.clip();
+    drawCoverImage(ctx, badge, 884, 48, 126, 126);
+    ctx.restore();
+  }
+
+  const pitch = { x: 70, y: 270, width: 940, height: 830 };
+  const pitchBg = ctx.createLinearGradient(pitch.x, pitch.y, pitch.x + pitch.width, pitch.y + pitch.height);
+  pitchBg.addColorStop(0, "#0aa65e");
+  pitchBg.addColorStop(.5, "#08763f");
+  pitchBg.addColorStop(1, "#0ab56b");
+  ctx.fillStyle = pitchBg;
+  roundRectPath(ctx, pitch.x, pitch.y, pitch.width, pitch.height, 42);
+  ctx.fill();
+  ctx.save();
+  roundRectPath(ctx, pitch.x, pitch.y, pitch.width, pitch.height, 42);
+  ctx.clip();
+  ctx.globalAlpha = .42;
+  ctx.fillStyle = "#053b22";
+  for (let x = pitch.x; x < pitch.x + pitch.width; x += pitch.width / 7) {
+    ctx.fillRect(x, pitch.y, pitch.width / 14, pitch.height);
+  }
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = "rgba(255,255,255,.55)";
+  ctx.lineWidth = 5;
+  ctx.strokeRect(pitch.x + 50, pitch.y + 50, pitch.width - 100, pitch.height - 100);
+  ctx.beginPath();
+  ctx.moveTo(pitch.x + pitch.width / 2, pitch.y + 50);
+  ctx.lineTo(pitch.x + pitch.width / 2, pitch.y + pitch.height - 50);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(pitch.x + pitch.width / 2, pitch.y + pitch.height / 2, 92, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeRect(pitch.x + pitch.width / 2 - 190, pitch.y + 50, 380, 104);
+  ctx.strokeRect(pitch.x + pitch.width / 2 - 190, pitch.y + pitch.height - 154, 380, 104);
+  ctx.restore();
+
+  const renderCtx = ctx;
+  function drawPlayer(player: ArenaPlayer | null, image: HTMLImageElement | null, x: number, y: number, small = false) {
+    const ctx = renderCtx;
+    const size = small ? 66 : 78;
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,.48)";
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = player ? "rgba(4, 12, 22, .88)" : "rgba(5, 12, 19, .74)";
+    roundRectPath(ctx, x - size / 2 - 8, y - size / 2 - 8, size + 16, size + 18, 20);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = player ? "#ffdf6f" : "rgba(255,255,255,.24)";
+    ctx.lineWidth = 4;
+    roundRectPath(ctx, x - size / 2, y - size / 2, size, size, 18);
+    ctx.stroke();
+    roundRectPath(ctx, x - size / 2, y - size / 2, size, size, 18);
+    ctx.clip();
+    if (image) {
+      drawCoverImage(ctx, image, x - size / 2, y - size / 2, size, size);
+    } else {
+      ctx.fillStyle = player ? "#102d42" : "#17202b";
+      ctx.fillRect(x - size / 2, y - size / 2, size, size);
+      ctx.fillStyle = "#ffdf6f";
+      ctx.font = `900 ${small ? 22 : 26}px Arial`;
+      ctx.textAlign = "center";
+      ctx.fillText(player ? getPlayerInitials(player) : "FA", x, y + 8);
+    }
+    ctx.restore();
+    if (!player) return;
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ffdf6f";
+    ctx.font = `900 ${small ? 22 : 26}px Arial`;
+    ctx.fillText(String(player.jersey_number ?? "--"), x, y + size / 2 + 30);
+    ctx.fillStyle = "#ffffff";
+    ctx.font = `900 ${small ? 20 : 24}px Arial`;
+    ctx.fillText((player.alias || player.display_name).slice(0, 11), x, y + size / 2 + 58);
+    ctx.textAlign = "left";
+  }
+
+  slots.forEach((slot, index) => {
+    const player = players[index] ?? null;
+    const x = pitch.x + (slot.x / 100) * pitch.width;
+    const y = pitch.y + (slot.y / 100) * pitch.height;
+    drawPlayer(player, starterImages[index], x, y);
+  });
+
+  ctx.fillStyle = "rgba(2, 7, 14, .78)";
+  roundRectPath(ctx, 70, 1160, 940, 250, 34);
+  ctx.fill();
+  ctx.fillStyle = "#ffdf6f";
+  ctx.font = "900 30px Arial";
+  ctx.fillText("SUPLENTES", 110, 1210);
+  if (bench.length) {
+    bench.forEach((player, index) => {
+      const x = 145 + (index % 4) * 250;
+      const y = 1280 + Math.floor(index / 4) * 104;
+      drawPlayer(player, benchImages[index], x, y, true);
+    });
+  } else {
+    ctx.fillStyle = "rgba(255,255,255,.68)";
+    ctx.font = "800 30px Arial";
+    ctx.fillText("Banco sin jugadores cargados", 110, 1286);
+  }
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "rgba(255,255,255,.72)";
+  ctx.font = "800 26px Arial";
+  ctx.fillText("Plantilla generada en Fulbito Arena", 540, 1460);
+  ctx.textAlign = "left";
+
+  const blob = await canvasToBlob(canvas, "image/webp", .88) ?? await canvasToBlob(canvas, "image/png");
+  if (!blob) throw new Error("No se pudo generar la plantilla.");
+  return new File([blob], teamLineupFileName(team.name), { type: blob.type || "image/webp" });
 }
 
 function PlayerAvatar({ player }: { player?: ArenaPlayer | null }) {
@@ -1253,20 +1416,24 @@ function SquadBenchRail({
   canManage,
   inviteHref,
   onOpenPlayer,
+  onShareTeam,
   onUseBenchPlayer,
   pendingSwap,
-  rosterRule
+  rosterRule,
+  shareMessage
 }: {
   benchPlayers: ArenaPlayer[];
   canManage: boolean;
   inviteHref?: string;
   onOpenPlayer: (playerId: string) => void;
+  onShareTeam?: () => void;
   onUseBenchPlayer?: (playerId: string) => void;
   pendingSwap?: boolean;
   rosterRule: ReturnType<typeof getRosterRule>;
+  shareMessage?: string;
 }) {
   return (
-    <section className="squad-bench-rail">
+    <section className={`squad-bench-rail ${pendingSwap ? "squad-bench-rail--swap" : ""}`}>
       <header>
         <div>
           <span>Suplentes</span>
@@ -1274,6 +1441,21 @@ function SquadBenchRail({
         </div>
         <small>{pendingSwap ? "Elegi quien entra al campo." : `${rosterRule.label}: ${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes`}</small>
       </header>
+      <div className="squad-bench-rail__actions">
+        {onShareTeam ? (
+          <button onClick={onShareTeam} type="button">
+            <Share2 size={15} />
+            Compartir plantilla
+          </button>
+        ) : null}
+        {canManage && inviteHref ? (
+          <a href={inviteHref} rel="noreferrer" target="_blank">
+            <UserCheck size={15} />
+            Invitar jugadores
+          </a>
+        ) : null}
+      </div>
+      {shareMessage ? <p className="squad-bench-rail__message">{shareMessage}</p> : null}
       {benchPlayers.length ? (
         <div className="squad-bench-rail__list">
           {benchPlayers.map((player) => (
@@ -1297,12 +1479,6 @@ function SquadBenchRail({
       ) : (
         <div className="squad-bench-rail__empty">
           <p>Sin suplentes cargados. El creador puede sumar jugadores para armar el banco.</p>
-          {canManage && inviteHref ? (
-            <a href={inviteHref} rel="noreferrer" target="_blank">
-              <UserCheck size={15} />
-              Invitar por WhatsApp
-            </a>
-          ) : null}
         </div>
       )}
     </section>
@@ -3443,6 +3619,8 @@ function FormationPanel({
   onEditTeamPhoto,
   onOpenPlayer,
   onSelectSlot,
+  onSwapSlots,
+  pendingSwapSlotIndex,
   lockedMode = false
 }: {
   team?: ArenaTeam;
@@ -3457,6 +3635,8 @@ function FormationPanel({
   onEditTeamPhoto?: () => void;
   onOpenPlayer: (playerId: string, slotIndex: number) => void;
   onSelectSlot: (index: number) => void;
+  onSwapSlots?: (fromIndex: number, toIndex: number) => void;
+  pendingSwapSlotIndex?: number | null;
   lockedMode?: boolean;
 }) {
   const fieldModes = lockedMode ? [mode] : (["5v5", "7v7", "11v11"] as FieldMode[]);
@@ -3507,12 +3687,18 @@ function FormationPanel({
         {preset.slots.map((slot, index) => {
           const player = players[index] ?? null;
           const selected = selectedSlotIndex === index;
+          const canSwapInto = Boolean(isManager && player && selectedSlotIndex !== index && players[selectedSlotIndex]);
+          const playerName = player?.display_name ?? "jugador";
           return (
             <button
-              className={`formation-slot formation-slot--button ${selected ? "is-selected" : ""} ${player ? "is-filled" : "is-empty"}`}
-              aria-label={player ? `Abrir ficha de ${player.display_name}` : `Cargar ${slot.label} ${index + 1}`}
+              className={`formation-slot formation-slot--button ${selected ? "is-selected" : ""} ${canSwapInto ? "is-swap-target" : ""} ${pendingSwapSlotIndex === index ? "is-pending-swap" : ""} ${player ? "is-filled" : "is-empty"}`}
+              aria-label={canSwapInto ? `Cambiar posicion con ${playerName}` : player ? `Abrir ficha de ${player.display_name}` : `Cargar ${slot.label} ${index + 1}`}
               key={`${mode}-${slot.label}-${index}`}
               onClick={() => {
+                if (canSwapInto && onSwapSlots) {
+                  onSwapSlots(selectedSlotIndex, index);
+                  return;
+                }
                 onSelectSlot(index);
                 if (player) onOpenPlayer(player.id, index);
               }}
@@ -4477,6 +4663,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const [selectedSlotIndex, setSelectedSlotIndex] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].slots.length - 1);
   const [formationSlotOrder, setFormationSlotOrder] = useState<string[]>([]);
   const [formationSaveState, setFormationSaveState] = useState("");
+  const [teamShareMessage, setTeamShareMessage] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [playerCardModalId, setPlayerCardModalId] = useState<string | null>(null);
   const [squadPanel, setSquadPanel] = useState<SquadPanel>("field");
@@ -4677,12 +4864,14 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   }, [formationSlotPlayers, selectedPlayers]);
   const selectedFormationSlotPlayer = formationSlotPlayers[selectedSlotIndex] ?? null;
   const selectedTeamPlayerInviteHref = useMemo(() => {
-    if (!selectedTeam?.slug || !origin) return "";
+    if (!selectedTeam || !origin) return "";
+    const teamCode = selectedTeam.slug || selectedTeam.id;
+    if (!teamCode) return "";
     const tournament = data.activeTournament;
     const hasTournamentContext = Boolean(tournament?.slug && selectedTeamEnrolledInActiveTournament);
     const joinQuery = hasTournamentContext && tournament
-      ? `join=${encodeURIComponent(tournament.slug)}&team=${encodeURIComponent(selectedTeam.slug)}`
-      : `team=${encodeURIComponent(selectedTeam.slug)}`;
+      ? `join=${encodeURIComponent(tournament.slug)}&team=${encodeURIComponent(teamCode)}`
+      : `team=${encodeURIComponent(teamCode)}`;
     const joinUrl = `${origin}/?${joinQuery}`;
     const premiumCopy = selectedTeamProActive
       ? " Tambien podes subir foto para tu carta Fulbito."
@@ -4691,32 +4880,44 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     const text = `Te invito a sumarte a ${selectedTeam.name}${tournamentCopy}. Entra a ${joinUrl}, carga tu ficha y queda en el plantel.${premiumCopy}`;
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
   }, [data.activeTournament, origin, selectedTeam, selectedTeamEnrolledInActiveTournament, selectedTeamProActive]);
-  const assignPlayerToFormationSlot = useCallback((slotIndex: number, playerId: string) => {
-    setFormationSlotOrder((current) => {
-      const next = Array.from({ length: currentFormation.slots.length }, (_, index) => current[index] ?? formationSlotPlayers[index]?.id ?? "");
-      next.forEach((value, index) => {
-        if (playerId && value === playerId) next[index] = "";
-      });
-      next[slotIndex] = playerId;
-      return next;
-    });
-  }, [currentFormation.slots.length, formationSlotPlayers]);
-  const clearFormationSlot = useCallback((slotIndex: number) => {
-    setFormationSlotOrder((current) => {
-      const next = Array.from({ length: currentFormation.slots.length }, (_, index) => current[index] ?? formationSlotPlayers[index]?.id ?? "");
-      next[slotIndex] = "";
-      return next;
-    });
-  }, [currentFormation.slots.length, formationSlotPlayers]);
-  const saveSelectedTeamFormation = useCallback(async () => {
+  const shareTeamLineup = useCallback(async () => {
+    if (!selectedTeam) return;
+    setTeamShareMessage("Generando plantilla WebP...");
+    try {
+      const file = await createTeamLineupShareFile(selectedTeam, currentFormation.slots, formationSlotPlayers, formationBenchPlayers, formationMode, currentFormation);
+      const title = `${selectedTeam.name} en Fulbito Arena`;
+      const text = `${selectedTeam.name} | ${formationMode} ${currentFormation.shape} | Plantel Fulbito`;
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title, text, files: [file] });
+        setTeamShareMessage("Plantilla compartida.");
+      } else {
+        const url = URL.createObjectURL(file);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+        await navigator.clipboard?.writeText(`${text} ${window.location.href}`.trim());
+        setTeamShareMessage("Plantilla descargada y texto copiado.");
+      }
+    } catch {
+      setTeamShareMessage("No se pudo generar la plantilla.");
+    }
+    window.setTimeout(() => setTeamShareMessage(""), 2400);
+  }, [currentFormation, formationBenchPlayers, formationMode, formationSlotPlayers, selectedTeam]);
+  const slotOrderFromCurrent = useCallback(() => {
+    return Array.from({ length: currentFormation.slots.length }, (_, index) => formationSlotPlayers[index]?.id ?? formationSlotOrder[index] ?? "");
+  }, [currentFormation.slots.length, formationSlotOrder, formationSlotPlayers]);
+  const persistFormationSlotOrder = useCallback(async (slotOrder: string[], successLabel = "Guardada") => {
     setFormationSaveState("Guardando...");
     if (!data.user || !selectedTeam || selectedTeam.owner_id !== data.user.id) {
       setFormationSaveState("Solo creador");
       window.setTimeout(() => setFormationSaveState(""), 2200);
-      return;
+      return false;
     }
     const supabase = createSupabaseBrowserClient();
-    const slotOrder = Array.from({ length: currentFormation.slots.length }, (_, index) => formationSlotPlayers[index]?.id ?? formationSlotOrder[index] ?? "");
     const { error } = await supabase
       .from("team_formation_settings")
       .upsert({
@@ -4730,11 +4931,34 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     if (error) {
       setFormationSaveState("Error");
       window.setTimeout(() => setFormationSaveState(""), 2600);
-      return;
+      return false;
     }
-    setFormationSaveState("Guardada");
+    setFormationSaveState(successLabel);
     window.setTimeout(() => setFormationSaveState(""), 1800);
-  }, [currentFormation.slots.length, data.user, formationMode, formationPresetId, formationSlotOrder, formationSlotPlayers, selectedTeam]);
+    return true;
+  }, [data.user, formationMode, formationPresetId, selectedTeam]);
+  const assignPlayerToFormationSlot = useCallback((slotIndex: number, playerId: string) => {
+    const next = slotOrderFromCurrent();
+    next.forEach((value, index) => {
+      if (playerId && value === playerId) next[index] = "";
+    });
+    next[slotIndex] = playerId;
+    setFormationSlotOrder(next);
+    setSelectedSlotIndex(slotIndex);
+    setSelectedPlayerId(playerId || null);
+    void persistFormationSlotOrder(next, "Cambio guardado");
+  }, [persistFormationSlotOrder, slotOrderFromCurrent]);
+  const clearFormationSlot = useCallback((slotIndex: number) => {
+    const next = slotOrderFromCurrent();
+    next[slotIndex] = "";
+    setFormationSlotOrder(next);
+    setSelectedSlotIndex(slotIndex);
+    setSelectedPlayerId(null);
+    void persistFormationSlotOrder(next, "Puesto liberado");
+  }, [persistFormationSlotOrder, slotOrderFromCurrent]);
+  const saveSelectedTeamFormation = useCallback(async () => {
+    await persistFormationSlotOrder(slotOrderFromCurrent());
+  }, [persistFormationSlotOrder, slotOrderFromCurrent]);
   const deleteSelectedTeamPlayer = useCallback(async (playerId: string) => {
     if (!data.user || !selectedTeam || selectedTeam.owner_id !== data.user.id) return;
     const supabase = createSupabaseBrowserClient();
@@ -4782,6 +5006,20 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     setSelectedSlotIndex(slotIndex);
     setSelectedPlayerId(playerId);
   }, []);
+  const swapFormationSlots = useCallback((fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    const next = slotOrderFromCurrent();
+    const fromPlayerId = next[fromIndex];
+    const toPlayerId = next[toIndex];
+    if (!fromPlayerId || !toPlayerId) return;
+    next[fromIndex] = toPlayerId;
+    next[toIndex] = fromPlayerId;
+    setFormationSlotOrder(next);
+    setSelectedSlotIndex(toIndex);
+    setSelectedPlayerId(fromPlayerId);
+    setPendingSwapSlotIndex(null);
+    void persistFormationSlotOrder(next, "Posiciones cambiadas");
+  }, [persistFormationSlotOrder, slotOrderFromCurrent]);
   const startSwapForPlayer = useCallback((playerId: string) => {
     const slotIndex = formationSlotPlayers.findIndex((player) => player?.id === playerId);
     if (slotIndex < 0) return;
@@ -4791,11 +5029,18 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   }, [formationSlotPlayers]);
   const useBenchPlayerForPendingSwap = useCallback((playerId: string) => {
     if (pendingSwapSlotIndex == null) return;
-    assignPlayerToFormationSlot(pendingSwapSlotIndex, playerId);
+    const next = slotOrderFromCurrent();
+    next.forEach((value, index) => {
+      if (value === playerId) next[index] = "";
+    });
+    next[pendingSwapSlotIndex] = playerId;
+    setFormationSlotOrder(next);
     setSelectedSlotIndex(pendingSwapSlotIndex);
+    setSelectedPlayerId(playerId);
     setPendingSwapSlotIndex(null);
-    setSquadPanel("formation");
-  }, [assignPlayerToFormationSlot, pendingSwapSlotIndex]);
+    setSquadPanel("field");
+    void persistFormationSlotOrder(next, "Cambio guardado");
+  }, [pendingSwapSlotIndex, persistFormationSlotOrder, slotOrderFromCurrent]);
   const openTeamBadgeEditor = useCallback(() => {
     setFocusTeamBadgeEditor(true);
     setSquadPanel("edit");
@@ -5317,6 +5562,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
         onEditTeamPhoto={openTeamBadgeEditor}
         onOpenPlayer={openFormationPlayer}
         onSelectSlot={setSelectedSlotIndex}
+        onSwapSlots={swapFormationSlots}
+        pendingSwapSlotIndex={pendingSwapSlotIndex}
         players={formationSlotPlayers}
         preset={currentFormation}
         presetId={formationPresetId}
@@ -5368,9 +5615,11 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             canManage={isTeamManager}
             inviteHref={selectedTeamPlayerInviteHref}
             onOpenPlayer={setSelectedPlayerId}
+            onShareTeam={shareTeamLineup}
             onUseBenchPlayer={useBenchPlayerForPendingSwap}
             pendingSwap={pendingSwapSlotIndex != null}
             rosterRule={rosterRule}
+            shareMessage={teamShareMessage}
           />
         ) : null}
         <SquadSectionTabs

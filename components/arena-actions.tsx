@@ -150,24 +150,67 @@ function MediaField({
   const [preview, setPreview] = useState<string | null>(null);
   const [filename, setFilename] = useState("");
   const [frame, setFrame] = useState<ImageFrameDraft>(() => defaultImageFrame(variant));
+  const [status, setStatus] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview);
   }, [preview]);
 
-  function onFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  function setPreviewFromFile(file?: File | null) {
     setFilename(file?.name ?? "");
+    setStatus(file ? "Ajusta zoom y posicion antes de guardar. Fulbito lo sube en WebP liviano." : "");
     setPreview((current) => {
       if (current) URL.revokeObjectURL(current);
       return file ? URL.createObjectURL(file) : null;
     });
   }
 
+  function setInputFile(file: File) {
+    if (!inputRef.current) return;
+    const transfer = new DataTransfer();
+    transfer.items.add(file);
+    inputRef.current.files = transfer.files;
+  }
+
+  function onFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setPreviewFromFile(file);
+  }
+
+  async function editCurrentImage() {
+    if (!currentSrc) return;
+    setStatus("Preparando la foto actual...");
+    try {
+      const response = await fetch(currentSrc);
+      if (!response.ok) throw new Error("No se pudo leer la imagen actual.");
+      const blob = await response.blob();
+      const extension = blob.type.includes("png")
+        ? "png"
+        : blob.type.includes("webp")
+          ? "webp"
+          : blob.type.includes("avif")
+            ? "avif"
+            : "jpg";
+      const file = new File([blob], `${name}-actual.${extension}`, { type: blob.type || "image/jpeg" });
+      setInputFile(file);
+      setFrame(defaultImageFrame(variant));
+      setPreviewFromFile(file);
+      setStatus("Foto actual lista para reencuadrar.");
+    } catch {
+      setStatus("No pude editar la foto actual. Subi una nueva imagen y Fulbito la optimiza.");
+    }
+  }
+
+  function autoFrame() {
+    setFrame(defaultImageFrame(variant));
+    setStatus("Autoencuadre aplicado. Podes ajustar fino si hace falta.");
+  }
+
   return (
     <div className={`media-frame-field media-frame-field--${variant}`}>
       <label className={`media-field media-field--${variant}`}>
-        <input accept={accept} name={name} onChange={onFileChange} type="file" />
+        <input accept={accept} name={name} onChange={onFileChange} ref={inputRef} type="file" />
         <FrameHiddenInputs frame={frame} name={name} />
         <span className="media-field__preview" data-frame-shape={frame.shape} style={framePreviewStyle(frame)}>
           {preview ? <img alt="" src={preview} /> : currentSrc ? <img alt="" src={currentSrc} /> : <Camera size={20} />}
@@ -177,6 +220,16 @@ function MediaField({
           <small>{filename || (currentSrc ? "Toca para elegir una nueva imagen. Fulbito la guarda en WebP." : helper)}</small>
         </span>
       </label>
+      <div className="media-field-actions">
+        {currentSrc ? (
+          <button onClick={editCurrentImage} type="button">
+            Editar foto actual
+          </button>
+        ) : null}
+        <button onClick={autoFrame} type="button">
+          Hacerlo automaticamente
+        </button>
+      </div>
       {preview ? (
         <ImageFrameTuner
           allowNoShape={variant === "wide" || variant === "square"}
@@ -186,6 +239,7 @@ function MediaField({
           variant={variant}
         />
       ) : null}
+      {status ? <p className="media-field-status">{status}</p> : null}
     </div>
   );
 }
@@ -1308,7 +1362,7 @@ export function ArenaActions({
             <h3>{teamEditorOnly ? "Subir nuevo escudo" : "Escudo premium"}</h3>
             <p>{selectedOwnedTeam.name} tiene Equipo Pro activo. Elegi la imagen, ajusta forma, zoom y posicion. Limite: 3 cambios por mes.</p>
             <input name="teamId" type="hidden" value={selectedOwnedTeam.id} />
-            <MediaField accept="image/png,image/jpeg,image/webp" currentSrc={selectedBadgeUrl} helper="PNG, JPG o WebP. Fulbito lo convierte a WebP liviano antes de subir." label="Escudo del equipo" name="badgeFile" variant="crest" />
+            <MediaField accept="image/png,image/jpeg,image/webp,image/avif" currentSrc={selectedBadgeUrl} helper="PNG, JPG, AVIF o WebP. Fulbito lo convierte a WebP liviano antes de subir." label="Escudo del equipo" name="badgeFile" variant="crest" />
             <input name="primaryColor" type="color" defaultValue={selectedOwnedTeam.primary_color || "#eec15c"} />
             <SubmitButton idle="Actualizar escudo" pending="Guardando escudo" />
           </form>

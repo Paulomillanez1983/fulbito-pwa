@@ -19039,6 +19039,50 @@ body::after,
   line-height: 1.25;
 }
 
+.squad-bench-rail__actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+  gap: 8px;
+}
+
+.squad-bench-rail__actions button,
+.squad-bench-rail__actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 38px;
+  border: 1px solid rgba(85, 246, 255, .24);
+  border-radius: 999px;
+  padding: 9px 11px;
+  background: rgba(5, 16, 29, .78);
+  color: #eafbff;
+  font-size: .68rem;
+  font-weight: 1000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.squad-bench-rail__actions button:first-child {
+  border-color: rgba(255, 219, 105, .4);
+  background: linear-gradient(145deg, rgba(255, 226, 118, .92), rgba(177, 102, 14, .9));
+  color: #120b04;
+}
+
+.squad-bench-rail__message {
+  border: 1px solid rgba(85, 246, 255, .18);
+  border-radius: 12px;
+  padding: 7px 9px;
+  background: rgba(85, 246, 255, .08);
+  color: #dffcff !important;
+  font-weight: 900;
+}
+
+.squad-bench-rail--swap {
+  border-color: rgba(44, 255, 151, .32);
+  box-shadow: 0 18px 46px rgba(0, 0, 0, .32), 0 0 0 1px rgba(44, 255, 151, .12), inset 0 1px 0 rgba(255, 255, 255, .07);
+}
+
 .squad-bench-rail__list {
   display: grid;
   grid-auto-columns: minmax(86px, 112px);
@@ -19061,6 +19105,28 @@ body::after,
     rgba(6, 12, 24, .78);
   color: #fff;
   cursor: pointer;
+}
+
+.squad-bench-rail--swap .squad-bench-rail__list button {
+  border-color: rgba(44, 255, 151, .32);
+  background:
+    radial-gradient(circle at 50% 0, rgba(44,255,151,.2), transparent 46%),
+    rgba(6, 28, 23, .82);
+}
+
+.formation-slot--button.is-swap-target .player-disc,
+.formation-slot--button.is-pending-swap .player-disc {
+  border-color: rgba(44, 255, 151, .95);
+  box-shadow: 0 0 0 4px rgba(44, 255, 151, .16), 0 0 24px rgba(44, 255, 151, .34);
+}
+
+.formation-slot--button.is-swap-target span::after {
+  content: " cambiar";
+  display: inline-block;
+  margin-left: 4px;
+  color: #2cff97;
+  font-size: .68em;
+  text-transform: uppercase;
 }
 
 .squad-bench-rail__list span,
@@ -19463,6 +19529,42 @@ body::after,
   width: 74px;
   height: 82px;
   filter: drop-shadow(0 12px 24px rgba(0, 0, 0, .32));
+}
+
+.media-field-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.media-field-actions button {
+  min-height: 34px;
+  border: 1px solid rgba(85, 246, 255, .22);
+  border-radius: 999px;
+  padding: 8px 11px;
+  background: rgba(5, 17, 29, .82);
+  color: #eafbff;
+  font-size: .66rem;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.media-field-actions button:last-child {
+  border-color: rgba(255, 219, 105, .38);
+  background: linear-gradient(145deg, rgba(255, 226, 118, .9), rgba(178, 102, 17, .88));
+  color: #120b04;
+}
+
+.media-field-status {
+  margin: 8px 0 0;
+  border: 1px solid rgba(85, 246, 255, .16);
+  border-radius: 12px;
+  padding: 7px 9px;
+  background: rgba(85, 246, 255, .07);
+  color: rgba(234, 251, 255, .82);
+  font-size: .68rem;
+  font-weight: 900;
 }
 
 #team-badge-editor .media-field__copy strong::after {
