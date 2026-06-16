@@ -41,7 +41,7 @@ import { PaymentConsole } from "@/components/payment-console";
 import { VenueMap } from "@/components/venue-map";
 import { isSponsorSoundVariant } from "@/lib/ad-sounds";
 import { buildTournamentDraw, type DrawResult } from "@/lib/draw";
-import { storedImageFrameShape, type StoredImageFrameShape } from "@/lib/image-frame";
+import { storedImageFrameCssVars, storedImageFrameShape, storedImageFrameTransform, type StoredImageFrameShape } from "@/lib/image-frame";
 import { roleCatalog } from "@/lib/demo";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -722,7 +722,7 @@ function TeamCrest({ team, size = "normal" }: { team?: ArenaTeam | null; size?: 
     <span
       className={`team-crest ${size === "large" ? "team-crest--large" : ""}`}
       data-frame-shape={storedImageFrameShape(team?.badge_frame, "shield")}
-      style={{ "--crest": team?.primary_color ?? "#eec15c" } as CSSProperties}
+      style={{ "--crest": team?.primary_color ?? "#eec15c", ...storedImageFrameCssVars(team?.badge_frame, "shield") } as CSSProperties}
     >
       {badgeUrl ? <img alt="" src={badgeUrl} /> : <b>{team?.short_name ?? "FC"}</b>}
     </span>
@@ -849,12 +849,22 @@ function drawContainImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement
   ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
 }
 
-function drawFramedBadge(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number, shape: StoredImageFrameShape) {
+function drawFramedBadge(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number, frame: unknown) {
+  const transform = storedImageFrameTransform(frame, "shield");
   const padding = Math.max(4, Math.min(width, height) * 0.08);
+  const imageX = x + padding;
+  const imageY = y + padding;
+  const imageWidth = width - padding * 2;
+  const imageHeight = height - padding * 2;
+  const ratio = Math.min(imageWidth / image.naturalWidth, imageHeight / image.naturalHeight) * transform.zoom;
+  const drawWidth = image.naturalWidth * ratio;
+  const drawHeight = image.naturalHeight * ratio;
+  const drawX = imageX + (imageWidth - drawWidth) / 2 + transform.offsetX * imageWidth;
+  const drawY = imageY + (imageHeight - drawHeight) / 2 + transform.offsetY * imageHeight;
   ctx.save();
-  frameShapePath(ctx, x, y, width, height, shape);
+  frameShapePath(ctx, x, y, width, height, transform.shape);
   ctx.clip();
-  drawContainImage(ctx, image, x + padding, y + padding, width - padding * 2, height - padding * 2);
+  ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
   ctx.restore();
 }
 
@@ -936,7 +946,7 @@ async function createPlayerCardShareFile(player: ArenaPlayer, team?: ArenaTeam) 
   ctx.fillText(`#${player.jersey_number ?? "--"}`, 116, 268);
 
   if (badge) {
-    drawFramedBadge(ctx, badge, 706, 126, 96, 96, storedImageFrameShape(team?.badge_frame, "shield"));
+    drawFramedBadge(ctx, badge, 706, 126, 96, 96, team?.badge_frame);
   }
   ctx.fillStyle = "rgba(255,255,255,.92)";
   ctx.font = "900 30px Arial";
@@ -1055,7 +1065,7 @@ async function createTeamLineupShareFile(
   ctx.fillText(`${mode} / ${preset.shape} / ${players.filter(Boolean).length} titulares`, 72, 216);
 
   if (badge) {
-    drawFramedBadge(ctx, badge, 884, 48, 126, 126, storedImageFrameShape(team.badge_frame, "shield"));
+    drawFramedBadge(ctx, badge, 884, 48, 126, 126, team.badge_frame);
   }
 
   const pitch = { x: 70, y: 270, width: 940, height: 830 };
@@ -1723,7 +1733,11 @@ function DrawLiveTeaser({
           </div>
           <div className="draw-reveal-card">
             <span>{currentReveal ? `Extraccion ${currentReveal.index}/${currentReveal.total}` : "Proxima bolilla"}</span>
-            <div className="draw-reveal-card__crest" data-frame-shape={storedImageFrameShape(currentReveal?.team.badgeFrame, "shield")}>
+            <div
+              className="draw-reveal-card__crest"
+              data-frame-shape={storedImageFrameShape(currentReveal?.team.badgeFrame, "shield")}
+              style={storedImageFrameCssVars(currentReveal?.team.badgeFrame, "shield") as CSSProperties}
+            >
               {currentReveal?.team.badgeUrl ? <img alt="" src={currentReveal.team.badgeUrl} /> : <b>{currentReveal?.team.shortName ?? "FA"}</b>}
             </div>
             <strong>{currentReveal?.team.name ?? "Equipo por revelar"}</strong>

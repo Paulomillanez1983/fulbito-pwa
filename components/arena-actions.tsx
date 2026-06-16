@@ -48,6 +48,10 @@ function frameForDerivative(frameOptions: ImageFrameOptions | null | undefined, 
   return { ...(frameOptions ?? {}), shape };
 }
 
+function neutralImageFrame(shape: ImageFrameOptions["shape"] = "none"): ImageFrameOptions {
+  return { shape, zoom: 1, offsetX: 0, offsetY: 0 };
+}
+
 type SlotDraft = {
   label: string;
   jersey: number;
@@ -876,9 +880,10 @@ export function ArenaActions({
     frameOptions: ImageFrameOptions | null
   ) {
     if (!(fileValue instanceof File) || fileValue.size === 0) return null;
-    const badgeUrl = await uploadArenaMedia(supabase, "team-badges", userId, fileValue, frameOptions, "team_badge", "badge");
-    const iconUrl = await uploadArenaMedia(supabase, "team-badges", userId, fileValue, frameForDerivative(frameOptions, "none"), "team_badge", "icon");
-    const cardUrl = await uploadArenaMedia(supabase, "team-badges", userId, fileValue, frameForDerivative(frameOptions, "none"), "team_badge_card", "card");
+    const baseFrame = neutralImageFrame("none");
+    const badgeUrl = await uploadArenaMedia(supabase, "team-badges", userId, fileValue, baseFrame, "team_badge", "badge");
+    const iconUrl = await uploadArenaMedia(supabase, "team-badges", userId, fileValue, baseFrame, "team_badge", "icon");
+    const cardUrl = await uploadArenaMedia(supabase, "team-badges", userId, fileValue, baseFrame, "team_badge_card", "card");
     return { badgeUrl, iconUrl, cardUrl, frame: frameOptions };
   }
 

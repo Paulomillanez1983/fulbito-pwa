@@ -37,3 +37,12 @@ export function storedImageFrameTransform(frame: unknown, fallbackShape: StoredI
     offsetY: clampNumber(source.offsetY, 0, -0.35, 0.35)
   };
 }
+
+export function storedImageFrameCssVars(frame: unknown, fallbackShape: StoredImageFrameShape = "shield") {
+  const transform = storedImageFrameTransform(frame, fallbackShape);
+  return {
+    "--image-frame-zoom": String(transform.zoom),
+    "--image-frame-x": `${transform.offsetX * 100}%`,
+    "--image-frame-y": `${transform.offsetY * 100}%`
+  };
+}

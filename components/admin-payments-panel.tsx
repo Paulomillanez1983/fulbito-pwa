@@ -6,7 +6,7 @@ import { Ban, CheckCircle2, Clock3, ExternalLink, Flag, LoaderCircle, MapPin, Me
 import { FrameHiddenInputs, ImageFrameTuner, defaultImageFrame, framePreviewStyle } from "@/components/image-frame-controls";
 import type { ImageFrameDraft } from "@/components/image-frame-controls";
 import { sponsorSoundOptions } from "@/lib/ad-sounds";
-import { storedImageFrameShape } from "@/lib/image-frame";
+import { storedImageFrameCssVars, storedImageFrameShape } from "@/lib/image-frame";
 import { optimizeImageForUpload, readImageFrameOptions, type ImageFrameOptions } from "@/lib/image-optimizer";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -208,7 +208,11 @@ function AdminTeamAudit({ teams }: { teams: AdminTeamAuditItem[] }) {
           return (
             <article className="admin-team-card" key={item.team.id}>
               <header>
-                <span className="admin-team-badge" data-frame-shape={storedImageFrameShape(item.team.badge_frame, "shield")} style={{ "--team-color": item.team.primary_color } as CSSProperties}>
+                <span
+                  className="admin-team-badge"
+                  data-frame-shape={storedImageFrameShape(item.team.badge_frame, "shield")}
+                  style={{ "--team-color": item.team.primary_color, ...storedImageFrameCssVars(item.team.badge_frame, "shield") } as CSSProperties}
+                >
                   {item.team.badge_icon_url || item.team.badge_url ? <img alt="" src={item.team.badge_icon_url || item.team.badge_url || ""} /> : item.team.short_name.slice(0, 3)}
                 </span>
                 <div>
