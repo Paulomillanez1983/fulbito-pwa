@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { CSSProperties, FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ChangeEvent, CSSProperties, FormEvent } from "react";
 import { Ban, CheckCircle2, Clock3, ExternalLink, Flag, LoaderCircle, MapPin, Megaphone, MessageCircle, RadioTower, Search, ShieldCheck, Trophy, Users, Send, Upload, Video, XCircle } from "lucide-react";
+import { FrameHiddenInputs, ImageFrameTuner, defaultImageFrame, framePreviewStyle } from "@/components/image-frame-controls";
+import type { ImageFrameDraft } from "@/components/image-frame-controls";
 import { sponsorSoundOptions } from "@/lib/ad-sounds";
-import { optimizeImageForUpload } from "@/lib/image-optimizer";
+import { optimizeImageForUpload, readImageFrameOptions, type ImageFrameOptions } from "@/lib/image-optimizer";
 import { formatPaymentMoney, mergePaymentPlans, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AccountEntitlement, AdCampaign, AdCampaignEvent, AdCampaignScope, AdCampaignStatus, AppRole, ArenaMatch, BillingPlanSetting, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, LiveStreamLifecycleStatus, MatchResultSubmission, PaymentMessage, PaymentRequest, PaymentRequestStatus, UserBlock } from "@/lib/types";
@@ -452,6 +454,44 @@ function localDateTime(value?: string | null) {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
+function AdminAdLogoFrameField({ currentUrl }: { currentUrl?: string | null }) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [filename, setFilename] = useState("");
+  const [frame, setFrame] = useState<ImageFrameDraft>(() => defaultImageFrame("ad"));
+
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
+
+  function onFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setFilename(file?.name ?? "");
+    setPreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  }
+
+  return (
+    <div className="admin-ad-frame-field">
+      <label className="admin-ad-logo-field">
+        <Upload size={16} />
+        <span>{filename || (currentUrl ? "Reemplazar logo WebP" : "Logo del sponsor")}</span>
+        <input accept="image/png,image/jpeg,image/webp" name="logoFile" onChange={onFileChange} type="file" />
+        <FrameHiddenInputs frame={frame} name="logoFile" />
+      </label>
+      {preview || currentUrl ? (
+        <div className="admin-ad-frame-preview">
+          <span data-frame-shape={frame.shape} style={framePreviewStyle(frame)}>
+            <img alt="" src={preview || currentUrl || ""} />
+          </span>
+          <ImageFrameTuner allowNoShape frame={frame} label="Ajustar logo" onFrameChange={setFrame} variant="ad" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function AdminAdFields({ campaign, defaultScope = "national" }: { campaign?: AdCampaign; defaultScope?: AdCampaignScope }) {
   return (
     <div className="admin-ad-form__grid">
@@ -504,11 +544,7 @@ function AdminAdFields({ campaign, defaultScope = "national" }: { campaign?: AdC
         <input defaultChecked={campaign?.splash_enabled ?? true} name="splashEnabled" type="checkbox" />
         <span>Mostrar en pantalla completa</span>
       </label>
-      <label className="admin-ad-logo-field">
-        <Upload size={16} />
-        <span>{campaign?.logo_url ? "Reemplazar logo WebP" : "Logo del sponsor"}</span>
-        <input accept="image/png,image/jpeg,image/webp" name="logoFile" type="file" />
-      </label>
+      <AdminAdLogoFrameField currentUrl={campaign?.logo_url} />
       <input defaultValue={localDateTime(campaign?.starts_at)} name="startsAt" type="datetime-local" />
       <input defaultValue={localDateTime(campaign?.ends_at)} name="endsAt" type="datetime-local" />
     </div>
@@ -541,10 +577,10 @@ export function AdminAdCampaignPanel({
     }, {});
   }, [events]);
 
-  async function uploadLogo(fileValue: FormDataEntryValue | null) {
+  async function uploadLogo(fileValue: FormDataEntryValue | null, frameOptions?: ImageFrameOptions | null) {
     if (!(fileValue instanceof File) || fileValue.size === 0) return null;
     const supabase = createSupabaseBrowserClient();
-    const optimized = await optimizeImageForUpload(fileValue, "ad_logo");
+    const optimized = await optimizeImageForUpload(fileValue, "ad_logo", frameOptions);
     const extension = "webp";
     const path = `${adminId}/${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
     const { error } = await supabase.storage.from("ad-assets").upload(path, optimized, {
@@ -586,7 +622,7 @@ export function AdminAdCampaignPanel({
         throw new Error("Para publicidad local carga latitud y longitud del comercio.");
       }
       const splashEnabled = placement === "sponsor_splash" || placement === "both" || form.get("splashEnabled") === "on";
-      const logoUrl = await uploadLogo(form.get("logoFile"));
+      const logoUrl = await uploadLogo(form.get("logoFile"), readImageFrameOptions(form, "logoFile", { shape: "rounded" }));
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase
         .from("ad_campaigns")
@@ -694,7 +730,7 @@ export function AdminAdCampaignPanel({
       if (scope === "local" && (!Number.isFinite(latitude) || !Number.isFinite(longitude))) {
         throw new Error("Para publicidad local carga latitud y longitud del comercio.");
       }
-      const logoUrl = await uploadLogo(form.get("logoFile"));
+      const logoUrl = await uploadLogo(form.get("logoFile"), readImageFrameOptions(form, "logoFile", { shape: "rounded" }));
       const splashEnabled = placement === "sponsor_splash" || placement === "both" || form.get("splashEnabled") === "on";
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase

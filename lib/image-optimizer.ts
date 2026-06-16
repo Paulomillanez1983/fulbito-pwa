@@ -8,6 +8,14 @@ export type UploadImagePreset =
   | "payment_proof";
 
 type FitMode = "cover" | "contain" | "inside";
+export type ImageFrameShape = "none" | "circle" | "shield" | "hex" | "rounded";
+
+export type ImageFrameOptions = {
+  shape?: ImageFrameShape;
+  zoom?: number;
+  offsetX?: number;
+  offsetY?: number;
+};
 
 type ImageTarget = {
   width: number;
@@ -102,9 +110,119 @@ async function readBitmap(file: File) {
   }
 }
 
-function drawImage(context: CanvasRenderingContext2D, bitmap: ImageBitmap, width: number, height: number, target: ImageTarget) {
+function clampNumber(value: number, min: number, max: number, fallback: number) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(max, Math.max(min, value));
+}
+
+export function normalizeImageFrameOptions(options?: ImageFrameOptions | null): Required<ImageFrameOptions> {
+  const allowedShapes = new Set<ImageFrameShape>(["none", "circle", "shield", "hex", "rounded"]);
+  const shape = options?.shape && allowedShapes.has(options.shape) ? options.shape : "none";
+  return {
+    shape,
+    zoom: clampNumber(Number(options?.zoom ?? 1), 0.55, 2.8, 1),
+    offsetX: clampNumber(Number(options?.offsetX ?? 0), -0.45, 0.45, 0),
+    offsetY: clampNumber(Number(options?.offsetY ?? 0), -0.45, 0.45, 0)
+  };
+}
+
+export function readImageFrameOptions(formData: FormData, fieldName: string, fallback?: ImageFrameOptions): Required<ImageFrameOptions> {
+  return normalizeImageFrameOptions({
+    shape: String(formData.get(`${fieldName}FrameShape`) || fallback?.shape || "none") as ImageFrameShape,
+    zoom: Number(formData.get(`${fieldName}FrameZoom`) || fallback?.zoom || 1),
+    offsetX: Number(formData.get(`${fieldName}FrameX`) || fallback?.offsetX || 0),
+    offsetY: Number(formData.get(`${fieldName}FrameY`) || fallback?.offsetY || 0)
+  });
+}
+
+function roundRectPath(context: CanvasRenderingContext2D, width: number, height: number, radius: number) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(safeRadius, 0);
+  context.lineTo(width - safeRadius, 0);
+  context.quadraticCurveTo(width, 0, width, safeRadius);
+  context.lineTo(width, height - safeRadius);
+  context.quadraticCurveTo(width, height, width - safeRadius, height);
+  context.lineTo(safeRadius, height);
+  context.quadraticCurveTo(0, height, 0, height - safeRadius);
+  context.lineTo(0, safeRadius);
+  context.quadraticCurveTo(0, 0, safeRadius, 0);
+  context.closePath();
+}
+
+function applyClipPath(context: CanvasRenderingContext2D, width: number, height: number, shape: ImageFrameShape) {
+  if (shape === "none") return;
+  context.beginPath();
+  if (shape === "circle") {
+    const radius = Math.min(width, height) / 2;
+    context.arc(width / 2, height / 2, radius, 0, Math.PI * 2);
+  } else if (shape === "shield") {
+    context.moveTo(width * 0.5, height * 0.015);
+    context.lineTo(width * 0.88, height * 0.12);
+    context.lineTo(width * 0.98, height * 0.43);
+    context.lineTo(width * 0.78, height * 0.78);
+    context.lineTo(width * 0.5, height * 0.99);
+    context.lineTo(width * 0.22, height * 0.78);
+    context.lineTo(width * 0.02, height * 0.43);
+    context.lineTo(width * 0.12, height * 0.12);
+  } else if (shape === "hex") {
+    context.moveTo(width * 0.5, 0);
+    context.lineTo(width * 0.94, height * 0.25);
+    context.lineTo(width * 0.94, height * 0.75);
+    context.lineTo(width * 0.5, height);
+    context.lineTo(width * 0.06, height * 0.75);
+    context.lineTo(width * 0.06, height * 0.25);
+  } else {
+    roundRectPath(context, width, height, Math.min(width, height) * 0.18);
+  }
+  context.closePath();
+  context.clip();
+}
+
+function resolveDrawRect(bitmap: ImageBitmap, width: number, height: number, target: ImageTarget, frame: Required<ImageFrameOptions>) {
+  if (target.fit === "cover") {
+    const baseScale = Math.max(width / bitmap.width, height / bitmap.height);
+    const scale = baseScale * frame.zoom;
+    const drawWidth = Math.max(1, bitmap.width * scale);
+    const drawHeight = Math.max(1, bitmap.height * scale);
+    return { drawWidth, drawHeight };
+  }
+
+  const padding = Math.max(0, Math.min(0.3, target.padding ?? 0));
+  const availableWidth = width * (1 - padding * 2);
+  const availableHeight = height * (1 - padding * 2);
+  const baseScale = Math.min(
+    availableWidth / bitmap.width,
+    availableHeight / bitmap.height,
+    target.fit === "inside" ? 1 : Number.POSITIVE_INFINITY
+  );
+  const scale = baseScale * frame.zoom;
+  const drawWidth = Math.max(1, bitmap.width * scale);
+  const drawHeight = Math.max(1, bitmap.height * scale);
+  return { drawWidth, drawHeight };
+}
+
+function clampOffset(center: number, drawSize: number, canvasSize: number, normalizedOffset: number) {
+  const proposed = center + normalizedOffset * canvasSize;
+  if (drawSize <= canvasSize) {
+    const min = Math.min(0, canvasSize - drawSize);
+    const max = Math.max(0, canvasSize - drawSize);
+    return Math.min(max, Math.max(min, proposed));
+  }
+  return Math.min(0, Math.max(canvasSize - drawSize, proposed));
+}
+
+function drawImage(
+  context: CanvasRenderingContext2D,
+  bitmap: ImageBitmap,
+  width: number,
+  height: number,
+  target: ImageTarget,
+  frameOptions?: ImageFrameOptions | null
+) {
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
+  const frame = normalizeImageFrameOptions(frameOptions);
 
   if (target.background) {
     context.fillStyle = target.background;
@@ -113,36 +231,16 @@ function drawImage(context: CanvasRenderingContext2D, bitmap: ImageBitmap, width
     context.clearRect(0, 0, width, height);
   }
 
-  if (target.fit === "cover") {
-    const sourceRatio = bitmap.width / bitmap.height;
-    const targetRatio = width / height;
-    let sourceX = 0;
-    let sourceY = 0;
-    let sourceWidth = bitmap.width;
-    let sourceHeight = bitmap.height;
-
-    if (sourceRatio > targetRatio) {
-      sourceWidth = bitmap.height * targetRatio;
-      sourceX = (bitmap.width - sourceWidth) / 2;
-    } else if (sourceRatio < targetRatio) {
-      sourceHeight = bitmap.width / targetRatio;
-      sourceY = (bitmap.height - sourceHeight) / 2;
-    }
-
-    context.drawImage(bitmap, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
-    return;
-  }
-
-  const padding = Math.max(0, Math.min(0.3, target.padding ?? 0));
-  const availableWidth = width * (1 - padding * 2);
-  const availableHeight = height * (1 - padding * 2);
-  const scale = Math.min(availableWidth / bitmap.width, availableHeight / bitmap.height, target.fit === "inside" ? 1 : Number.POSITIVE_INFINITY);
-  const drawWidth = Math.max(1, bitmap.width * scale);
-  const drawHeight = Math.max(1, bitmap.height * scale);
-  context.drawImage(bitmap, (width - drawWidth) / 2, (height - drawHeight) / 2, drawWidth, drawHeight);
+  context.save();
+  applyClipPath(context, width, height, frame.shape);
+  const { drawWidth, drawHeight } = resolveDrawRect(bitmap, width, height, target, frame);
+  const drawX = clampOffset((width - drawWidth) / 2, drawWidth, width, frame.offsetX);
+  const drawY = clampOffset((height - drawHeight) / 2, drawHeight, height, frame.offsetY);
+  context.drawImage(bitmap, drawX, drawY, drawWidth, drawHeight);
+  context.restore();
 }
 
-export async function optimizeImageForUpload(file: File, preset: UploadImagePreset) {
+export async function optimizeImageForUpload(file: File, preset: UploadImagePreset, frameOptions?: ImageFrameOptions | null) {
   if (file.type === "image/svg+xml") {
     throw new Error("Subi PNG, JPG o WebP. Fulbito convierte la imagen a WebP liviano antes de guardarla.");
   }
@@ -162,7 +260,7 @@ export async function optimizeImageForUpload(file: File, preset: UploadImagePres
     const context = canvas.getContext("2d", { alpha: !target.background });
     if (!context) break;
 
-    drawImage(context, bitmap, width, height, target);
+    drawImage(context, bitmap, width, height, target, frameOptions);
 
     for (let quality = target.quality; quality >= target.minQuality; quality -= 0.07) {
       const blob = await canvasToBlob(canvas, quality);

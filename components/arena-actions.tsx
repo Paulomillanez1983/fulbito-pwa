@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { Camera, Clipboard, Flag, LoaderCircle, LocateFixed, MapPinned, ShieldPlus, Upload, UserPlus } from "lucide-react";
+import { FrameHiddenInputs, ImageFrameTuner, defaultImageFrame, framePreviewStyle } from "@/components/image-frame-controls";
+import type { ImageFrameDraft } from "@/components/image-frame-controls";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
-import { optimizeImageForUpload, type UploadImagePreset } from "@/lib/image-optimizer";
+import { optimizeImageForUpload, readImageFrameOptions, type ImageFrameOptions, type UploadImagePreset } from "@/lib/image-optimizer";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -100,6 +102,7 @@ function MediaField({
 }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [filename, setFilename] = useState("");
+  const [frame, setFrame] = useState<ImageFrameDraft>(() => defaultImageFrame(variant));
 
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview);
@@ -115,16 +118,28 @@ function MediaField({
   }
 
   return (
-    <label className={`media-field media-field--${variant}`}>
-      <input accept={accept} name={name} onChange={onFileChange} type="file" />
-      <span className="media-field__preview">
-        {preview ? <img alt="" src={preview} /> : <Camera size={20} />}
-      </span>
-      <span className="media-field__copy">
-        <strong>{label}</strong>
-        <small>{filename || helper}</small>
-      </span>
-    </label>
+    <div className={`media-frame-field media-frame-field--${variant}`}>
+      <label className={`media-field media-field--${variant}`}>
+        <input accept={accept} name={name} onChange={onFileChange} type="file" />
+        <FrameHiddenInputs frame={frame} name={name} />
+        <span className="media-field__preview" data-frame-shape={frame.shape} style={framePreviewStyle(frame)}>
+          {preview ? <img alt="" src={preview} /> : <Camera size={20} />}
+        </span>
+        <span className="media-field__copy">
+          <strong>{label}</strong>
+          <small>{filename || helper}</small>
+        </span>
+      </label>
+      {preview ? (
+        <ImageFrameTuner
+          allowNoShape={variant === "wide" || variant === "square"}
+          frame={frame}
+          label={variant === "avatar" ? "Ajusta rostro" : variant === "crest" ? "Ajusta escudo" : "Ajusta imagen"}
+          onFrameChange={setFrame}
+          variant={variant}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -136,6 +151,7 @@ function VenueGalleryField({
   onPreviewsChange: (previews: string[]) => void;
 }) {
   const [filename, setFilename] = useState("");
+  const [frame, setFrame] = useState<ImageFrameDraft>(() => defaultImageFrame("venue"));
 
   function onFileChange(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []).slice(0, 3);
@@ -144,17 +160,29 @@ function VenueGalleryField({
   }
 
   return (
-    <label className="venue-gallery-field">
-      <input accept="image/png,image/jpeg,image/webp" multiple name="venueGalleryFiles" onChange={onFileChange} type="file" />
-      <span className="venue-gallery-field__stack">
-        {previews[0] ? <img alt="" src={previews[0]} /> : <Camera size={20} />}
-        {previews.slice(1, 3).map((preview) => <img alt="" key={preview} src={preview} />)}
-      </span>
-      <span className="venue-gallery-field__copy">
-        <strong>Fotos o logo de la cancha</strong>
-        <small>{filename || "Hasta 3 imagenes. JPG, PNG o WebP; Fulbito las convierte a WebP liviano."}</small>
-      </span>
-    </label>
+    <div className="venue-gallery-frame">
+      <label className="venue-gallery-field">
+        <input accept="image/png,image/jpeg,image/webp" multiple name="venueGalleryFiles" onChange={onFileChange} type="file" />
+        <FrameHiddenInputs frame={frame} name="venueGalleryFiles" />
+        <span className="venue-gallery-field__stack" data-frame-shape={frame.shape} style={framePreviewStyle(frame)}>
+          {previews[0] ? <img alt="" src={previews[0]} /> : <Camera size={20} />}
+          {previews.slice(1, 3).map((preview) => <img alt="" key={preview} src={preview} />)}
+        </span>
+        <span className="venue-gallery-field__copy">
+          <strong>Fotos o logo de la cancha</strong>
+          <small>{filename || "Hasta 3 imagenes. JPG, PNG o WebP; Fulbito las convierte a WebP liviano."}</small>
+        </span>
+      </label>
+      {previews.length ? (
+        <ImageFrameTuner
+          allowNoShape
+          frame={frame}
+          label="Ajusta portada"
+          onFrameChange={setFrame}
+          variant="venue"
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -571,10 +599,11 @@ export function ArenaActions({
     supabase: ReturnType<typeof createSupabaseBrowserClient>,
     bucket: MediaBucket,
     userId: string,
-    fileValue: FormDataEntryValue | null
+    fileValue: FormDataEntryValue | null,
+    frameOptions?: ImageFrameOptions | null
   ) {
     if (!(fileValue instanceof File) || fileValue.size === 0) return null;
-    const optimizedFile = await optimizeImageForUpload(fileValue, mediaPresetByBucket[bucket]);
+    const optimizedFile = await optimizeImageForUpload(fileValue, mediaPresetByBucket[bucket], frameOptions);
     const extension = optimizedFile.type === "image/webp" ? "webp" : optimizedFile.name.split(".").pop()?.toLowerCase() || "png";
     const path = `${userId}/${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
     const { error } = await supabase.storage.from(bucket).upload(path, optimizedFile, {
@@ -589,14 +618,15 @@ export function ArenaActions({
   async function uploadVenueGallery(
     supabase: ReturnType<typeof createSupabaseBrowserClient>,
     userId: string,
-    fileValues: FormDataEntryValue[]
+    fileValues: FormDataEntryValue[],
+    frameOptions?: ImageFrameOptions | null
   ) {
     const files = fileValues
       .filter((fileValue): fileValue is File => fileValue instanceof File && fileValue.size > 0)
       .slice(0, 3);
     const urls: string[] = [];
     for (const file of files) {
-      const url = await uploadArenaMedia(supabase, "venue-photos", userId, file);
+      const url = await uploadArenaMedia(supabase, "venue-photos", userId, file, frameOptions);
       if (url) urls.push(url);
     }
     return urls;
@@ -716,7 +746,7 @@ export function ArenaActions({
     if (!userId) return setMessage("Entra con Google para continuar.");
     let badgeUrl: string | null = null;
     try {
-      badgeUrl = await uploadArenaMedia(supabase, "team-badges", userId, formData.get("badgeFile"));
+      badgeUrl = await uploadArenaMedia(supabase, "team-badges", userId, formData.get("badgeFile"), readImageFrameOptions(formData, "badgeFile", { shape: "shield" }));
     } catch (error) {
       return setMessage(error instanceof Error ? error.message : "No se pudo subir el escudo.");
     }
@@ -799,7 +829,7 @@ export function ArenaActions({
       if (existingError) return setMessage(existingError.message);
       if (existingRequest) return setMessage("Ya tenes una solicitud de Cancha Pro pendiente. Espera la revision del admin.");
       try {
-        galleryUrls = await uploadVenueGallery(supabase, userId, formData.getAll("venueGalleryFiles"));
+        galleryUrls = await uploadVenueGallery(supabase, userId, formData.getAll("venueGalleryFiles"), readImageFrameOptions(formData, "venueGalleryFiles", { shape: "rounded" }));
         coverUrl = galleryUrls[0] ?? null;
       } catch (error) {
         return setMessage(error instanceof Error ? error.message : "No se pudieron subir las fotos de la cancha.");
@@ -885,7 +915,7 @@ export function ArenaActions({
     let photoUrl: string | null = null;
     if (hasTeamProAccess(teamId)) {
       try {
-        photoUrl = await uploadArenaMedia(supabase, "player-photos", userId, formData.get("playerPhoto"));
+        photoUrl = await uploadArenaMedia(supabase, "player-photos", userId, formData.get("playerPhoto"), readImageFrameOptions(formData, "playerPhoto", { shape: "circle", zoom: 1.08 }));
       } catch (error) {
         return setMessage(error instanceof Error ? error.message : "No se pudo subir la foto del jugador.");
       }

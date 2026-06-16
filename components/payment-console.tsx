@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { CalendarDays, CheckCircle2, ChevronDown, Clipboard, MapPinned, PlusCircle, Sparkles, Trophy, Upload, Users } from "lucide-react";
+import { FrameHiddenInputs, ImageFrameTuner, defaultImageFrame, framePreviewStyle } from "@/components/image-frame-controls";
+import type { ImageFrameDraft } from "@/components/image-frame-controls";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
-import { optimizeImageForUpload } from "@/lib/image-optimizer";
+import { optimizeImageForUpload, readImageFrameOptions, type ImageFrameOptions } from "@/lib/image-optimizer";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
 import { getRosterRule } from "@/lib/roster";
@@ -126,10 +128,10 @@ async function uploadProof(userId: string, fileValue: FormDataEntryValue | null)
   return { proofPath, proofFilename: fileValue.name };
 }
 
-async function uploadVenueCover(userId: string, venueId: string, fileValue: FormDataEntryValue | null) {
+async function uploadVenueCover(userId: string, venueId: string, fileValue: FormDataEntryValue | null, frameOptions?: ImageFrameOptions | null) {
   if (!(fileValue instanceof File) || fileValue.size === 0) return null;
   const supabase = createSupabaseBrowserClient();
-  const optimizedCover = await optimizeImageForUpload(fileValue, "venue_photo");
+  const optimizedCover = await optimizeImageForUpload(fileValue, "venue_photo", frameOptions);
   const extension = optimizedCover.type === "image/webp" ? "webp" : optimizedCover.name.split(".").pop()?.toLowerCase() || "jpg";
   const path = `${userId}/${venueId}-${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
   const { error } = await supabase.storage.from("venue-photos").upload(path, optimizedCover, {
@@ -139,6 +141,47 @@ async function uploadVenueCover(userId: string, venueId: string, fileValue: Form
   });
   if (error) throw error;
   return supabase.storage.from("venue-photos").getPublicUrl(path).data.publicUrl;
+}
+
+function VenueCoverFrameField({ currentUrl }: { currentUrl?: string | null }) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [filename, setFilename] = useState("");
+  const [frame, setFrame] = useState<ImageFrameDraft>(() => defaultImageFrame("venue"));
+
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
+
+  function onFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setFilename(file?.name ?? "");
+    setPreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  }
+
+  return (
+    <div className="venue-cover-frame-field">
+      <label className="venue-pro-upload venue-pro-upload--framed">
+        <Upload size={17} />
+        <span>
+          <strong>Foto o logo de la cancha</strong>
+          <small>{filename || "JPG, PNG o WebP. Fulbito lo convierte a WebP liviano."}</small>
+        </span>
+        <input accept="image/png,image/jpeg,image/webp" name="coverFile" onChange={onFileChange} type="file" />
+        <FrameHiddenInputs frame={frame} name="coverFile" />
+      </label>
+      {preview || currentUrl ? (
+        <div className="venue-cover-frame-preview">
+          <span data-frame-shape={frame.shape} style={framePreviewStyle(frame)}>
+            <img alt="" src={preview || currentUrl || ""} />
+          </span>
+          <ImageFrameTuner allowNoShape frame={frame} label="Ajusta publicacion" onFrameChange={setFrame} variant="venue" />
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 async function createPaymentRequest({
@@ -908,7 +951,7 @@ function FeaturedVenueForm({
         prices[surface] = submittedPrice > 0 ? submittedPrice : currentPrice;
         return prices;
       }, {});
-      const coverUrl = await uploadVenueCover(data.user.id, venueId, form.get("coverFile"));
+      const coverUrl = await uploadVenueCover(data.user.id, venueId, form.get("coverFile"), readImageFrameOptions(form, "coverFile", { shape: "rounded" }));
       const reserveFeeValue = String(form.get("reserveFee") || "").trim();
       const openHoursValue = String(form.get("openHours") || "").trim();
       const updatePayload: Record<string, unknown> = {
@@ -984,14 +1027,7 @@ function FeaturedVenueForm({
                 </div>
                 {selectedVenue.cover_url ? <img alt="" src={selectedVenue.cover_url} /> : <MapPinned size={28} />}
               </div>
-              <label className="venue-pro-upload">
-                <Upload size={17} />
-                <span>
-                  <strong>Foto o logo de la cancha</strong>
-                  <small>JPG, PNG o WebP. Fulbito lo convierte a WebP liviano.</small>
-                </span>
-                <input accept="image/png,image/jpeg,image/webp" name="coverFile" type="file" />
-              </label>
+              <VenueCoverFrameField currentUrl={selectedVenue.cover_url} />
               <section className="venue-format-price-list">
                 <span>Precio por formato</span>
                 {selectedVenueModes.map((surface) => {
@@ -1052,14 +1088,7 @@ function FeaturedVenueForm({
             })}
           </section>
           <input name="openHours" placeholder="Horarios visibles, ej. Lun a Dom 17 a 01" />
-          <label className="venue-pro-upload">
-            <Upload size={17} />
-            <span>
-              <strong>Foto o logo de la cancha</strong>
-              <small>Opcional. Se sube optimizada en WebP.</small>
-            </span>
-            <input accept="image/png,image/jpeg,image/webp" name="coverFile" type="file" />
-          </label>
+          <VenueCoverFrameField />
           <input name="reserveFee" inputMode="numeric" placeholder="Seña para reservar (opcional)" />
         </>
       )}

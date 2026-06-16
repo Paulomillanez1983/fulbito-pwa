@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { CheckCircle2, Clock3, ExternalLink, ImagePlus, LoaderCircle, MapPin, ShieldCheck, Upload, XCircle } from "lucide-react";
-import { optimizeImageForUpload } from "@/lib/image-optimizer";
+import { FrameHiddenInputs, ImageFrameTuner, defaultImageFrame, framePreviewStyle } from "@/components/image-frame-controls";
+import type { ImageFrameDraft } from "@/components/image-frame-controls";
+import { optimizeImageForUpload, readImageFrameOptions, type ImageFrameOptions } from "@/lib/image-optimizer";
 import { formatPaymentMoney, paymentStatusMeta } from "@/lib/payments";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import type { AccountEntitlement, ArenaVenue, PaymentMessage, PaymentRequest, PaymentRequestStatus } from "@/lib/types";
@@ -31,6 +33,44 @@ type AdminVenue = ArenaVenue & {
   created_at?: string;
   updated_at?: string;
 };
+
+function AdminVenuePhotoFrameField({ currentUrl }: { currentUrl?: string | null }) {
+  const [preview, setPreview] = useState<string | null>(null);
+  const [filename, setFilename] = useState("");
+  const [frame, setFrame] = useState<ImageFrameDraft>(() => defaultImageFrame("venue"));
+
+  useEffect(() => () => {
+    if (preview) URL.revokeObjectURL(preview);
+  }, [preview]);
+
+  function onFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setFilename(file?.name ?? "");
+    setPreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return file ? URL.createObjectURL(file) : null;
+    });
+  }
+
+  return (
+    <div className="admin-venue-frame-field">
+      <label className="admin-ad-logo-field admin-venue-photo-field">
+        <Upload size={16} />
+        <span>{filename || (currentUrl ? "Reemplazar foto WebP" : "Cargar foto Pro")}</span>
+        <input accept="image/png,image/jpeg,image/webp" name="coverFile" onChange={onFileChange} type="file" />
+        <FrameHiddenInputs frame={frame} name="coverFile" />
+      </label>
+      {preview || currentUrl ? (
+        <div className="admin-venue-frame-preview">
+          <span data-frame-shape={frame.shape} style={framePreviewStyle(frame)}>
+            <img alt="" src={preview || currentUrl || ""} />
+          </span>
+          <ImageFrameTuner allowNoShape frame={frame} label="Corregir encuadre" onFrameChange={setFrame} variant="venue" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 type VenueFilter = "all" | "free" | "pro" | "pending";
 
@@ -112,9 +152,9 @@ export function AdminVenuesPanel({
     setRequests((current) => current.map((request) => request.id === next.id ? next : request));
   }
 
-  async function uploadCover(venue: AdminVenue, fileValue: FormDataEntryValue | null) {
+  async function uploadCover(venue: AdminVenue, fileValue: FormDataEntryValue | null, frameOptions?: ImageFrameOptions | null) {
     if (!(fileValue instanceof File) || fileValue.size === 0) return venue.cover_url ?? null;
-    const optimized = await optimizeImageForUpload(fileValue, "venue_photo");
+    const optimized = await optimizeImageForUpload(fileValue, "venue_photo", frameOptions);
     const supabase = createSupabaseBrowserClient();
     const path = `${adminId}/${venue.id}-${Date.now().toString(36)}.webp`;
     const { error } = await supabase.storage.from("venue-photos").upload(path, optimized, {
@@ -132,7 +172,7 @@ export function AdminVenuesPanel({
     setBusyId(`venue-${venue.id}`);
     const form = new FormData(event.currentTarget);
     try {
-      const coverUrl = await uploadCover(venue, form.get("coverFile"));
+      const coverUrl = await uploadCover(venue, form.get("coverFile"), readImageFrameOptions(form, "coverFile", { shape: "rounded" }));
       const supabase = createSupabaseBrowserClient();
       const selectedModes = normalizeVenueSurfaces(form.getAll("surface"));
       const formatPrices = readVenueFormatPrices(form, selectedModes);
@@ -394,11 +434,7 @@ export function AdminVenuesPanel({
                       <option value="paused">Pausada</option>
                       <option value="rejected">Rechazada</option>
                     </select>
-                    <label className="admin-ad-logo-field admin-venue-photo-field">
-                      <Upload size={16} />
-                      <span>{venue.cover_url ? "Reemplazar foto WebP" : "Cargar foto Pro"}</span>
-                      <input accept="image/png,image/jpeg,image/webp" name="coverFile" type="file" />
-                    </label>
+                    <AdminVenuePhotoFrameField currentUrl={venue.cover_url} />
                   </div>
                   <button disabled={busy} type="submit">
                     {busy ? <LoaderCircle className="button-spinner" size={17} /> : <ShieldCheck size={17} />}

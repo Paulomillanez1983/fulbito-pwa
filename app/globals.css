@@ -17380,3 +17380,237 @@ body::after,
     max-height: none;
   }
 }
+
+/* User-controlled image framing: WebP upload preview + admin correction tools */
+.media-frame-field,
+.venue-gallery-frame,
+.venue-cover-frame-field,
+.admin-venue-frame-field,
+.admin-ad-frame-field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.image-frame-tuner {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(85,246,255,.16);
+  border-radius: 13px;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(85,246,255,.13), transparent 28%),
+    linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+}
+
+.image-frame-tuner__title,
+.image-frame-shapes,
+.image-frame-tuner label,
+.image-frame-tuner label span {
+  display: flex;
+  align-items: center;
+}
+
+.image-frame-tuner__title {
+  gap: 6px;
+  color: var(--gold);
+  font-size: .72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.image-frame-shapes {
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.image-frame-shapes > svg,
+.image-frame-tuner label span svg {
+  flex: 0 0 auto;
+}
+
+.image-frame-shapes button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+  color: var(--muted);
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 850;
+}
+
+.image-frame-shapes button.is-active {
+  border-color: rgba(245,198,82,.75);
+  background: linear-gradient(135deg, rgba(255,231,131,.32), rgba(191,116,15,.28));
+  color: #fff7d9;
+  box-shadow: 0 0 16px rgba(245,198,82,.16);
+}
+
+.image-frame-tuner label {
+  display: grid;
+  grid-template-columns: minmax(84px, .34fr) minmax(0, 1fr);
+  gap: 10px;
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.image-frame-tuner label span {
+  gap: 5px;
+}
+
+.image-frame-tuner input[type="range"] {
+  width: 100%;
+  accent-color: var(--gold);
+}
+
+.media-field__preview[data-frame-shape],
+.venue-gallery-field__stack[data-frame-shape],
+.venue-cover-frame-preview > span,
+.admin-venue-frame-preview > span,
+.admin-ad-frame-preview > span {
+  isolation: isolate;
+  transform: translateZ(0);
+}
+
+.media-field__preview[data-frame-shape="circle"],
+.venue-gallery-field__stack[data-frame-shape="circle"],
+.venue-cover-frame-preview > span[data-frame-shape="circle"],
+.admin-venue-frame-preview > span[data-frame-shape="circle"],
+.admin-ad-frame-preview > span[data-frame-shape="circle"] {
+  border-radius: 50%;
+  clip-path: circle(50% at 50% 50%);
+}
+
+.media-field__preview[data-frame-shape="shield"],
+.venue-gallery-field__stack[data-frame-shape="shield"],
+.venue-cover-frame-preview > span[data-frame-shape="shield"],
+.admin-venue-frame-preview > span[data-frame-shape="shield"],
+.admin-ad-frame-preview > span[data-frame-shape="shield"] {
+  border-radius: 0;
+  clip-path: polygon(50% 2%, 88% 13%, 98% 43%, 78% 78%, 50% 99%, 22% 78%, 2% 43%, 12% 13%);
+}
+
+.media-field__preview[data-frame-shape="hex"],
+.venue-gallery-field__stack[data-frame-shape="hex"],
+.venue-cover-frame-preview > span[data-frame-shape="hex"],
+.admin-venue-frame-preview > span[data-frame-shape="hex"],
+.admin-ad-frame-preview > span[data-frame-shape="hex"] {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 94% 25%, 94% 75%, 50% 100%, 6% 75%, 6% 25%);
+}
+
+.media-field__preview[data-frame-shape="rounded"],
+.venue-gallery-field__stack[data-frame-shape="rounded"],
+.venue-cover-frame-preview > span[data-frame-shape="rounded"],
+.admin-venue-frame-preview > span[data-frame-shape="rounded"],
+.admin-ad-frame-preview > span[data-frame-shape="rounded"] {
+  border-radius: 20%;
+  clip-path: inset(0 round 20%);
+}
+
+.media-field__preview[data-frame-shape="none"],
+.venue-gallery-field__stack[data-frame-shape="none"],
+.venue-cover-frame-preview > span[data-frame-shape="none"],
+.admin-venue-frame-preview > span[data-frame-shape="none"],
+.admin-ad-frame-preview > span[data-frame-shape="none"] {
+  border-radius: 14px;
+  clip-path: none;
+}
+
+.media-field__preview[data-frame-shape] img,
+.venue-gallery-field__stack[data-frame-shape] img,
+.venue-cover-frame-preview > span img,
+.admin-venue-frame-preview > span img,
+.admin-ad-frame-preview > span img {
+  transform: translate(var(--media-frame-x, 0), var(--media-frame-y, 0)) scale(var(--media-frame-zoom, 1));
+  transform-origin: center;
+  will-change: transform;
+}
+
+.media-field--crest .media-field__preview[data-frame-shape] img,
+.venue-gallery-field__stack[data-frame-shape] img,
+.venue-cover-frame-preview > span img,
+.admin-venue-frame-preview > span img,
+.admin-ad-frame-preview > span img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.media-field--avatar .media-field__preview[data-frame-shape] img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.venue-gallery-field__stack[data-frame-shape] {
+  overflow: hidden;
+}
+
+.venue-cover-frame-preview,
+.admin-venue-frame-preview,
+.admin-ad-frame-preview {
+  display: grid;
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: stretch;
+}
+
+.venue-cover-frame-preview > span,
+.admin-venue-frame-preview > span,
+.admin-ad-frame-preview > span {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  min-height: 118px;
+  border: 1px solid rgba(245,198,82,.28);
+  background:
+    linear-gradient(90deg, rgba(18,122,70,.95) 0 22%, rgba(9,74,42,.95) 22% 44%, rgba(34,160,91,.95) 44% 65%, rgba(7,85,47,.95) 65% 100%),
+    rgba(3,9,18,.9);
+}
+
+.admin-ad-frame-preview > span {
+  aspect-ratio: 1;
+  min-height: 120px;
+}
+
+.venue-cover-frame-preview img,
+.admin-venue-frame-preview img,
+.admin-ad-frame-preview img {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.venue-pro-upload--framed input,
+.admin-venue-frame-field .admin-ad-logo-field input,
+.admin-ad-frame-field .admin-ad-logo-field input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 620px) {
+  .venue-cover-frame-preview,
+  .admin-venue-frame-preview,
+  .admin-ad-frame-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .venue-cover-frame-preview > span,
+  .admin-venue-frame-preview > span {
+    min-height: 170px;
+  }
+
+  .image-frame-tuner label {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
