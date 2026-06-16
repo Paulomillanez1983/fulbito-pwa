@@ -1251,6 +1251,7 @@ function PlayerTacticalCard({
 function SquadBenchRail({
   benchPlayers,
   canManage,
+  inviteHref,
   onOpenPlayer,
   onUseBenchPlayer,
   pendingSwap,
@@ -1258,6 +1259,7 @@ function SquadBenchRail({
 }: {
   benchPlayers: ArenaPlayer[];
   canManage: boolean;
+  inviteHref?: string;
   onOpenPlayer: (playerId: string) => void;
   onUseBenchPlayer?: (playerId: string) => void;
   pendingSwap?: boolean;
@@ -1293,7 +1295,15 @@ function SquadBenchRail({
           ))}
         </div>
       ) : (
-        <p>Sin suplentes cargados. El creador puede invitar jugadores desde el panel Invitar.</p>
+        <div className="squad-bench-rail__empty">
+          <p>Sin suplentes cargados. El creador puede sumar jugadores para armar el banco.</p>
+          {canManage && inviteHref ? (
+            <a href={inviteHref} rel="noreferrer" target="_blank">
+              <UserCheck size={15} />
+              Invitar por WhatsApp
+            </a>
+          ) : null}
+        </div>
       )}
     </section>
   );
@@ -3430,6 +3440,7 @@ function FormationPanel({
   isManager,
   onModeChange,
   onPresetChange,
+  onEditTeamPhoto,
   onOpenPlayer,
   onSelectSlot,
   lockedMode = false
@@ -3443,6 +3454,7 @@ function FormationPanel({
   isManager: boolean;
   onModeChange: (mode: FieldMode) => void;
   onPresetChange: (presetId: string) => void;
+  onEditTeamPhoto?: () => void;
   onOpenPlayer: (playerId: string, slotIndex: number) => void;
   onSelectSlot: (index: number) => void;
   lockedMode?: boolean;
@@ -3453,7 +3465,19 @@ function FormationPanel({
     <article className="console-panel formation-console">
       <div className="formation-console__head">
         <div>
-          <TeamCrest team={team} size="large" />
+          {isManager && onEditTeamPhoto ? (
+            <button
+              aria-label="Editar escudo del club"
+              className="team-crest-edit-trigger"
+              onClick={onEditTeamPhoto}
+              type="button"
+            >
+              <TeamCrest team={team} size="large" />
+              <span>Editar</span>
+            </button>
+          ) : (
+            <TeamCrest team={team} size="large" />
+          )}
           <strong>{team?.name ?? "Equipo"}</strong>
           <span>{isManager ? "Toca un puesto y carga jugador" : "Plantel y formacion publica"}</span>
         </div>
@@ -3613,16 +3637,20 @@ function TeamFormationManager({
       </header>
 
       {canEdit && showFormationTools ? (
-        <div className="team-slot-editor">
-          <div>
-            <span>Puesto seleccionado</span>
-            <strong>{selectedSlot?.label ?? "Puesto"} {selectedSlotIndex + 1}</strong>
-            <small>{selectedPlayer ? selectedPlayer.display_name : "Sin jugador asignado"}</small>
+        <div className={`team-slot-editor ${selectedPlayer ? "team-slot-editor--filled" : "team-slot-editor--empty"}`}>
+          <div className="team-slot-editor__summary">
+            <PlayerAvatar player={selectedPlayer} />
+            <div>
+              <span>Puesto seleccionado</span>
+              <strong>{selectedSlot?.label ?? "Puesto"} {activeSlotIndex + 1}</strong>
+              <small>{selectedPlayer ? `${selectedPlayer.display_name} / #${selectedPlayer.jersey_number ?? "-"}` : "Libre para asignar titular"}</small>
+            </div>
           </div>
-          <select
+          <div className="team-slot-editor__actions">
+            <select
             aria-label="Asignar jugador al puesto"
             value={selectedPlayer?.id ?? ""}
-            onChange={(event) => onAssignSlot(selectedSlotIndex, event.target.value)}
+              onChange={(event) => onAssignSlot(activeSlotIndex, event.target.value)}
           >
             <option value="">Dejar puesto libre</option>
             {players.map((player) => (
@@ -3630,8 +3658,9 @@ function TeamFormationManager({
                 #{player.jersey_number ?? "-"} {player.display_name} · {player.position ?? "Posicion"}
               </option>
             ))}
-          </select>
-          <button onClick={() => onClearSlot(selectedSlotIndex)} type="button">Liberar puesto</button>
+            </select>
+            <button onClick={() => onClearSlot(activeSlotIndex)} type="button">Liberar</button>
+          </div>
         </div>
       ) : null}
 
@@ -3672,11 +3701,44 @@ function TeamFormationManager({
             ))}
           </div>
         ) : (
-          <p>{players.length ? "Sin suplentes cargados." : "Todavia no hay jugadores en el plantel."}</p>
+          <div className="team-bench-empty">
+            <p>{players.length ? "Sin suplentes cargados." : "Todavia no hay jugadores en el plantel."}</p>
+            {canEdit && inviteHref && !rosterFull ? (
+              <a href={inviteHref} rel="noreferrer" target="_blank">
+                <UserCheck size={15} />
+                Invitar jugadores por WhatsApp
+              </a>
+            ) : null}
+          </div>
         )}
       </div> : null}
 
-      {(showBenchTools || showInviteTools) ? <div className="team-roster-tools">
+      {showInviteTools ? (
+        <section className="team-invite-console">
+          <div>
+            <span>Link del plantel</span>
+            <strong>{rosterFull ? "Plantel completo" : "Invita jugadores a tu equipo"}</strong>
+            <p>
+              {rosterFull
+                ? `Ya llegaste al limite de ${rosterRule.maxPlayers} jugadores para ${rosterRule.label}.`
+                : `El enlace abre la ficha de ${team.name} y respeta el limite de ${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes.`}
+            </p>
+          </div>
+          {inviteHref && !rosterFull ? (
+            <a href={inviteHref} rel="noreferrer" target="_blank">
+              <UserCheck size={17} />
+              Enviar enlace por WhatsApp
+            </a>
+          ) : (
+            <button disabled type="button">
+              <UserCheck size={17} />
+              {rosterFull ? "Plantel completo" : "Link no disponible"}
+            </button>
+          )}
+        </section>
+      ) : null}
+
+      {showBenchTools ? <div className="team-roster-tools">
         {inviteHref ? (
           <a aria-disabled={rosterFull} className={rosterFull ? "is-disabled" : ""} href={rosterFull ? undefined : inviteHref} rel="noreferrer" target="_blank">
             <UserCheck size={16} />
@@ -4725,6 +4787,12 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     setPendingSwapSlotIndex(null);
     setSquadPanel("formation");
   }, [assignPlayerToFormationSlot, pendingSwapSlotIndex]);
+  const openTeamBadgeEditor = useCallback(() => {
+    setSquadPanel("edit");
+    window.setTimeout(() => {
+      document.getElementById("team-badge-editor")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+  }, []);
   const myTeam = ownedTeam ?? memberTeam ?? null;
   const hasCreatedTournament = Boolean(data.user && data.tournaments.some((tournament) => tournament.organizer_id === data.user?.id));
   const canManageSelectedMatchLive = Boolean(
@@ -5228,6 +5296,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           setFormationPresetId(presetId);
           setSelectedSlotIndex(Math.min(selectedSlotIndex, nextPreset.slots.length - 1));
         }}
+        onEditTeamPhoto={openTeamBadgeEditor}
         onOpenPlayer={openFormationPlayer}
         onSelectSlot={setSelectedSlotIndex}
         players={formationSlotPlayers}
@@ -5279,6 +5348,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           <SquadBenchRail
             benchPlayers={formationBenchPlayers}
             canManage={isTeamManager}
+            inviteHref={selectedTeamPlayerInviteHref}
             onOpenPlayer={setSelectedPlayerId}
             onUseBenchPlayer={useBenchPlayerForPendingSwap}
             pendingSwap={pendingSwapSlotIndex != null}

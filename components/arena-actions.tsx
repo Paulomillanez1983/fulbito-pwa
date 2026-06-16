@@ -1294,7 +1294,7 @@ export function ArenaActions({
         </form> : null}
 
         {showTeam && selectedOwnedTeam && hasTeamProAccess(selectedOwnedTeam.id) ? (
-          <form action={updateTeamBadge} className="action-card action-card--premium">
+          <form action={updateTeamBadge} className="action-card action-card--premium" id="team-badge-editor">
             <ShieldPlus />
             <h3>Escudo premium</h3>
             <p>{selectedOwnedTeam.name} tiene Equipo Pro activo. Subi un escudo optimizado para la app, links y cartas. Limite: 3 cambios por mes.</p>

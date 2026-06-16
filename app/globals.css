@@ -19166,3 +19166,264 @@ body::after,
     height: 116px;
   }
 }
+
+/* Equipo final: card compacta, invitaciones y editor directo de escudo */
+.team-crest-edit-trigger {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.team-crest-edit-trigger > span:not(.team-crest) {
+  position: absolute;
+  right: -8px;
+  bottom: -5px;
+  border: 1px solid rgba(255, 219, 105, .5);
+  border-radius: 999px;
+  padding: 2px 6px;
+  background: rgba(5, 11, 22, .88);
+  color: #ffe47a;
+  font-size: .54rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, .28);
+}
+
+.team-slot-editor {
+  display: grid;
+  grid-template-columns: minmax(0, .9fr) minmax(210px, 1.1fr);
+  gap: 10px;
+}
+
+.team-slot-editor__summary,
+.team-slot-editor__actions {
+  min-width: 0;
+}
+
+.team-slot-editor__summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(85, 246, 255, .16);
+  border-radius: 16px;
+  padding: 9px;
+  background:
+    radial-gradient(circle at 0 0, rgba(85, 246, 255, .16), transparent 44%),
+    rgba(3, 12, 25, .54);
+}
+
+.team-slot-editor__summary .player-disc {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+}
+
+.team-slot-editor__summary strong,
+.team-slot-editor__summary small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-slot-editor__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.team-slot-editor__actions button {
+  min-width: 82px;
+}
+
+.team-slot-editor--empty .team-slot-editor__summary {
+  border-color: rgba(255, 219, 105, .26);
+}
+
+.team-bench-empty,
+.squad-bench-rail__empty,
+.team-invite-console {
+  display: grid;
+  gap: 10px;
+}
+
+.team-bench-empty p,
+.squad-bench-rail__empty p {
+  margin: 0;
+}
+
+.team-bench-empty a,
+.squad-bench-rail__empty a,
+.team-invite-console a,
+.team-invite-console button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid rgba(44, 255, 151, .35);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: linear-gradient(145deg, rgba(28, 169, 88, .92), rgba(8, 75, 48, .92));
+  color: #f4fff7;
+  font-size: .76rem;
+  font-weight: 1000;
+  text-decoration: none;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 255, 255, .12);
+}
+
+.team-invite-console {
+  border: 1px solid rgba(44, 255, 151, .22);
+  border-radius: 18px;
+  padding: 13px;
+  background:
+    radial-gradient(circle at 80% 10%, rgba(44, 255, 151, .16), transparent 44%),
+    linear-gradient(145deg, rgba(4, 36, 30, .82), rgba(6, 11, 24, .92));
+}
+
+.team-invite-console span {
+  display: inline-flex;
+  width: max-content;
+  border: 1px solid rgba(255, 219, 105, .32);
+  border-radius: 999px;
+  padding: 3px 8px;
+  color: #ffe47a;
+  font-size: .62rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.team-invite-console strong {
+  display: block;
+  margin-top: 7px;
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+.team-invite-console p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: .76rem;
+  line-height: 1.35;
+}
+
+.team-invite-console button:disabled {
+  border-color: rgba(255, 255, 255, .12);
+  background: rgba(255, 255, 255, .08);
+  color: rgba(255, 255, 255, .54);
+  cursor: not-allowed;
+}
+
+.player-ultimate-card {
+  width: min(258px, calc(100vw - 42px));
+  max-height: calc(100dvh - 224px);
+  padding: 9px;
+  border-radius: 24px;
+}
+
+.player-card-top {
+  min-height: 50px;
+}
+
+.player-card-rating {
+  width: 46px;
+}
+
+.player-card-rating strong {
+  font-size: 1.82rem;
+}
+
+.player-card-art {
+  min-height: 96px;
+  margin-top: -22px;
+}
+
+.player-ultimate-card .player-card-portrait {
+  width: min(98px, 33vw);
+  height: 108px;
+}
+
+.player-ultimate-card .player-card-portrait img {
+  animation: player-card-photo-breathe 6s ease-in-out infinite alternate;
+  transform-origin: 50% 35%;
+}
+
+.player-card-name h2 {
+  font-size: clamp(.96rem, 4vw, 1.16rem);
+}
+
+.player-card-name span,
+.player-card-share-message,
+.player-ultimate-card footer {
+  font-size: .6rem;
+}
+
+.player-card-stats-grid {
+  gap: 3px 6px;
+  padding: 5px 0;
+}
+
+.player-card-stats-grid dt {
+  font-size: .58rem;
+}
+
+.player-card-stats-grid dd {
+  font-size: .72rem;
+}
+
+.player-card-metrics div {
+  min-height: 34px;
+  padding: 5px;
+}
+
+.player-card-actions .player-card-share {
+  min-height: 30px;
+  padding: 5px 8px;
+}
+
+@keyframes player-card-photo-breathe {
+  from {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: scale(1.09) translate3d(0, -4px, 0);
+  }
+}
+
+@media (max-width: 760px) {
+  .team-slot-editor,
+  .team-slot-editor__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .player-ultimate-card {
+    width: min(248px, calc(100vw - 44px));
+    max-height: calc(100dvh - 232px);
+  }
+
+  .player-card-art {
+    min-height: 92px;
+  }
+
+  .player-ultimate-card .player-card-portrait {
+    width: 92px;
+    height: 102px;
+  }
+
+  .player-ultimate-card footer {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-ultimate-card .player-card-portrait img {
+    animation: none;
+  }
+}
