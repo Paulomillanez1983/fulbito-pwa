@@ -748,6 +748,31 @@ function getPlayerStatus(player: ArenaPlayer) {
   return "Disponible";
 }
 
+function playerPositionCode(player: ArenaPlayer) {
+  const position = (player.position ?? "").toLowerCase();
+  if (position.includes("arquero") || position.includes("arq")) return "ARQ";
+  if (position.includes("def")) return "DEF";
+  if (position.includes("vol") || position.includes("med")) return "MED";
+  if (position.includes("del") || position.includes("ata")) return "DEL";
+  return "JUG";
+}
+
+function playerGameStats(player: ArenaPlayer, team?: ArenaTeam) {
+  const rating = getPlayerRating(player, team);
+  const played = team?.played ?? 0;
+  const goals = player.goals ?? 0;
+  const cards = (player.yellow_cards ?? 0) + (player.red_cards ?? 0) * 2;
+  const position = playerPositionCode(player);
+  return [
+    { label: "VEL", value: Math.max(42, Math.min(99, rating - 4 + Math.min(played, 8))) },
+    { label: "GOL", value: Math.max(38, Math.min(99, 58 + Math.min(goals * 7, 35))) },
+    { label: "PAS", value: Math.max(44, Math.min(96, rating - 2 + (position === "MED" ? 6 : 0))) },
+    { label: "REG", value: Math.max(45, Math.min(97, rating + (position === "DEL" ? 3 : 0))) },
+    { label: "DEF", value: Math.max(35, Math.min(96, rating - 14 + (position === "DEF" || position === "ARQ" ? 14 : 0))) },
+    { label: "FIS", value: Math.max(45, Math.min(97, rating - cards * 3 + Math.min(played, 6))) }
+  ];
+}
+
 function PlayerAvatar({ player }: { player?: ArenaPlayer | null }) {
   const initials = getPlayerInitials(player);
   const avatarUrl = playerAvatarImage(player);
@@ -766,6 +791,8 @@ function PlayerCardModal({ player, team, onClose }: { player: ArenaPlayer; team?
   const played = team?.played ?? 0;
   const initials = getPlayerInitials(player);
   const portraitUrl = playerCardImage(player);
+  const positionCode = playerPositionCode(player);
+  const gameStats = playerGameStats(player, team);
 
   useEffect(() => {
     function closeWithEscape(event: KeyboardEvent) {
@@ -786,38 +813,50 @@ function PlayerCardModal({ player, team, onClose }: { player: ArenaPlayer; team?
       }}
       role="dialog"
     >
-      <article className="player-ultimate-card">
+      <article className={`player-ultimate-card player-ultimate-card--${status.toLowerCase()}`}>
         <button aria-label="Cerrar ficha del jugador" className="player-card-close" onClick={onClose} type="button">
           <X size={18} />
         </button>
-        <header>
-          <div>
+        <div className="player-card-edition">Fulbito Ultimate</div>
+        <header className="player-card-top">
+          <div className="player-card-rating">
             <strong>{rating}</strong>
-            <span>CAL</span>
+            <span>{positionCode}</span>
+            <small>#{player.jersey_number ?? "--"}</small>
           </div>
-          <TeamCrest team={team} />
+          <div className="player-card-club">
+            <TeamCrest team={team} />
+            <span>{team?.short_name ?? "FA"}</span>
+          </div>
         </header>
-        <div className="player-card-portrait">
-          {portraitUrl ? <img alt="" src={portraitUrl} /> : <span>{initials}</span>}
+        <div className="player-card-art">
+          <span className="player-card-art__flare" />
+          <div className="player-card-portrait">
+            {portraitUrl ? <img alt="" src={portraitUrl} /> : <span>{initials}</span>}
+          </div>
         </div>
         <section className="player-card-name">
           <h2 id="player-card-title">{player.alias || player.display_name}</h2>
-          <span>#{player.jersey_number ?? "-"} / {player.position ?? "Posicion"}</span>
+          <span>{player.display_name} / {player.position ?? "Posicion"}</span>
         </section>
         <div className="player-card-stars" aria-label={`${stars} estrellas`}>
           {Array.from({ length: 5 }).map((_, index) => (
             <Star className={index < stars ? "is-active" : ""} fill="currentColor" key={index} size={17} />
           ))}
         </div>
+        <dl className="player-card-stats-grid">
+          {gameStats.map((item) => (
+            <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>
+          ))}
+        </dl>
         <dl className="player-card-metrics">
           <div><dt>Goles</dt><dd>{player.goals}</dd></div>
           <div><dt>PJ</dt><dd>{played}</dd></div>
           <div><dt>Estado</dt><dd>{status}</dd></div>
-          <div><dt>Amarillas</dt><dd>{player.yellow_cards ?? 0}</dd></div>
         </dl>
         <footer>
           <BadgeCheck size={17} />
-          <span>DT o veedor actualiza goles, tarjetas y estado desde el acta.</span>
+          <span>DT o veedor actualiza goles, tarjetas y estado desde el acta. Foto optimizada en WebP.</span>
         </footer>
       </article>
     </div>

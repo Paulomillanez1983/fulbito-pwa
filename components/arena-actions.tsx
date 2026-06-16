@@ -157,6 +157,23 @@ function MediaField({
   );
 }
 
+function PlayerPhotoGuide() {
+  return (
+    <aside className="player-photo-guide" aria-label="Guia para foto de jugador">
+      <span><Camera size={18} /></span>
+      <div>
+        <strong>Foto ideal para tu carta</strong>
+        <small>Usa buena luz, mira de frente o 3/4, cuerpo medio, celular vertical y deja aire arriba de la cabeza. Si el fondo es simple, la carta queda mucho mas limpia.</small>
+      </div>
+      <ul>
+        <li>Evita fotos oscuras o muy lejanas.</li>
+        <li>No tapes la cara con gorra, lentes o sombras.</li>
+        <li>Ajusta zoom y posicion antes de guardar.</li>
+      </ul>
+    </aside>
+  );
+}
+
 function VenueGalleryField({
   previews,
   onPreviewsChange
@@ -1211,7 +1228,10 @@ export function ArenaActions({
           <input name="jerseyNumber" inputMode="numeric" placeholder="Dorsal" defaultValue={slotDraft?.jersey} />
           <input name="position" placeholder="Posicion" defaultValue={slotDraft?.position} />
           {hasTeamProAccess(playerTeamId) ? (
-            <MediaField accept="image/png,image/jpeg,image/webp" helper="Foto cuadrada. Se recorta al rostro." label="Foto del jugador" name="playerPhoto" variant="avatar" />
+            <>
+              <PlayerPhotoGuide />
+              <MediaField accept="image/png,image/jpeg,image/webp" helper="Foto vertical o medio cuerpo. Fulbito la recorta, optimiza y guarda en WebP." label="Foto para carta premium" name="playerPhoto" variant="avatar" />
+            </>
           ) : (
             <div className="pro-lock-note">
               <strong>Fotos bloqueadas en modo gratis</strong>

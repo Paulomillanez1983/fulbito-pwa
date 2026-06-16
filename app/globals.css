@@ -7692,6 +7692,319 @@ body::after {
   color: var(--green);
 }
 
+/* Fulbito premium player card */
+.player-ultimate-card {
+  width: min(372px, calc(100vw - 28px));
+  min-height: min(680px, calc(100dvh - 128px));
+  gap: 8px;
+  border: 0;
+  border-radius: 26px;
+  padding: 18px 18px 16px;
+  clip-path: polygon(10% 0, 90% 0, 100% 10%, 100% 88%, 86% 100%, 14% 100%, 0 88%, 0 10%);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.42), transparent 11% 89%, rgba(255,255,255,.26)),
+    radial-gradient(circle at 50% 9%, rgba(87,218,255,.42), transparent 19%),
+    radial-gradient(circle at 78% 31%, rgba(75,104,255,.36), transparent 26%),
+    radial-gradient(circle at 18% 40%, rgba(255,201,72,.38), transparent 28%),
+    linear-gradient(160deg, #092467 0 18%, #0a1760 36%, #08102e 66%, #030711 100%);
+  color: #fff6bf;
+  box-shadow:
+    0 32px 100px rgba(0,0,0,.76),
+    0 0 0 2px rgba(245,196,79,.88),
+    0 0 0 6px rgba(31,190,255,.13),
+    inset 0 0 34px rgba(255,214,92,.16);
+}
+
+.player-ultimate-card::before {
+  inset: 10px;
+  border: 1px solid rgba(255,220,126,.48);
+  border-radius: 20px;
+  clip-path: polygon(9% 0, 91% 0, 100% 10%, 100% 88%, 86% 100%, 14% 100%, 0 88%, 0 10%);
+  background:
+    linear-gradient(90deg, transparent 49%, rgba(255,255,255,.2) 49% 51%, transparent 51%),
+    repeating-linear-gradient(115deg, rgba(255,255,255,.05) 0 2px, transparent 2px 16px);
+  opacity: .9;
+}
+
+.player-ultimate-card::after {
+  content: "";
+  position: absolute;
+  inset: 38px 24px auto;
+  height: 190px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255,238,139,.44), transparent 64%),
+    radial-gradient(circle at 68% 38%, rgba(63,219,255,.28), transparent 42%);
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+.player-card-edition {
+  position: relative;
+  z-index: 2;
+  justify-self: center;
+  width: fit-content;
+  border: 1px solid rgba(255,219,112,.54);
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: rgba(5, 11, 31, .72);
+  color: #ffe37c;
+  font-size: .66rem;
+  font-weight: 1000;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.player-card-top {
+  align-items: flex-start;
+  min-height: 96px;
+  padding: 0 46px 0 4px;
+}
+
+.player-card-rating {
+  display: grid;
+  gap: 1px;
+  justify-items: center;
+  width: 78px;
+  text-shadow: 0 3px 16px rgba(0,0,0,.62);
+}
+
+.player-card-rating strong {
+  font-size: 3.35rem;
+  line-height: .82;
+  color: #ffe885;
+}
+
+.player-card-rating span,
+.player-card-rating small {
+  color: #f7faff;
+  font-weight: 1000;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.player-card-rating span {
+  font-size: 1.02rem;
+}
+
+.player-card-rating small {
+  color: rgba(255,255,255,.74);
+  font-size: .7rem;
+}
+
+.player-card-club {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 58px;
+}
+
+.player-card-club .team-crest {
+  width: 48px;
+  height: 48px;
+}
+
+.player-card-club > span {
+  color: #fff;
+  font-size: .68rem;
+  font-weight: 1000;
+}
+
+.player-card-art {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: end center;
+  min-height: 224px;
+  margin-top: -58px;
+  overflow: hidden;
+}
+
+.player-card-art__flare {
+  position: absolute;
+  inset: 18px 22px 0;
+  border-radius: 28px 28px 18px 18px;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(255,255,255,.3), transparent 18%),
+    linear-gradient(120deg, rgba(255,214,89,.18), rgba(62,210,255,.22)),
+    linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0));
+  clip-path: polygon(8% 0, 92% 0, 100% 20%, 92% 100%, 8% 100%, 0 20%);
+}
+
+.player-card-portrait {
+  z-index: 2;
+  width: min(232px, 68vw);
+  height: 260px;
+  margin: 0 auto;
+  border: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255,255,255,.24), transparent 34%),
+    linear-gradient(180deg, rgba(18,60,126,.38), rgba(0,0,0,0));
+  box-shadow: none;
+  color: #fff6bf;
+  font-size: 3rem;
+  overflow: visible;
+}
+
+.player-card-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: drop-shadow(0 22px 26px rgba(0,0,0,.62));
+  clip-path: polygon(8% 0, 92% 0, 100% 100%, 0 100%);
+}
+
+.player-card-portrait > span {
+  display: grid;
+  place-items: center;
+  width: 158px;
+  height: 158px;
+  border: 2px solid rgba(255,223,118,.58);
+  border-radius: 50%;
+  background: rgba(4,10,27,.74);
+}
+
+.player-card-name {
+  margin-top: -4px;
+  text-shadow: 0 4px 18px rgba(0,0,0,.62);
+}
+
+.player-card-name h2 {
+  color: #ffe680;
+  font-size: clamp(1.75rem, 7vw, 2.35rem);
+  letter-spacing: 0;
+}
+
+.player-card-name span {
+  color: rgba(255,255,255,.82);
+}
+
+.player-card-stars {
+  color: rgba(255,255,255,.26);
+}
+
+.player-card-stars .is-active {
+  color: #ffe47a;
+  filter: drop-shadow(0 0 10px rgba(255,226,96,.5));
+}
+
+.player-card-stats-grid {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 14px;
+  margin: 2px 18px 0;
+  padding: 12px 6px 8px;
+  border-top: 1px solid rgba(255,224,120,.42);
+  border-bottom: 1px solid rgba(255,224,120,.32);
+}
+
+.player-card-stats-grid div {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.player-card-stats-grid dt {
+  color: #ffe680;
+  font-size: 1rem;
+  font-weight: 1000;
+}
+
+.player-card-stats-grid dd {
+  margin: 0;
+  color: #fff;
+  font-size: 1.08rem;
+  font-weight: 1000;
+}
+
+.player-card-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.player-card-metrics div {
+  min-height: 52px;
+  border-color: rgba(255,221,111,.26);
+  border-radius: 12px;
+  background: rgba(1, 7, 21, .48);
+}
+
+.player-card-metrics dt {
+  color: rgba(255,236,172,.72);
+}
+
+.player-card-metrics dd {
+  color: #fff;
+  font-size: .94rem;
+}
+
+.player-ultimate-card footer {
+  border-color: rgba(69,230,255,.24);
+  background: rgba(4, 15, 33, .82);
+  color: rgba(255,255,255,.83);
+}
+
+.player-ultimate-card footer svg {
+  color: #5ff6ff;
+}
+
+.player-photo-guide {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px 12px;
+  border: 1px solid rgba(85,246,255,.22);
+  border-radius: 15px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 12% 0, rgba(85,246,255,.14), transparent 38%),
+    rgba(5, 13, 25, .72);
+}
+
+.player-photo-guide > span {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(255,220,112,.32);
+  border-radius: 12px;
+  color: #ffe27b;
+  background: rgba(255,221,93,.1);
+}
+
+.player-photo-guide strong,
+.player-photo-guide small {
+  display: block;
+}
+
+.player-photo-guide strong {
+  color: #fff7d2;
+  font-size: .92rem;
+}
+
+.player-photo-guide small {
+  margin-top: 2px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.player-photo-guide ul {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0 0 0 18px;
+  color: rgba(255,255,255,.74);
+  font-size: .76rem;
+  line-height: 1.25;
+}
+
 @keyframes player-card-fade {
   from {
     opacity: 0;
@@ -17621,5 +17934,60 @@ body::after,
   .image-frame-tuner label {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+}
+
+/* Final guardrails: Fulbito Ultimate must never fall back to the old circular avatar rules. */
+.player-ultimate-card .player-card-portrait {
+  width: min(232px, 68vw);
+  height: 260px;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+
+.player-ultimate-card .player-card-portrait img {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  object-fit: cover;
+  object-position: center top;
+}
+
+@media (max-width: 760px) {
+  .player-card-backdrop {
+    padding: 14px 10px 88px;
+  }
+
+  .player-ultimate-card {
+    width: min(362px, calc(100vw - 18px));
+    min-height: min(662px, calc(100dvh - 108px));
+    padding: 16px 16px 14px;
+  }
+
+  .player-ultimate-card .player-card-top {
+    min-height: 92px;
+  }
+
+  .player-ultimate-card .player-card-art {
+    min-height: 214px;
+    margin-top: -55px;
+  }
+
+  .player-ultimate-card .player-card-portrait {
+    width: min(218px, 67vw);
+    height: 248px;
+  }
+
+  .player-ultimate-card .player-card-name h2 {
+    font-size: clamp(1.62rem, 7.2vw, 2.08rem);
+  }
+
+  .player-ultimate-card .player-card-stats-grid {
+    margin-inline: 10px;
+  }
+
+  .player-photo-guide {
+    padding: 10px;
   }
 }
