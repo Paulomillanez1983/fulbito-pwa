@@ -34,6 +34,8 @@ type AdminTeamAuditItem = {
     slug: string;
     short_name: string;
     badge_url: string | null;
+    badge_icon_url: string | null;
+    badge_card_url: string | null;
     primary_color: string;
     neighborhood: string | null;
     created_at: string;
@@ -205,7 +207,7 @@ function AdminTeamAudit({ teams }: { teams: AdminTeamAuditItem[] }) {
             <article className="admin-team-card" key={item.team.id}>
               <header>
                 <span className="admin-team-badge" style={{ "--team-color": item.team.primary_color } as CSSProperties}>
-                  {item.team.badge_url ? <img alt="" src={item.team.badge_url} /> : item.team.short_name.slice(0, 3)}
+                  {item.team.badge_icon_url || item.team.badge_url ? <img alt="" src={item.team.badge_icon_url || item.team.badge_url || ""} /> : item.team.short_name.slice(0, 3)}
                 </span>
                 <div>
                   <strong>{item.team.name}</strong>

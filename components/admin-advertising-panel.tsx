@@ -13,7 +13,7 @@ type AdminProfile = {
   avatar_url: string | null;
 };
 
-type AdvertisingVenue = Pick<ArenaVenue, "id" | "name" | "neighborhood" | "address" | "phone" | "cover_url" | "price_per_hour" | "status">;
+type AdvertisingVenue = Pick<ArenaVenue, "id" | "name" | "neighborhood" | "address" | "phone" | "cover_url" | "logo_url" | "marker_url" | "card_url" | "hero_url" | "price_per_hour" | "status">;
 
 type AdvertisingRequestFilter = PaymentRequestStatus | "all";
 

@@ -59,7 +59,12 @@ export type ArenaVenue = {
   phone_country_code?: string | null;
   phone_national?: string | null;
   cover_url?: string | null;
+  logo_url?: string | null;
+  marker_url?: string | null;
+  card_url?: string | null;
+  hero_url?: string | null;
   gallery_urls?: string[] | null;
+  media_frame?: Record<string, unknown> | null;
   latitude?: number | null;
   longitude?: number | null;
   price_per_hour: number;
@@ -79,6 +84,9 @@ export type ArenaTeam = {
   slug: string;
   short_name: string;
   badge_url: string | null;
+  badge_icon_url?: string | null;
+  badge_card_url?: string | null;
+  badge_frame?: Record<string, unknown> | null;
   primary_color: string;
   neighborhood: string | null;
   home_venue_id: string | null;
@@ -101,6 +109,9 @@ export type ArenaPlayer = {
   jersey_number: number | null;
   position: string | null;
   photo_url: string | null;
+  avatar_url?: string | null;
+  card_photo_url?: string | null;
+  photo_frame?: Record<string, unknown> | null;
   goals: number;
   yellow_cards?: number;
   red_cards?: number;

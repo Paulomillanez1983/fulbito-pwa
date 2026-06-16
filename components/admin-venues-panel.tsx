@@ -34,6 +34,19 @@ type AdminVenue = ArenaVenue & {
   updated_at?: string;
 };
 
+type AdminVenueMediaSet = {
+  coverUrl: string | null;
+  logoUrl: string | null;
+  markerUrl: string | null;
+  cardUrl: string | null;
+  heroUrl: string | null;
+  frame: ImageFrameOptions | null;
+};
+
+function frameForDerivative(frameOptions: ImageFrameOptions | null | undefined, shape: ImageFrameOptions["shape"] = "none") {
+  return { ...(frameOptions ?? {}), shape };
+}
+
 function AdminVenuePhotoFrameField({ currentUrl }: { currentUrl?: string | null }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [filename, setFilename] = useState("");
@@ -152,11 +165,16 @@ export function AdminVenuesPanel({
     setRequests((current) => current.map((request) => request.id === next.id ? next : request));
   }
 
-  async function uploadCover(venue: AdminVenue, fileValue: FormDataEntryValue | null, frameOptions?: ImageFrameOptions | null) {
-    if (!(fileValue instanceof File) || fileValue.size === 0) return venue.cover_url ?? null;
-    const optimized = await optimizeImageForUpload(fileValue, "venue_photo", frameOptions);
+  async function uploadVenueDerivative(
+    venue: AdminVenue,
+    fileValue: File,
+    preset: "venue_logo" | "venue_marker" | "venue_card" | "venue_cover",
+    frameOptions: ImageFrameOptions | null | undefined,
+    suffix: string
+  ) {
+    const optimized = await optimizeImageForUpload(fileValue, preset, frameOptions);
     const supabase = createSupabaseBrowserClient();
-    const path = `${adminId}/${venue.id}-${Date.now().toString(36)}.webp`;
+    const path = `${adminId}/${venue.id}-${Date.now().toString(36)}-${suffix}.webp`;
     const { error } = await supabase.storage.from("venue-photos").upload(path, optimized, {
       cacheControl: "604800",
       contentType: "image/webp",
@@ -166,13 +184,38 @@ export function AdminVenuesPanel({
     return supabase.storage.from("venue-photos").getPublicUrl(path).data.publicUrl;
   }
 
+  async function uploadCover(venue: AdminVenue, fileValue: FormDataEntryValue | null, frameOptions?: ImageFrameOptions | null): Promise<AdminVenueMediaSet> {
+    if (!(fileValue instanceof File) || fileValue.size === 0) {
+      return {
+        coverUrl: venue.cover_url ?? null,
+        logoUrl: venue.logo_url ?? null,
+        markerUrl: venue.marker_url ?? null,
+        cardUrl: venue.card_url ?? null,
+        heroUrl: venue.hero_url ?? venue.cover_url ?? null,
+        frame: venue.media_frame as ImageFrameOptions | null
+      };
+    }
+    const logoUrl = await uploadVenueDerivative(venue, fileValue, "venue_logo", frameOptions, "logo");
+    const markerUrl = await uploadVenueDerivative(venue, fileValue, "venue_marker", frameForDerivative(frameOptions, "none"), "pin");
+    const cardUrl = await uploadVenueDerivative(venue, fileValue, "venue_card", frameForDerivative(frameOptions, "none"), "card");
+    const heroUrl = await uploadVenueDerivative(venue, fileValue, "venue_cover", frameForDerivative(frameOptions, "none"), "hero");
+    return {
+      coverUrl: heroUrl,
+      logoUrl,
+      markerUrl,
+      cardUrl,
+      heroUrl,
+      frame: frameOptions ?? null
+    };
+  }
+
   async function updateVenue(event: FormEvent<HTMLFormElement>, venue: AdminVenue) {
     event.preventDefault();
     setNotice("");
     setBusyId(`venue-${venue.id}`);
     const form = new FormData(event.currentTarget);
     try {
-      const coverUrl = await uploadCover(venue, form.get("coverFile"), readImageFrameOptions(form, "coverFile", { shape: "rounded" }));
+      const mediaSet = await uploadCover(venue, form.get("coverFile"), readImageFrameOptions(form, "coverFile", { shape: "rounded" }));
       const supabase = createSupabaseBrowserClient();
       const selectedModes = normalizeVenueSurfaces(form.getAll("surface"));
       const formatPrices = readVenueFormatPrices(form, selectedModes);
@@ -195,7 +238,12 @@ export function AdminVenuesPanel({
           inscription_fee: Number(form.get("reserveFee") || 0),
           open_hours: String(form.get("openHours") || "").trim() || null,
           status: String(form.get("status") || venue.status),
-          cover_url: coverUrl
+          cover_url: mediaSet.coverUrl,
+          logo_url: mediaSet.logoUrl,
+          marker_url: mediaSet.markerUrl,
+          card_url: mediaSet.cardUrl,
+          hero_url: mediaSet.heroUrl,
+          media_frame: mediaSet.frame
         })
         .eq("id", venue.id)
         .select()
@@ -293,7 +341,7 @@ export function AdminVenuesPanel({
         <article><ShieldCheck size={18} /><div><strong>{freeVenues.length}</strong><span>Gratis visibles</span></div></article>
         <article className={proVenues.length ? "is-live" : ""}><ImagePlus size={18} /><div><strong>{proVenues.length}</strong><span>Cancha Pro activa</span></div></article>
         <article className={pendingRequests.length ? "is-hot" : ""}><Clock3 size={18} /><div><strong>{pendingRequests.length}</strong><span>Pagos pendientes</span></div></article>
-        <article><Upload size={18} /><div><strong>{venues.filter((venue) => venue.cover_url).length}</strong><span>Con foto</span></div></article>
+        <article><Upload size={18} /><div><strong>{venues.filter((venue) => venue.cover_url || venue.logo_url || venue.card_url || venue.hero_url).length}</strong><span>Con foto</span></div></article>
         <article><XCircle size={18} /><div><strong>{pendingVenues.length}</strong><span>Requieren revisión</span></div></article>
       </section>
 
@@ -387,10 +435,11 @@ export function AdminVenuesPanel({
             const selectedModes = venueSurfacesFromStored(venue.field_modes, venue.surface);
             const formatPrices = venue.format_prices ?? {};
             const selectedPhoneCountry = getPhoneCountry(venue.phone_country_iso);
+            const coverPreview = venue.hero_url || venue.card_url || venue.cover_url || venue.logo_url;
             return (
               <article className={`admin-venue-card ${isPro ? "is-pro" : "is-free"}`} key={venue.id}>
                 <div className="admin-venue-cover">
-                  {venue.cover_url ? <img alt="" src={venue.cover_url} /> : <ImagePlus size={26} />}
+                  {coverPreview ? <img alt="" src={coverPreview} /> : <ImagePlus size={26} />}
                   <b>{isPro ? "Cancha Pro" : "Gratis"}</b>
                 </div>
                 <form onSubmit={(event) => updateVenue(event, venue)}>
@@ -434,7 +483,7 @@ export function AdminVenuesPanel({
                       <option value="paused">Pausada</option>
                       <option value="rejected">Rechazada</option>
                     </select>
-                    <AdminVenuePhotoFrameField currentUrl={venue.cover_url} />
+                    <AdminVenuePhotoFrameField currentUrl={venue.logo_url || venue.cover_url} />
                   </div>
                   <button disabled={busy} type="submit">
                     {busy ? <LoaderCircle className="button-spinner" size={17} /> : <ShieldCheck size={17} />}

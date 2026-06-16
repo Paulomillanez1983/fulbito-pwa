@@ -12,7 +12,7 @@ type AdminProfile = {
   avatar_url: string | null;
 };
 
-type AdvertisingVenue = Pick<ArenaVenue, "id" | "name" | "neighborhood" | "address" | "phone" | "cover_url" | "price_per_hour" | "status">;
+type AdvertisingVenue = Pick<ArenaVenue, "id" | "name" | "neighborhood" | "address" | "phone" | "cover_url" | "logo_url" | "marker_url" | "card_url" | "hero_url" | "price_per_hour" | "status">;
 
 export default async function AdminAdvertisingPage() {
   const env = getSupabaseEnv();
@@ -69,7 +69,7 @@ export default async function AdminAdvertisingPage() {
     supabase.from("payment_requests").select("*").in("plan_code", ["sponsor", "featured_venue"]).order("created_at", { ascending: false }).limit(200),
     supabase.from("ad_campaigns").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }).limit(300),
     supabase.from("ad_campaign_events").select("*").order("created_at", { ascending: false }).limit(3000),
-    supabase.from("venues").select("id,name,neighborhood,address,phone,cover_url,price_per_hour,status").order("created_at", { ascending: false }).limit(300)
+    supabase.from("venues").select("id,name,neighborhood,address,phone,cover_url,logo_url,marker_url,card_url,hero_url,price_per_hour,status").order("created_at", { ascending: false }).limit(300)
   ]);
 
   const requests = (requestsResult.data ?? []) as PaymentRequest[];

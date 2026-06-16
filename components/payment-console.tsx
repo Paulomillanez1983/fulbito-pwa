@@ -6,7 +6,7 @@ import { CalendarDays, CheckCircle2, ChevronDown, Clipboard, MapPinned, PlusCirc
 import { FrameHiddenInputs, ImageFrameTuner, defaultImageFrame, framePreviewStyle } from "@/components/image-frame-controls";
 import type { ImageFrameDraft } from "@/components/image-frame-controls";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
-import { optimizeImageForUpload, readImageFrameOptions, type ImageFrameOptions } from "@/lib/image-optimizer";
+import { optimizeImageForUpload, readImageFrameOptions, type ImageFrameOptions, type UploadImagePreset } from "@/lib/image-optimizer";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import type { PaymentPlan, PaymentTargetType } from "@/lib/payments";
 import { getRosterRule } from "@/lib/roster";
@@ -128,19 +128,47 @@ async function uploadProof(userId: string, fileValue: FormDataEntryValue | null)
   return { proofPath, proofFilename: fileValue.name };
 }
 
-async function uploadVenueCover(userId: string, venueId: string, fileValue: FormDataEntryValue | null, frameOptions?: ImageFrameOptions | null) {
+type VenuePaymentMediaSet = {
+  logoUrl: string | null;
+  markerUrl: string | null;
+  cardUrl: string | null;
+  heroUrl: string | null;
+  frame: ImageFrameOptions | null;
+};
+
+function frameForDerivative(frameOptions: ImageFrameOptions | null | undefined, shape: ImageFrameOptions["shape"] = "none") {
+  return { ...(frameOptions ?? {}), shape };
+}
+
+async function uploadVenueDerivative(
+  userId: string,
+  venueId: string,
+  fileValue: FormDataEntryValue | null,
+  preset: UploadImagePreset,
+  frameOptions: ImageFrameOptions | null | undefined,
+  suffix: string
+) {
   if (!(fileValue instanceof File) || fileValue.size === 0) return null;
   const supabase = createSupabaseBrowserClient();
-  const optimizedCover = await optimizeImageForUpload(fileValue, "venue_photo", frameOptions);
-  const extension = optimizedCover.type === "image/webp" ? "webp" : optimizedCover.name.split(".").pop()?.toLowerCase() || "jpg";
-  const path = `${userId}/${venueId}-${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
-  const { error } = await supabase.storage.from("venue-photos").upload(path, optimizedCover, {
+  const optimized = await optimizeImageForUpload(fileValue, preset, frameOptions);
+  const extension = optimized.type === "image/webp" ? "webp" : optimized.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${userId}/${venueId}-${Date.now().toString(36)}-${crypto.randomUUID()}-${suffix}.${extension}`;
+  const { error } = await supabase.storage.from("venue-photos").upload(path, optimized, {
     cacheControl: "31536000",
-    contentType: optimizedCover.type || undefined,
+    contentType: optimized.type || undefined,
     upsert: false
   });
   if (error) throw error;
   return supabase.storage.from("venue-photos").getPublicUrl(path).data.publicUrl;
+}
+
+async function uploadVenueMediaSet(userId: string, venueId: string, fileValue: FormDataEntryValue | null, frameOptions?: ImageFrameOptions | null): Promise<VenuePaymentMediaSet | null> {
+  if (!(fileValue instanceof File) || fileValue.size === 0) return null;
+  const logoUrl = await uploadVenueDerivative(userId, venueId, fileValue, "venue_logo", frameOptions, "logo");
+  const markerUrl = await uploadVenueDerivative(userId, venueId, fileValue, "venue_marker", frameForDerivative(frameOptions, "none"), "pin");
+  const cardUrl = await uploadVenueDerivative(userId, venueId, fileValue, "venue_card", frameForDerivative(frameOptions, "none"), "card");
+  const heroUrl = await uploadVenueDerivative(userId, venueId, fileValue, "venue_cover", frameForDerivative(frameOptions, "none"), "hero");
+  return { logoUrl, markerUrl, cardUrl, heroUrl, frame: frameOptions ?? null };
 }
 
 function VenueCoverFrameField({ currentUrl }: { currentUrl?: string | null }) {
@@ -951,7 +979,7 @@ function FeaturedVenueForm({
         prices[surface] = submittedPrice > 0 ? submittedPrice : currentPrice;
         return prices;
       }, {});
-      const coverUrl = await uploadVenueCover(data.user.id, venueId, form.get("coverFile"), readImageFrameOptions(form, "coverFile", { shape: "rounded" }));
+      const mediaSet = await uploadVenueMediaSet(data.user.id, venueId, form.get("coverFile"), readImageFrameOptions(form, "coverFile", { shape: "rounded" }));
       const reserveFeeValue = String(form.get("reserveFee") || "").trim();
       const openHoursValue = String(form.get("openHours") || "").trim();
       const updatePayload: Record<string, unknown> = {
@@ -961,7 +989,12 @@ function FeaturedVenueForm({
         inscription_fee: reserveFeeValue ? Number(reserveFeeValue) : selectedVenue?.inscription_fee ?? 0,
         open_hours: openHoursValue || selectedVenue?.open_hours || null
       };
-      if (coverUrl) updatePayload.cover_url = coverUrl;
+      if (mediaSet?.heroUrl) updatePayload.cover_url = mediaSet.heroUrl;
+      if (mediaSet?.logoUrl) updatePayload.logo_url = mediaSet.logoUrl;
+      if (mediaSet?.markerUrl) updatePayload.marker_url = mediaSet.markerUrl;
+      if (mediaSet?.cardUrl) updatePayload.card_url = mediaSet.cardUrl;
+      if (mediaSet?.heroUrl) updatePayload.hero_url = mediaSet.heroUrl;
+      if (mediaSet) updatePayload.media_frame = mediaSet.frame;
       const { error: venueUpdateError } = await supabase
         .from("venues")
         .update(updatePayload)
@@ -1025,9 +1058,9 @@ function FeaturedVenueForm({
                   <strong>{selectedVenue.name}</strong>
                   <small>{selectedVenue.address || selectedVenue.neighborhood} / {venueSurfaceSummary(selectedVenue.field_modes, selectedVenue.surface)}</small>
                 </div>
-                {selectedVenue.cover_url ? <img alt="" src={selectedVenue.cover_url} /> : <MapPinned size={28} />}
+                {selectedVenue.logo_url || selectedVenue.marker_url || selectedVenue.cover_url ? <img alt="" src={selectedVenue.logo_url || selectedVenue.marker_url || selectedVenue.cover_url || ""} /> : <MapPinned size={28} />}
               </div>
-              <VenueCoverFrameField currentUrl={selectedVenue.cover_url} />
+              <VenueCoverFrameField currentUrl={selectedVenue.logo_url || selectedVenue.hero_url || selectedVenue.cover_url} />
               <section className="venue-format-price-list">
                 <span>Precio por formato</span>
                 {selectedVenueModes.map((surface) => {

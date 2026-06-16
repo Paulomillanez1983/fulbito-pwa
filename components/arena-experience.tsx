@@ -423,7 +423,38 @@ function venueMapsUrl(venue?: ArenaVenue | null) {
 }
 
 function venueGallery(venue: ArenaVenue) {
-  return (venue.gallery_urls?.length ? venue.gallery_urls : venue.cover_url ? [venue.cover_url] : []).filter(Boolean).slice(0, 5) as string[];
+  const gallery = venue.gallery_urls?.filter(Boolean) ?? [];
+  if (gallery.length) return gallery.slice(0, 5);
+  const fallback = venueHeroImage(venue);
+  return fallback ? [fallback] : [];
+}
+
+function venueHeroImage(venue: ArenaVenue) {
+  return venue.hero_url || venue.cover_url || venue.gallery_urls?.[0] || venue.card_url || venue.logo_url || "";
+}
+
+function venueCardImage(venue: ArenaVenue) {
+  return venue.card_url || venue.logo_url || venue.cover_url || venue.gallery_urls?.[0] || "";
+}
+
+function venueLogoImage(venue: ArenaVenue) {
+  return venue.logo_url || venue.marker_url || venue.card_url || venue.cover_url || venue.gallery_urls?.[0] || "";
+}
+
+function teamBadgeImage(team?: ArenaTeam | null) {
+  return team?.badge_icon_url || team?.badge_url || team?.badge_card_url || "";
+}
+
+function teamBadgeCardImage(team?: ArenaTeam | null) {
+  return team?.badge_card_url || team?.badge_icon_url || team?.badge_url || "";
+}
+
+function playerAvatarImage(player?: ArenaPlayer | null) {
+  return player?.avatar_url || player?.photo_url || player?.card_photo_url || "";
+}
+
+function playerCardImage(player?: ArenaPlayer | null) {
+  return player?.card_photo_url || player?.photo_url || player?.avatar_url || "";
 }
 
 function venueIsPro(venue: ArenaVenue) {
@@ -647,7 +678,7 @@ function getTournamentChampion(matches: ArenaMatch[], teamsById: Map<string, Are
 
 function buildSimulatedDrawTeams(teams: ArenaTeam[], maxTeams: number) {
   const plannedCount = Math.max(4, maxTeams, teams.length);
-  const nextTeams = [...teams];
+  const nextTeams = teams.map((team) => ({ ...team, badge_url: teamBadgeCardImage(team) || team.badge_url }));
   for (let index = nextTeams.length; index < plannedCount; index += 1) {
     const teamNumber = index + 1;
     nextTeams.push({
@@ -680,9 +711,10 @@ function findDrawDestination(draw: DrawResult, team: DrawResult["teams"][number]
 }
 
 function TeamCrest({ team, size = "normal" }: { team?: ArenaTeam | null; size?: "normal" | "large" }) {
+  const badgeUrl = teamBadgeImage(team);
   return (
     <span className={`team-crest ${size === "large" ? "team-crest--large" : ""}`} style={{ "--crest": team?.primary_color ?? "#eec15c" } as CSSProperties}>
-      {team?.badge_url ? <img alt="" src={team.badge_url} /> : <b>{team?.short_name ?? "FC"}</b>}
+      {badgeUrl ? <img alt="" src={badgeUrl} /> : <b>{team?.short_name ?? "FC"}</b>}
     </span>
   );
 }
@@ -718,10 +750,11 @@ function getPlayerStatus(player: ArenaPlayer) {
 
 function PlayerAvatar({ player }: { player?: ArenaPlayer | null }) {
   const initials = getPlayerInitials(player);
+  const avatarUrl = playerAvatarImage(player);
 
   return (
     <span className="player-disc">
-      {player?.photo_url ? <img alt="" src={player.photo_url} /> : initials}
+      {avatarUrl ? <img alt="" src={avatarUrl} /> : initials}
     </span>
   );
 }
@@ -732,6 +765,7 @@ function PlayerCardModal({ player, team, onClose }: { player: ArenaPlayer; team?
   const status = getPlayerStatus(player);
   const played = team?.played ?? 0;
   const initials = getPlayerInitials(player);
+  const portraitUrl = playerCardImage(player);
 
   useEffect(() => {
     function closeWithEscape(event: KeyboardEvent) {
@@ -764,7 +798,7 @@ function PlayerCardModal({ player, team, onClose }: { player: ArenaPlayer; team?
           <TeamCrest team={team} />
         </header>
         <div className="player-card-portrait">
-          {player.photo_url ? <img alt="" src={player.photo_url} /> : <span>{initials}</span>}
+          {portraitUrl ? <img alt="" src={portraitUrl} /> : <span>{initials}</span>}
         </div>
         <section className="player-card-name">
           <h2 id="player-card-title">{player.alias || player.display_name}</h2>
@@ -885,7 +919,7 @@ function DrawLiveTeaser({
     id: team.id,
     name: team.name,
     shortName: team.short_name,
-    badgeUrl: team.badge_url
+    badgeUrl: teamBadgeCardImage(team)
   }))).slice(0, 10);
 
   function runDemoDraw() {
@@ -2141,13 +2175,16 @@ function TeamCarousel({
 
 function VenueRow({ venue, onOpen }: { venue: ArenaVenue; onOpen: () => void }) {
   const gallery = venueGallery(venue);
+  const cardImage = venueCardImage(venue);
+  const logoImage = venueLogoImage(venue);
+  const ghostImage = venueHeroImage(venue) || cardImage;
   const pro = venueIsPro(venue);
   const modePrices = venueModePriceItems(venue).slice(0, 3);
   return (
     <button className={`venue-row venue-row--button ${pro ? "venue-row--pro" : "venue-row--free"}`} onClick={onOpen} type="button">
-      {gallery[0] ? <img alt="" className="venue-row__ghost" src={gallery[0]} /> : null}
+      {ghostImage ? <img alt="" className="venue-row__ghost" src={ghostImage} /> : null}
       <span className="venue-row__photo">
-        {gallery[0] ? <img alt="" src={gallery[0]} /> : <MapPinned size={18} />}
+        {logoImage ? <img alt="" src={logoImage} /> : <MapPinned size={18} />}
       </span>
       <div className="venue-row__main">
         <span className="venue-row__badge">{pro ? "Cancha partner" : "Sede gratis"}</span>
@@ -3233,14 +3270,15 @@ function VenueSpotlight({ venue }: { venue?: ArenaVenue }) {
   if (!venue) return null;
   const whatsappUrl = venueWhatsappUrl(venue.phone);
   const gallery = venueGallery(venue);
+  const heroImage = venueHeroImage(venue);
   const mapsUrl = venueMapsUrl(venue);
   const pro = venueIsPro(venue);
   const modePrices = venueModePriceItems(venue);
   return (
     <section className={`venue-spotlight ${gallery.length ? "venue-spotlight--with-gallery" : ""} ${pro ? "venue-spotlight--pro" : "venue-spotlight--free"}`} id="venue-spotlight">
-      {gallery[0] ? <img alt="" className="venue-spotlight__backdrop" src={gallery[0]} /> : null}
+      {heroImage ? <img alt="" className="venue-spotlight__backdrop" src={heroImage} /> : null}
       <div className="venue-spotlight__hero" aria-label={`Fotos de ${venue.name}`}>
-        {gallery[0] ? <img alt="" src={gallery[0]} /> : <MapPinned size={34} />}
+        {heroImage ? <img alt="" src={heroImage} /> : <MapPinned size={34} />}
         <span>{pro ? "Cancha destacada" : "Sede registrada"}</span>
         {gallery.length > 1 ? (
           <div className="venue-spotlight__thumbs">
@@ -3287,14 +3325,16 @@ function VenueMapPreview({
   venue: ArenaVenue;
 }) {
   const gallery = venueGallery(venue);
+  const heroImage = venueHeroImage(venue);
+  const logoImage = venueLogoImage(venue);
   const whatsappUrl = venueWhatsappUrl(venue.phone);
   const mapsUrl = venueMapsUrl(venue);
   const modePrices = venueModePriceItems(venue).slice(0, 3);
-  const heroPhotos = gallery.slice(0, 3);
+  const heroPhotos = gallery.length ? gallery.slice(0, 3) : heroImage ? [heroImage] : [];
 
   return (
     <section className="venue-map-popover" aria-live="polite">
-      {gallery[0] ? <img alt="" className="venue-map-popover__backdrop" src={gallery[0]} /> : null}
+      {heroImage ? <img alt="" className="venue-map-popover__backdrop" src={heroImage} /> : null}
       <button className="venue-map-popover__close" onClick={onClose} type="button" aria-label="Cerrar vista previa">
         <X size={16} />
       </button>
@@ -3309,7 +3349,7 @@ function VenueMapPreview({
           </div>
         )}
         <span className="venue-map-popover__crest">
-          {gallery[0] ? <img alt="" src={gallery[0]} /> : venue.name.slice(0, 2).toUpperCase()}
+          {logoImage ? <img alt="" src={logoImage} /> : venue.name.slice(0, 2).toUpperCase()}
         </span>
       </div>
       <div className="venue-map-popover__body">

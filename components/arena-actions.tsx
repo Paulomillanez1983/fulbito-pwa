@@ -33,6 +33,20 @@ const mediaPresetByBucket: Record<MediaBucket, UploadImagePreset> = {
   "venue-photos": "venue_photo"
 };
 
+type VenueMediaUpload = {
+  coverUrl: string | null;
+  logoUrl: string | null;
+  markerUrl: string | null;
+  cardUrl: string | null;
+  heroUrl: string | null;
+  galleryUrls: string[];
+  frame: ImageFrameOptions | null;
+};
+
+function frameForDerivative(frameOptions: ImageFrameOptions | null | undefined, shape: ImageFrameOptions["shape"] = "none") {
+  return { ...(frameOptions ?? {}), shape };
+}
+
 type SlotDraft = {
   label: string;
   jersey: number;
@@ -169,8 +183,8 @@ function VenueGalleryField({
           {previews.slice(1, 3).map((preview) => <img alt="" key={preview} src={preview} />)}
         </span>
         <span className="venue-gallery-field__copy">
-          <strong>Fotos o logo de la cancha</strong>
-          <small>{filename || "Hasta 3 imagenes. JPG, PNG o WebP; Fulbito las convierte a WebP liviano."}</small>
+          <strong>Logo o foto principal de la cancha</strong>
+          <small>{filename || "Hasta 3 imagenes. La primera arma logo, pin y portada; Fulbito convierte todo a WebP liviano."}</small>
         </span>
       </label>
       {previews.length ? (
@@ -600,12 +614,14 @@ export function ArenaActions({
     bucket: MediaBucket,
     userId: string,
     fileValue: FormDataEntryValue | null,
-    frameOptions?: ImageFrameOptions | null
+    frameOptions?: ImageFrameOptions | null,
+    presetOverride?: UploadImagePreset,
+    suffix = ""
   ) {
     if (!(fileValue instanceof File) || fileValue.size === 0) return null;
-    const optimizedFile = await optimizeImageForUpload(fileValue, mediaPresetByBucket[bucket], frameOptions);
+    const optimizedFile = await optimizeImageForUpload(fileValue, presetOverride ?? mediaPresetByBucket[bucket], frameOptions);
     const extension = optimizedFile.type === "image/webp" ? "webp" : optimizedFile.name.split(".").pop()?.toLowerCase() || "png";
-    const path = `${userId}/${Date.now().toString(36)}-${crypto.randomUUID()}.${extension}`;
+    const path = `${userId}/${Date.now().toString(36)}-${crypto.randomUUID()}${suffix ? `-${suffix}` : ""}.${extension}`;
     const { error } = await supabase.storage.from(bucket).upload(path, optimizedFile, {
       cacheControl: "31536000",
       contentType: optimizedFile.type || undefined,
@@ -615,21 +631,63 @@ export function ArenaActions({
     return supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
   }
 
+  async function uploadTeamBadgeSet(
+    supabase: ReturnType<typeof createSupabaseBrowserClient>,
+    userId: string,
+    fileValue: FormDataEntryValue | null,
+    frameOptions: ImageFrameOptions | null
+  ) {
+    if (!(fileValue instanceof File) || fileValue.size === 0) return null;
+    const badgeUrl = await uploadArenaMedia(supabase, "team-badges", userId, fileValue, frameOptions, "team_badge", "badge");
+    const iconUrl = await uploadArenaMedia(supabase, "team-badges", userId, fileValue, frameForDerivative(frameOptions, "none"), "team_badge", "icon");
+    const cardUrl = await uploadArenaMedia(supabase, "team-badges", userId, fileValue, frameForDerivative(frameOptions, "none"), "team_badge_card", "card");
+    return { badgeUrl, iconUrl, cardUrl, frame: frameOptions };
+  }
+
+  async function uploadPlayerPhotoSet(
+    supabase: ReturnType<typeof createSupabaseBrowserClient>,
+    userId: string,
+    fileValue: FormDataEntryValue | null,
+    frameOptions: ImageFrameOptions | null
+  ) {
+    if (!(fileValue instanceof File) || fileValue.size === 0) return null;
+    const photoUrl = await uploadArenaMedia(supabase, "player-photos", userId, fileValue, frameOptions, "player_photo", "photo");
+    const avatarUrl = await uploadArenaMedia(supabase, "player-photos", userId, fileValue, frameForDerivative(frameOptions, "none"), "player_avatar", "avatar");
+    const cardPhotoUrl = await uploadArenaMedia(supabase, "player-photos", userId, fileValue, frameForDerivative(frameOptions, "none"), "player_card", "card");
+    return { photoUrl, avatarUrl, cardPhotoUrl, frame: frameOptions };
+  }
+
   async function uploadVenueGallery(
     supabase: ReturnType<typeof createSupabaseBrowserClient>,
     userId: string,
     fileValues: FormDataEntryValue[],
     frameOptions?: ImageFrameOptions | null
-  ) {
+  ): Promise<VenueMediaUpload> {
     const files = fileValues
       .filter((fileValue): fileValue is File => fileValue instanceof File && fileValue.size > 0)
       .slice(0, 3);
+    if (!files.length) {
+      return { coverUrl: null, logoUrl: null, markerUrl: null, cardUrl: null, heroUrl: null, galleryUrls: [], frame: frameOptions ?? null };
+    }
     const urls: string[] = [];
     for (const file of files) {
-      const url = await uploadArenaMedia(supabase, "venue-photos", userId, file, frameOptions);
+      const url = await uploadArenaMedia(supabase, "venue-photos", userId, file, frameForDerivative(frameOptions, "none"), "venue_photo", "gallery");
       if (url) urls.push(url);
     }
-    return urls;
+    const primary = files[0];
+    const logoUrl = await uploadArenaMedia(supabase, "venue-photos", userId, primary, frameOptions, "venue_logo", "logo");
+    const markerUrl = await uploadArenaMedia(supabase, "venue-photos", userId, primary, frameForDerivative(frameOptions, "none"), "venue_marker", "pin");
+    const cardUrl = await uploadArenaMedia(supabase, "venue-photos", userId, primary, frameForDerivative(frameOptions, "none"), "venue_card", "card");
+    const heroUrl = await uploadArenaMedia(supabase, "venue-photos", userId, primary, frameForDerivative(frameOptions, "none"), "venue_cover", "hero");
+    return {
+      coverUrl: heroUrl ?? urls[0] ?? null,
+      logoUrl,
+      markerUrl,
+      cardUrl,
+      heroUrl,
+      galleryUrls: urls,
+      frame: frameOptions ?? null
+    };
   }
 
   async function uploadPaymentProof(
@@ -744,17 +802,23 @@ export function ArenaActions({
     if (!hasTeamProAccess(team.id)) return setMessage("Activa Equipo Pro para subir escudo premium.");
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Entra con Google para continuar.");
-    let badgeUrl: string | null = null;
+    let badgeSet: Awaited<ReturnType<typeof uploadTeamBadgeSet>> = null;
     try {
-      badgeUrl = await uploadArenaMedia(supabase, "team-badges", userId, formData.get("badgeFile"), readImageFrameOptions(formData, "badgeFile", { shape: "shield" }));
+      badgeSet = await uploadTeamBadgeSet(supabase, userId, formData.get("badgeFile"), readImageFrameOptions(formData, "badgeFile", { shape: "shield" }));
     } catch (error) {
       return setMessage(error instanceof Error ? error.message : "No se pudo subir el escudo.");
     }
-    if (!badgeUrl) return setMessage("Selecciona una imagen para el escudo.");
+    if (!badgeSet?.badgeUrl) return setMessage("Selecciona una imagen para el escudo.");
     const primaryColor = String(formData.get("primaryColor") || team.primary_color || "#eec15c").trim();
     const { error } = await supabase
       .from("teams")
-      .update({ badge_url: badgeUrl, primary_color: primaryColor })
+      .update({
+        badge_url: badgeSet.badgeUrl,
+        badge_icon_url: badgeSet.iconUrl,
+        badge_card_url: badgeSet.cardUrl,
+        badge_frame: badgeSet.frame,
+        primary_color: primaryColor
+      })
       .eq("id", team.id);
     if (!error) window.setTimeout(() => window.location.reload(), 800);
     setMessage(error ? error.message : "Escudo premium actualizado.");
@@ -805,8 +869,15 @@ export function ArenaActions({
     const address = String(formData.get("venueAddress") || "").trim();
     if (!address) return setMessage("Carga el domicilio para ubicar bien la cancha en el mapa.");
     const formatPrices = selectedVenueMode === "pro" ? readVenueFormatPrices(formData, selectedModes) : {};
-    let coverUrl: string | null = null;
-    let galleryUrls: string[] = [];
+    let venueMedia: VenueMediaUpload = {
+      coverUrl: null,
+      logoUrl: null,
+      markerUrl: null,
+      cardUrl: null,
+      heroUrl: null,
+      galleryUrls: [],
+      frame: null
+    };
     if (selectedVenueMode === "pro") {
       if (!venueProPlan) return setMessage("Cancha Pro no esta disponible en este momento.");
       const proofFile = formData.get("venueProofFile");
@@ -829,8 +900,7 @@ export function ArenaActions({
       if (existingError) return setMessage(existingError.message);
       if (existingRequest) return setMessage("Ya tenes una solicitud de Cancha Pro pendiente. Espera la revision del admin.");
       try {
-        galleryUrls = await uploadVenueGallery(supabase, userId, formData.getAll("venueGalleryFiles"), readImageFrameOptions(formData, "venueGalleryFiles", { shape: "rounded" }));
-        coverUrl = galleryUrls[0] ?? null;
+        venueMedia = await uploadVenueGallery(supabase, userId, formData.getAll("venueGalleryFiles"), readImageFrameOptions(formData, "venueGalleryFiles", { shape: "rounded" }));
       } catch (error) {
         return setMessage(error instanceof Error ? error.message : "No se pudieron subir las fotos de la cancha.");
       }
@@ -852,8 +922,13 @@ export function ArenaActions({
       longitude,
       price_per_hour: selectedVenueMode === "pro" ? primaryVenuePrice(formatPrices, selectedModes) : 0,
       inscription_fee: selectedVenueMode === "pro" ? Number(formData.get("reserveFee") || 0) : 0,
-      cover_url: coverUrl,
-      gallery_urls: galleryUrls,
+      cover_url: venueMedia.coverUrl,
+      logo_url: venueMedia.logoUrl,
+      marker_url: venueMedia.markerUrl,
+      card_url: venueMedia.cardUrl,
+      hero_url: venueMedia.heroUrl,
+      gallery_urls: venueMedia.galleryUrls,
+      media_frame: venueMedia.frame,
       open_hours: selectedVenueMode === "pro" ? String(formData.get("openHours") || "").trim() || null : null,
       status: selectedVenueMode === "pro" ? "pending_pro" : "listed"
     };
@@ -912,15 +987,15 @@ export function ArenaActions({
     if (!existingSelfPlayer && currentCount >= rosterRule.maxPlayers) {
       return setMessage(`Plantel completo para ${rosterRule.label}: ${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes.`);
     }
-    let photoUrl: string | null = null;
+    let photoSet: Awaited<ReturnType<typeof uploadPlayerPhotoSet>> = null;
     if (hasTeamProAccess(teamId)) {
       try {
-        photoUrl = await uploadArenaMedia(supabase, "player-photos", userId, formData.get("playerPhoto"), readImageFrameOptions(formData, "playerPhoto", { shape: "circle", zoom: 1.08 }));
+        photoSet = await uploadPlayerPhotoSet(supabase, userId, formData.get("playerPhoto"), readImageFrameOptions(formData, "playerPhoto", { shape: "circle", zoom: 1.08 }));
       } catch (error) {
         return setMessage(error instanceof Error ? error.message : "No se pudo subir la foto del jugador.");
       }
     }
-    const resolvedPhotoUrl = photoUrl ?? (selfRegister ? existingSelfPlayer?.photo_url ?? null : null);
+    const resolvedPhotoUrl = photoSet?.photoUrl ?? (selfRegister ? existingSelfPlayer?.photo_url ?? null : null);
     const payload = {
       team_id: teamId,
       profile_id: selfRegister ? userId : null,
@@ -929,7 +1004,10 @@ export function ArenaActions({
       alias: String(formData.get("alias") || "").trim() || null,
       jersey_number: Number(formData.get("jerseyNumber") || 0) || null,
       position: String(formData.get("position") || "").trim() || null,
-      photo_url: resolvedPhotoUrl
+      photo_url: resolvedPhotoUrl,
+      avatar_url: photoSet?.avatarUrl ?? (selfRegister ? existingSelfPlayer?.avatar_url ?? existingSelfPlayer?.photo_url ?? null : null),
+      card_photo_url: photoSet?.cardPhotoUrl ?? (selfRegister ? existingSelfPlayer?.card_photo_url ?? existingSelfPlayer?.photo_url ?? null : null),
+      photo_frame: photoSet?.frame ?? (selfRegister ? existingSelfPlayer?.photo_frame ?? null : null)
     };
     const { error } = selfRegister
       ? await supabase.from("team_members").upsert(payload, { onConflict: "team_id,profile_id" })

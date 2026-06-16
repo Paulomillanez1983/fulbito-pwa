@@ -11,7 +11,7 @@ type VenuePoint = {
 };
 
 function venueMarkerVisual(venue: ArenaVenue) {
-  return venue.cover_url || venue.gallery_urls?.[0] || "";
+  return venue.marker_url || venue.logo_url || venue.card_url || venue.cover_url || venue.gallery_urls?.[0] || "";
 }
 
 function venueMarkerLabel(venue: ArenaVenue) {

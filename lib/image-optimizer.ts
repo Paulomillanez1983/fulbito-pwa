@@ -2,8 +2,15 @@
 
 export type UploadImagePreset =
   | "team_badge"
+  | "team_badge_card"
   | "player_photo"
+  | "player_avatar"
+  | "player_card"
   | "venue_photo"
+  | "venue_logo"
+  | "venue_marker"
+  | "venue_card"
+  | "venue_cover"
   | "ad_logo"
   | "payment_proof";
 
@@ -42,6 +49,17 @@ const imageTargets: Record<UploadImagePreset, ImageTarget> = {
     padding: 0.08,
     fallbackName: "escudo"
   },
+  team_badge_card: {
+    width: 640,
+    height: 640,
+    quality: 0.78,
+    minQuality: 0.5,
+    minScale: 0.58,
+    maxBytes: 120 * 1024,
+    fit: "contain",
+    padding: 0.08,
+    fallbackName: "escudo-card"
+  },
   player_photo: {
     width: 640,
     height: 640,
@@ -52,6 +70,26 @@ const imageTargets: Record<UploadImagePreset, ImageTarget> = {
     fit: "cover",
     fallbackName: "jugador"
   },
+  player_avatar: {
+    width: 320,
+    height: 320,
+    quality: 0.76,
+    minQuality: 0.52,
+    minScale: 0.56,
+    maxBytes: 78 * 1024,
+    fit: "cover",
+    fallbackName: "avatar"
+  },
+  player_card: {
+    width: 640,
+    height: 760,
+    quality: 0.78,
+    minQuality: 0.52,
+    minScale: 0.6,
+    maxBytes: 160 * 1024,
+    fit: "cover",
+    fallbackName: "jugador-card"
+  },
   venue_photo: {
     width: 1280,
     height: 720,
@@ -59,9 +97,49 @@ const imageTargets: Record<UploadImagePreset, ImageTarget> = {
     minQuality: 0.52,
     minScale: 0.68,
     maxBytes: 430 * 1024,
-    fit: "contain",
-    padding: 0.055,
+    fit: "cover",
     fallbackName: "cancha"
+  },
+  venue_logo: {
+    width: 512,
+    height: 512,
+    quality: 0.78,
+    minQuality: 0.48,
+    minScale: 0.58,
+    maxBytes: 96 * 1024,
+    fit: "contain",
+    padding: 0.08,
+    fallbackName: "cancha-logo"
+  },
+  venue_marker: {
+    width: 256,
+    height: 256,
+    quality: 0.74,
+    minQuality: 0.44,
+    minScale: 0.52,
+    maxBytes: 46 * 1024,
+    fit: "cover",
+    fallbackName: "cancha-pin"
+  },
+  venue_card: {
+    width: 640,
+    height: 420,
+    quality: 0.74,
+    minQuality: 0.46,
+    minScale: 0.58,
+    maxBytes: 140 * 1024,
+    fit: "cover",
+    fallbackName: "cancha-card"
+  },
+  venue_cover: {
+    width: 1280,
+    height: 720,
+    quality: 0.74,
+    minQuality: 0.5,
+    minScale: 0.64,
+    maxBytes: 300 * 1024,
+    fit: "cover",
+    fallbackName: "cancha-portada"
   },
   ad_logo: {
     width: 512,
