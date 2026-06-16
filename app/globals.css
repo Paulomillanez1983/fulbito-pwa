@@ -19433,6 +19433,44 @@ body::after,
   scroll-margin-top: 132px;
 }
 
+.action-console--team-editor .action-grid {
+  grid-template-columns: 1fr;
+}
+
+.action-card--team-editor-intro {
+  border-color: rgba(85, 246, 255, .18);
+  background:
+    radial-gradient(circle at 0 0, rgba(85, 246, 255, .14), transparent 38%),
+    linear-gradient(135deg, rgba(3, 16, 31, .88), rgba(9, 12, 23, .82));
+}
+
+#team-badge-editor {
+  border-color: rgba(255, 219, 105, .38);
+  background:
+    radial-gradient(circle at 100% 0, rgba(255, 219, 105, .16), transparent 36%),
+    linear-gradient(135deg, rgba(255, 219, 105, .08), rgba(85, 246, 255, .06)),
+    rgba(3, 8, 17, .9);
+}
+
+#team-badge-editor .media-frame-field {
+  border: 1px solid rgba(85, 246, 255, .14);
+  border-radius: 18px;
+  padding: 10px;
+  background: rgba(1, 8, 16, .44);
+}
+
+#team-badge-editor .media-field--crest .media-field__preview {
+  width: 74px;
+  height: 82px;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, .32));
+}
+
+#team-badge-editor .media-field__copy strong::after {
+  content: " nuevo";
+  color: #55f6ff;
+  font-size: .68em;
+}
+
 .player-card-backdrop {
   align-items: flex-start;
   padding: max(82px, calc(env(safe-area-inset-top) + 72px)) 12px 146px;

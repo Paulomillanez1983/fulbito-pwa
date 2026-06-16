@@ -137,13 +137,15 @@ function MediaField({
   accept,
   label,
   helper,
-  variant = "square"
+  variant = "square",
+  currentSrc
 }: {
   name: string;
   accept: string;
   label: string;
   helper: string;
   variant?: "crest" | "avatar" | "wide" | "square";
+  currentSrc?: string | null;
 }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [filename, setFilename] = useState("");
@@ -168,11 +170,11 @@ function MediaField({
         <input accept={accept} name={name} onChange={onFileChange} type="file" />
         <FrameHiddenInputs frame={frame} name={name} />
         <span className="media-field__preview" data-frame-shape={frame.shape} style={framePreviewStyle(frame)}>
-          {preview ? <img alt="" src={preview} /> : <Camera size={20} />}
+          {preview ? <img alt="" src={preview} /> : currentSrc ? <img alt="" src={currentSrc} /> : <Camera size={20} />}
         </span>
         <span className="media-field__copy">
           <strong>{label}</strong>
-          <small>{filename || helper}</small>
+          <small>{filename || (currentSrc ? "Toca para elegir una nueva imagen. Fulbito la guarda en WebP." : helper)}</small>
         </span>
       </label>
       {preview ? (
@@ -600,12 +602,14 @@ export function ArenaActions({
   data,
   mode = "all",
   selectedTeamId,
-  slotDraft
+  slotDraft,
+  teamEditorOnly = false
 }: {
   data: ArenaData;
   mode?: ActionMode;
   selectedTeamId?: string;
   slotDraft?: SlotDraft;
+  teamEditorOnly?: boolean;
 }) {
   const [message, setMessage] = useState("");
   const [origin, setOrigin] = useState("");
@@ -635,7 +639,7 @@ export function ArenaActions({
   const defaultPlayerPosition = slotDraft?.position ?? ownManagedPlayer?.position ?? "";
   const defaultPlayerRole = ownManagedPlayer?.role === "captain" ? "captain" : "player";
   const rosterFull = Boolean(playerTeamId && managedTeamPlayers.length >= rosterRule.maxPlayers);
-  const showPlayer = Boolean(managedTeam) && (mode === "all" || mode === "squad" || mode === "slot" || selfPlayerMode);
+  const showPlayer = !teamEditorOnly && Boolean(managedTeam) && (mode === "all" || mode === "squad" || mode === "slot" || selfPlayerMode);
   const [playerDraft, setPlayerDraft] = useState({
     name: selfPlayerMode ? ownManagedPlayer?.display_name ?? "" : "",
     alias: selfPlayerMode ? ownManagedPlayer?.alias ?? "" : "",
@@ -1246,23 +1250,28 @@ export function ArenaActions({
   }
 
   const nextMatch = resultMatches[0];
+  const selectedBadgeUrl = selectedOwnedTeam?.badge_card_url || selectedOwnedTeam?.badge_icon_url || selectedOwnedTeam?.badge_url || null;
 
   const actionContent = (
     <>
       <div className="action-grid">
         {showTeam && selectedOwnedTeam ? (
-          <article className="action-card action-card--locked">
+          <article className={`action-card action-card--locked ${teamEditorOnly ? "action-card--team-editor-intro" : ""}`}>
             <ShieldPlus />
-            <h3>Elegir equipo propio</h3>
-            <p>{selectedOwnedTeam.name} esta asociado a tu cuenta. {data.activeTournament ? `Lo podes inscribir en ${data.activeTournament.name}.` : "Elegilo para gestionar plantel."} Esta copa permite {rosterRule.starters} titulares + {rosterRule.substitutes} suplentes.</p>
-            {ownedTeams.length > 1 ? (
+            <h3>{teamEditorOnly ? "Editar identidad del club" : "Elegir equipo propio"}</h3>
+            <p>
+              {teamEditorOnly
+                ? `Actualiza el escudo de ${selectedOwnedTeam.name}. Fulbito genera version principal, icono y card en WebP para que se vea bien en mapa, liga, equipo y cartas.`
+                : `${selectedOwnedTeam.name} esta asociado a tu cuenta. ${data.activeTournament ? `Lo podes inscribir en ${data.activeTournament.name}.` : "Elegilo para gestionar plantel."} Esta copa permite ${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes.`}
+            </p>
+            {ownedTeams.length > 1 && !teamEditorOnly ? (
               <select value={selectedOwnedTeam.id} onChange={(event) => setSelectedOwnedTeamId(event.target.value)}>
                 {ownedTeams.map((team) => (
                   <option key={team.id} value={team.id}>{team.name} / {team.short_name}</option>
                 ))}
               </select>
             ) : null}
-            <div className="team-invite-actions">
+            {!teamEditorOnly ? <div className="team-invite-actions">
               {data.activeTournament ? (
                 <button className="inline-enroll-button" disabled={selectedOwnedTeamEnrolled || pendingEnrollId === selectedOwnedTeam.id} onClick={enrollOwnedTeam} type="button">
                   {pendingEnrollId === selectedOwnedTeam.id ? <LoaderCircle className="button-spinner" size={16} /> : null}
@@ -1274,11 +1283,11 @@ export function ArenaActions({
                   Invitar jugadores por WhatsApp
                 </a>
               ) : null}
-            </div>
+            </div> : null}
           </article>
         ) : null}
 
-        {showTeam ? <form action={createTeam} className={selectedOwnedTeam ? "action-card action-card--secondary" : "action-card"}>
+        {showTeam && !teamEditorOnly ? <form action={createTeam} className={selectedOwnedTeam ? "action-card action-card--secondary" : "action-card"}>
           <ShieldPlus />
           <h3>{selectedOwnedTeam ? "Crear otro equipo gratis" : "Crear equipo gratis"}</h3>
           <p>{data.activeTournament ? `Este equipo queda inscripto en ${data.activeTournament.name}. ` : ""}El alta gratis usa nombre, sigla y barrio. Escudo, fotos y cartas se activan con Equipo Pro.</p>
@@ -1296,13 +1305,21 @@ export function ArenaActions({
         {showTeam && selectedOwnedTeam && hasTeamProAccess(selectedOwnedTeam.id) ? (
           <form action={updateTeamBadge} className="action-card action-card--premium" id="team-badge-editor">
             <ShieldPlus />
-            <h3>Escudo premium</h3>
-            <p>{selectedOwnedTeam.name} tiene Equipo Pro activo. Subi un escudo optimizado para la app, links y cartas. Limite: 3 cambios por mes.</p>
+            <h3>{teamEditorOnly ? "Subir nuevo escudo" : "Escudo premium"}</h3>
+            <p>{selectedOwnedTeam.name} tiene Equipo Pro activo. Elegi la imagen, ajusta forma, zoom y posicion. Limite: 3 cambios por mes.</p>
             <input name="teamId" type="hidden" value={selectedOwnedTeam.id} />
-            <MediaField accept="image/png,image/jpeg,image/webp" helper="PNG, JPG o WebP. Fulbito lo convierte a WebP liviano antes de subir." label="Escudo del equipo" name="badgeFile" variant="crest" />
+            <MediaField accept="image/png,image/jpeg,image/webp" currentSrc={selectedBadgeUrl} helper="PNG, JPG o WebP. Fulbito lo convierte a WebP liviano antes de subir." label="Escudo del equipo" name="badgeFile" variant="crest" />
             <input name="primaryColor" type="color" defaultValue={selectedOwnedTeam.primary_color || "#eec15c"} />
             <SubmitButton idle="Actualizar escudo" pending="Guardando escudo" />
           </form>
+        ) : null}
+
+        {showTeam && teamEditorOnly && selectedOwnedTeam && !hasTeamProAccess(selectedOwnedTeam.id) ? (
+          <article className="action-card action-card--locked">
+            <ShieldPlus />
+            <h3>Escudo bloqueado</h3>
+            <p>La carga de escudo, icono y carta del club usa storage de Supabase. Se habilita con Equipo Pro y queda protegida por el limite de 3 cambios por mes.</p>
+          </article>
         ) : null}
 
         {showVenue ? <form action={createVenue} className="action-card action-card--venue">
@@ -1500,7 +1517,7 @@ export function ArenaActions({
   );
 
   return (
-    <section className={`action-console action-console--${mode}`} id="acciones">
+    <section className={`action-console action-console--${mode}${teamEditorOnly ? " action-console--team-editor" : ""}`} id="acciones">
       {mode === "all" ? (
         <>
           <div className="section-heading">
@@ -1510,7 +1527,7 @@ export function ArenaActions({
           </div>
           {actionContent}
         </>
-      ) : mode === "slot" || mode === "venue" || mode === "self-player" ? (
+      ) : mode === "slot" || mode === "venue" || mode === "self-player" || teamEditorOnly ? (
         actionContent
       ) : (
         <details className="action-drawer">

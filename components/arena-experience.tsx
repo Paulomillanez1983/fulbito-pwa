@@ -5425,7 +5425,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
         ) : null}
         {squadPanel === "edit" && isTeamManager ? (
           <section className="team-edit-panel-anchor" id="team-edit-panel">
-            <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} />
+            <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} teamEditorOnly />
           </section>
         ) : null}
         {squadPanel === "edit" && data.user && isTeamManager ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}
