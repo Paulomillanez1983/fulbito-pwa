@@ -249,7 +249,7 @@ function MediaField({
           Hacerlo automaticamente
         </button>
       </div>
-      {preview ? (
+      {preview || currentSrc ? (
         <ImageFrameTuner
           allowNoShape={variant === "wide" || variant === "square"}
           frame={frame}
@@ -1041,38 +1041,52 @@ export function ArenaActions({
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Entra con Google para continuar.");
     const badgeFile = formData.get("badgeFile");
-    if (!(badgeFile instanceof File) || badgeFile.size === 0) return setMessage("Selecciona una imagen para el escudo.");
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-    const { count, error: limitError } = await supabase
-      .from("profile_media_updates")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("target_type", "team_badge")
-      .eq("target_id", team.id)
-      .gte("created_at", monthStart.toISOString());
-    if (limitError) return setMessage(limitError.message);
-    if ((count ?? 0) >= 3) return setMessage("Este club ya cambio el escudo 3 veces este mes. Podes volver a cambiarlo el mes que viene.");
-    let badgeSet: Awaited<ReturnType<typeof uploadTeamBadgeSet>> = null;
-    try {
-      badgeSet = await uploadTeamBadgeSet(supabase, userId, badgeFile, readImageFrameOptions(formData, "badgeFile", { shape: "shield" }));
-    } catch (error) {
-      return setMessage(error instanceof Error ? error.message : "No se pudo subir el escudo.");
-    }
-    if (!badgeSet?.badgeUrl) return setMessage("Selecciona una imagen para el escudo.");
+    const hasBadgeFile = badgeFile instanceof File && badgeFile.size > 0;
+    const hasExistingBadge = Boolean(team.badge_url || team.badge_icon_url || team.badge_card_url);
+    const frameOptions = readImageFrameOptions(formData, "badgeFile", { shape: "shield" });
     const primaryColor = String(formData.get("primaryColor") || team.primary_color || "#eec15c").trim();
+    if (!hasBadgeFile && !hasExistingBadge) return setMessage("Subi una imagen para crear el escudo. Despues vas a poder reencuadrarlo sin volver a subirla.");
+    let badgeSet: Awaited<ReturnType<typeof uploadTeamBadgeSet>> = null;
+    if (hasBadgeFile) {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const { count, error: limitError } = await supabase
+        .from("profile_media_updates")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("target_type", "team_badge")
+        .eq("target_id", team.id)
+        .gte("created_at", monthStart.toISOString());
+      if (limitError) return setMessage(limitError.message);
+      if ((count ?? 0) >= 3) return setMessage("Este club ya cambio el escudo 3 veces este mes. Podes volver a cambiarlo el mes que viene.");
+      try {
+        badgeSet = await uploadTeamBadgeSet(supabase, userId, badgeFile, frameOptions);
+      } catch (error) {
+        return setMessage(error instanceof Error ? error.message : "No se pudo subir el escudo.");
+      }
+      if (!badgeSet?.badgeUrl) return setMessage("Selecciona una imagen para el escudo.");
+    }
+    const updatePayload: {
+      badge_frame: ImageFrameOptions;
+      primary_color: string;
+      badge_url?: string | null;
+      badge_icon_url?: string | null;
+      badge_card_url?: string | null;
+    } = {
+      badge_frame: frameOptions,
+      primary_color: primaryColor
+    };
+    if (badgeSet) {
+      updatePayload.badge_url = badgeSet.badgeUrl;
+      updatePayload.badge_icon_url = badgeSet.iconUrl;
+      updatePayload.badge_card_url = badgeSet.cardUrl;
+    }
     const { error } = await supabase
       .from("teams")
-      .update({
-        badge_url: badgeSet.badgeUrl,
-        badge_icon_url: badgeSet.iconUrl,
-        badge_card_url: badgeSet.cardUrl,
-        badge_frame: badgeSet.frame,
-        primary_color: primaryColor
-      })
+      .update(updatePayload)
       .eq("id", team.id);
-    if (!error) {
+    if (!error && hasBadgeFile) {
       await supabase.from("profile_media_updates").insert({
         user_id: userId,
         target_type: "team_badge",
@@ -1080,7 +1094,7 @@ export function ArenaActions({
       });
     }
     if (!error) window.setTimeout(() => window.location.reload(), 800);
-    setMessage(error ? error.message : "Escudo premium actualizado.");
+    setMessage(error ? error.message : hasBadgeFile ? "Escudo premium actualizado." : "Formato del escudo actualizado en toda la app.");
   }
 
   async function enrollOwnedTeam() {
