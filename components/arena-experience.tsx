@@ -4434,7 +4434,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const invitedTeam = inviteTeamCode
     ? data.teams.find((team) => team.slug === inviteTeamCode || team.id === inviteTeamCode || team.short_name.toLowerCase() === inviteTeamCode.toLowerCase())
     : null;
-  const playerInviteMode = Boolean(inviteMode && inviteTeamCode && invitedTeam);
+  const playerInviteMode = Boolean(inviteTeamCode && invitedTeam);
   const friendlyInvite = friendlyCode ? data.friendlyMatches.find((match) => match.invite_code === friendlyCode) : null;
   const inferredTeam = playerInviteMode
     ? invitedTeam
@@ -4456,7 +4456,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   }, [data.tournaments, data.user, data.venues, inviteMode, memberTeam, ownedTeam, playerInviteMode]);
   const preferredInitialRole = useMemo<AppRole>(() => {
     if (!data.user) return "player";
-    if (inviteMode) return playerInviteMode ? "player" : "captain";
+    if (playerInviteMode) return "player";
+    if (inviteMode) return "captain";
     if (data.tournaments.some((tournament) => tournament.organizer_id === data.user?.id)) return "organizer";
     if (ownedTeam) return "captain";
     if (memberTeam) return "player";
@@ -4465,7 +4466,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   }, [data.tournaments, data.user, data.venues, inferredAccountRoles, inviteMode, memberTeam, ownedTeam, playerInviteMode]);
 
   const [showSplash, setShowSplash] = useState(true);
-  const [active, setActive] = useState<TabId>(() => inviteMode && data.user ? "squad" : "home");
+  const [active, setActive] = useState<TabId>(() => (inviteMode || playerInviteMode) && data.user ? "squad" : "home");
   const [leagueView, setLeagueView] = useState<LeagueView>("classification");
   const [formationMode, setFormationMode] = useState<FieldMode>(data.activeTournament?.field_mode ?? "7v7");
   const [formationPresetId, setFormationPresetId] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].id);
@@ -4479,6 +4480,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [playerCardModalId, setPlayerCardModalId] = useState<string | null>(null);
   const [squadPanel, setSquadPanel] = useState<SquadPanel>("field");
+  const [focusTeamBadgeEditor, setFocusTeamBadgeEditor] = useState(false);
   const [pendingSwapSlotIndex, setPendingSwapSlotIndex] = useState<number | null>(null);
   const [origin, setOrigin] = useState("");
   const [userRoles, setUserRoles] = useState<AppRole[]>(() => inferredAccountRoles);
@@ -4648,7 +4650,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const currentFormation = getFormationPreset(formationMode, formationPresetId);
   useEffect(() => {
     if (!selectedTeam) return;
-    const savedMode = selectedTeamFormation?.field_mode ?? data.activeTournament?.field_mode ?? "7v7";
+    const tournamentFieldMode = (inviteMode || selectedTeamEnrolledInActiveTournament) ? data.activeTournament?.field_mode : undefined;
+    const savedMode = selectedTeamFormation?.field_mode ?? tournamentFieldMode ?? "7v7";
     const savedPresetId = formationPresets[savedMode].some((preset) => preset.id === selectedTeamFormation?.formation)
       ? selectedTeamFormation?.formation ?? formationPresets[savedMode][0].id
       : formationPresets[savedMode][0].id;
@@ -4657,9 +4660,9 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     setFormationPresetId(savedPresetId);
     setFormationSlotOrder(selectedTeamFormation?.slot_order ?? []);
     setSelectedSlotIndex((current) => Math.min(current, nextPreset.slots.length - 1));
-  }, [data.activeTournament?.field_mode, selectedTeam?.id, selectedTeamFormation?.field_mode, selectedTeamFormation?.formation, selectedTeamFormation?.slot_order, selectedTeamFormation?.updated_at]);
+  }, [data.activeTournament?.field_mode, inviteMode, selectedTeam?.id, selectedTeamEnrolledInActiveTournament, selectedTeamFormation?.field_mode, selectedTeamFormation?.formation, selectedTeamFormation?.slot_order, selectedTeamFormation?.updated_at]);
   const selectedSlot = currentFormation.slots[selectedSlotIndex] ?? currentFormation.slots[0];
-  const rosterRule = getRosterRule(data.activeTournament?.field_mode);
+  const rosterRule = getRosterRule((inviteMode || selectedTeamEnrolledInActiveTournament) ? data.activeTournament?.field_mode : selectedTeamFormation?.field_mode ?? formationMode);
   const isTeamManager = Boolean(
     data.user &&
     selectedTeam?.owner_id === data.user.id
@@ -4674,14 +4677,20 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   }, [formationSlotPlayers, selectedPlayers]);
   const selectedFormationSlotPlayer = formationSlotPlayers[selectedSlotIndex] ?? null;
   const selectedTeamPlayerInviteHref = useMemo(() => {
-    if (!selectedTeam || !data.activeTournament?.slug || !origin || !selectedTeamEnrolledInActiveTournament) return "";
-    const joinUrl = `${origin}/?join=${encodeURIComponent(data.activeTournament.slug)}&team=${encodeURIComponent(selectedTeam.slug)}`;
+    if (!selectedTeam?.slug || !origin) return "";
+    const tournament = data.activeTournament;
+    const hasTournamentContext = Boolean(tournament?.slug && selectedTeamEnrolledInActiveTournament);
+    const joinQuery = hasTournamentContext && tournament
+      ? `join=${encodeURIComponent(tournament.slug)}&team=${encodeURIComponent(selectedTeam.slug)}`
+      : `team=${encodeURIComponent(selectedTeam.slug)}`;
+    const joinUrl = `${origin}/?${joinQuery}`;
     const premiumCopy = selectedTeamProActive
       ? " Tambien podes subir foto para tu carta Fulbito."
       : " En modo gratis cargas nombre, dorsal y apodo; la foto se habilita si el club activa Equipo Pro.";
-    const text = `Te invito a sumarte a ${selectedTeam.name} en ${data.activeTournament.name}. Entra a ${joinUrl}, carga tu ficha y queda en el plantel.${premiumCopy}`;
+    const tournamentCopy = hasTournamentContext && tournament ? ` en ${tournament.name}` : "";
+    const text = `Te invito a sumarte a ${selectedTeam.name}${tournamentCopy}. Entra a ${joinUrl}, carga tu ficha y queda en el plantel.${premiumCopy}`;
     return `https://wa.me/?text=${encodeURIComponent(text)}`;
-  }, [data.activeTournament?.name, data.activeTournament?.slug, origin, selectedTeam, selectedTeamEnrolledInActiveTournament, selectedTeamProActive]);
+  }, [data.activeTournament, origin, selectedTeam, selectedTeamEnrolledInActiveTournament, selectedTeamProActive]);
   const assignPlayerToFormationSlot = useCallback((slotIndex: number, playerId: string) => {
     setFormationSlotOrder((current) => {
       const next = Array.from({ length: currentFormation.slots.length }, (_, index) => current[index] ?? formationSlotPlayers[index]?.id ?? "");
@@ -4788,10 +4797,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     setSquadPanel("formation");
   }, [assignPlayerToFormationSlot, pendingSwapSlotIndex]);
   const openTeamBadgeEditor = useCallback(() => {
+    setFocusTeamBadgeEditor(true);
     setSquadPanel("edit");
-    window.setTimeout(() => {
-      document.getElementById("team-badge-editor")?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
   }, []);
   const myTeam = ownedTeam ?? memberTeam ?? null;
   const hasCreatedTournament = Boolean(data.user && data.tournaments.some((tournament) => tournament.organizer_id === data.user?.id));
@@ -4807,6 +4814,17 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     if (!data.user || !inferredTeam?.id) return;
     setSelectedTeamId((current) => current || inferredTeam.id);
   }, [data.user, inferredTeam?.id]);
+
+  useEffect(() => {
+    if (!focusTeamBadgeEditor || squadPanel !== "edit") return;
+    const timers = [90, 240, 520].map((delay) => window.setTimeout(() => {
+      const target = document.getElementById("team-badge-editor") ?? document.getElementById("team-edit-panel");
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      setFocusTeamBadgeEditor(false);
+    }, delay));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [focusTeamBadgeEditor, squadPanel]);
 
   useEffect(() => {
     if (selectedVenueId && !nearbyVenues.some((venue) => venue.id === selectedVenueId)) setSelectedVenueId("");
@@ -5315,7 +5333,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             ? `${rosterRule.label}: hasta ${rosterRule.maxPlayers} jugadores (${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes).`
             : `${selectedTeam.name}: toca un jugador para ver su card o usa los botones para gestionar formacion, suplentes e invitaciones.`}
         </ScreenHeader>
-        {isTeamManager && data.activeTournament && !selectedTeamEnrolledInActiveTournament ? (
+        {inviteMode && isTeamManager && data.activeTournament && !selectedTeamEnrolledInActiveTournament ? (
           <section className="player-invite-panel player-invite-panel--locked">
             <div>
               <span>Invitacion bloqueada</span>
@@ -5405,7 +5423,11 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
         {squadPanel === "field" && selectedTeamIsPersonal && squadTeams.length > 1 ? (
           <TeamCarousel onSelect={setSelectedTeamId} selectedTeamId={selectedTeam.id} teams={squadTeams} />
         ) : null}
-        {squadPanel === "edit" && isTeamManager ? <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} /> : null}
+        {squadPanel === "edit" && isTeamManager ? (
+          <section className="team-edit-panel-anchor" id="team-edit-panel">
+            <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} />
+          </section>
+        ) : null}
         {squadPanel === "edit" && data.user && isTeamManager ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}
         {modalPlayer ? <PlayerCardModal canManage={isTeamManager} onChangePlayer={startSwapForPlayer} onClose={() => setPlayerCardModalId(null)} player={modalPlayer} team={selectedTeam} /> : null}
       </>

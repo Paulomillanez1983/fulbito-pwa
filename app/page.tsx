@@ -15,6 +15,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const joinCode = Array.isArray(joinParam) ? joinParam[0] : joinParam;
   const inviteTeamCode = Array.isArray(teamParam) ? teamParam[0] : teamParam;
   const friendlyCode = Array.isArray(friendlyParam) ? friendlyParam[0] : friendlyParam;
-  const data = await getArenaData({ joinCode, friendlyCode });
+  const data = await getArenaData({ joinCode, friendlyCode, teamCode: inviteTeamCode });
   return <ArenaExperience data={data} friendlyCode={friendlyCode} joinCode={joinCode} inviteTeamCode={inviteTeamCode} />;
 }

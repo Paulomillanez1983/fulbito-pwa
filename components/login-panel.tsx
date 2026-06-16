@@ -55,9 +55,9 @@ export function LoginPanel({
   tournamentName?: string;
   nextTarget?: string;
 }) {
-  const inviteMode = Boolean(joinCode);
+  const inviteMode = Boolean(joinCode || teamCode);
   const playerInviteMode = Boolean(teamCode);
-  const [role, setRole] = useState<AppRole>(inviteMode ? "captain" : "player");
+  const [role, setRole] = useState<AppRole>(playerInviteMode ? "player" : inviteMode ? "captain" : "player");
   const selected = roleCatalog[role];
   const selectedCopy = roleEntryCopy[role];
   const disabled = !configured;

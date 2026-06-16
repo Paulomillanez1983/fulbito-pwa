@@ -44,7 +44,7 @@ function emptyUserArenaData(user: SessionUser | null): ArenaData {
   };
 }
 
-export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: string; friendlyCode?: string } = {}): Promise<ArenaData> {
+export async function getArenaData({ joinCode, friendlyCode, teamCode }: { joinCode?: string; friendlyCode?: string; teamCode?: string } = {}): Promise<ArenaData> {
   const env = getSupabaseEnv();
   const supabase = await createSupabaseServerClient();
   if (!env.configured || !supabase) {
@@ -54,6 +54,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
   let sessionUser: SessionUser | null = null;
   const normalizedJoinCode = joinCode?.trim().slice(0, 140) || "";
   const normalizedFriendlyCode = friendlyCode?.trim().slice(0, 180) || "";
+  const normalizedTeamCode = teamCode?.trim().slice(0, 140) || "";
 
   try {
     const { data: userData } = await supabase.auth.getUser();
@@ -111,6 +112,12 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
     const rawLiveEvents = (liveEventsResult.data ?? []) as LiveStreamEvent[];
     const tournamentTeams = (tournamentTeamsResult.data ?? []) as TournamentTeamRow[];
     const invitedTournament = normalizedJoinCode ? (rawTournaments[0] ?? null) as ArenaTournament | null : null;
+    const invitedTeam = normalizedTeamCode
+      ? rawTeams.find((team) => {
+          const code = normalizedTeamCode.toLowerCase();
+          return team.id === normalizedTeamCode || team.slug === normalizedTeamCode || team.short_name.toLowerCase() === code;
+        }) ?? null
+      : null;
     let activeTournament = (invitedTournament ?? rawTournaments[0] ?? null) as ArenaTournament | null;
     let venues = rawVenues;
     let teams = rawTeams;
@@ -173,6 +180,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       });
 
       const relatedTeamIds = new Set(userTeamIds);
+      if (invitedTeam) relatedTeamIds.add(invitedTeam.id);
       rawFriendlyMatches.forEach((match) => {
         if (normalizedFriendlyCode && match.invite_code === normalizedFriendlyCode) {
           relatedTeamIds.add(match.home_team_id);

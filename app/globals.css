@@ -19427,3 +19427,169 @@ body::after,
     animation: none;
   }
 }
+
+.team-edit-panel-anchor,
+#team-badge-editor {
+  scroll-margin-top: 132px;
+}
+
+.player-card-backdrop {
+  align-items: flex-start;
+  padding: max(82px, calc(env(safe-area-inset-top) + 72px)) 12px 146px;
+}
+
+.player-ultimate-card {
+  width: min(236px, calc(100vw - 78px));
+  max-height: calc(100dvh - 250px);
+  overflow: auto;
+  padding: 8px;
+  border-radius: 22px;
+}
+
+.player-card-edition {
+  margin: 0 auto 2px;
+  padding: 3px 9px;
+  font-size: .5rem;
+}
+
+.player-card-close {
+  width: 32px;
+  height: 32px;
+}
+
+.player-card-top {
+  min-height: 42px;
+}
+
+.player-card-rating {
+  width: 42px;
+}
+
+.player-card-rating strong {
+  font-size: 1.62rem;
+}
+
+.player-card-rating span,
+.player-card-rating small,
+.player-card-club span {
+  font-size: .5rem;
+}
+
+.player-card-club .team-crest {
+  width: 28px;
+  height: 28px;
+}
+
+.player-card-art {
+  min-height: 128px;
+  margin-top: -16px;
+}
+
+.player-ultimate-card .player-card-portrait {
+  width: min(134px, 45vw);
+  height: 142px;
+  border-radius: 13px;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, .36), 0 0 0 1px rgba(255, 255, 255, .14);
+}
+
+.player-ultimate-card .player-card-portrait img {
+  object-position: center 28%;
+}
+
+.player-card-name {
+  margin-top: -5px;
+}
+
+.player-card-name h2 {
+  font-size: clamp(.94rem, 3.7vw, 1.06rem);
+}
+
+.player-card-name span {
+  font-size: .54rem;
+}
+
+.player-card-stars {
+  gap: 2px;
+  margin: 4px 0;
+}
+
+.player-card-stars svg {
+  width: 13px;
+  height: 13px;
+}
+
+.player-card-actions {
+  gap: 4px;
+  margin: 5px 0;
+}
+
+.player-card-actions .player-card-share {
+  min-height: 28px;
+  padding: 5px 7px;
+  border-radius: 999px;
+  font-size: .55rem;
+}
+
+.player-card-stats-grid {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px 5px;
+  padding: 4px 0;
+}
+
+.player-card-stats-grid dt {
+  font-size: .49rem;
+}
+
+.player-card-stats-grid dd {
+  font-size: .66rem;
+}
+
+.player-card-metrics {
+  gap: 5px;
+}
+
+.player-card-metrics div {
+  min-height: 30px;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.player-card-metrics dt {
+  font-size: .46rem;
+}
+
+.player-card-metrics dd {
+  font-size: .62rem;
+}
+
+.player-ultimate-card footer {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .player-card-backdrop {
+    padding: max(82px, calc(env(safe-area-inset-top) + 72px)) 10px 152px;
+  }
+
+  .player-ultimate-card {
+    width: min(226px, calc(100vw - 92px));
+    max-height: calc(100dvh - 262px);
+  }
+
+  .player-card-art {
+    min-height: 122px;
+  }
+
+  .player-ultimate-card .player-card-portrait {
+    width: min(126px, 48vw);
+    height: 134px;
+  }
+
+  .player-card-actions {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .player-card-actions .player-card-share--change {
+    grid-column: 1 / -1;
+  }
+}
