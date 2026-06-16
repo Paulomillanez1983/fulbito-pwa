@@ -1,7 +1,7 @@
 import { attachFriendlyRelations, attachMatchRelations, computeStandings, demoArenaData } from "@/lib/demo";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import type { AccountEntitlement, AdCampaign, AppFeatureFlag, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, BillingPlanSetting, BillingPromotion, FriendlyMatch, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, SessionUser, UserNotification } from "@/lib/types";
+import type { AccountEntitlement, AdCampaign, AppFeatureFlag, AppRole, ArenaData, ArenaMatch, ArenaPlayer, ArenaTeam, ArenaTeamFormation, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, BillingPlanSetting, BillingPromotion, FriendlyMatch, LiveStreamChannel, LiveStreamEvent, LiveStreamPermission, PaymentMessage, PaymentRequest, SessionUser, UserNotification } from "@/lib/types";
 
 type TournamentTeamRow = {
   tournament_id: string;
@@ -23,6 +23,7 @@ function emptyUserArenaData(user: SessionUser | null): ArenaData {
     tournaments: [],
     tournamentDraws: [],
     tournamentTeams: [],
+    teamFormations: [],
     venues: [],
     teams: [],
       players: [],
@@ -76,12 +77,13 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
     const friendlyQuery = normalizedFriendlyCode
       ? supabase.from("friendly_matches").select("*").eq("invite_code", normalizedFriendlyCode).limit(1)
       : supabase.from("friendly_matches").select("*").order("scheduled_at", { ascending: true, nullsFirst: false }).order("created_at", { ascending: false }).limit(user ? 80 : 12);
-    const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, matchesResult, friendlyMatchesResult, tournamentTeamsResult, tournamentDrawsResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult, billingPromotionsResult, userNotificationsResult, adCampaignsResult, liveChannelsResult, livePermissionsResult, liveEventsResult, featureFlagsResult] = await Promise.all([
+    const [rolesResult, tournamentsResult, venuesResult, teamsResult, playersResult, teamFormationsResult, matchesResult, friendlyMatchesResult, tournamentTeamsResult, tournamentDrawsResult, paymentRequestsResult, paymentMessagesResult, entitlementsResult, billingPlansResult, billingPromotionsResult, userNotificationsResult, adCampaignsResult, liveChannelsResult, livePermissionsResult, liveEventsResult, featureFlagsResult] = await Promise.all([
       user ? supabase.from("user_roles").select("role").eq("user_id", user.id) : Promise.resolve({ data: [] }),
       tournamentQuery,
       supabase.from("venues").select("*").order("created_at", { ascending: true }),
       supabase.from("teams").select("*").order("created_at", { ascending: true }),
       supabase.from("team_members").select("*").order("team_id", { ascending: true }).order("jersey_number", { ascending: true, nullsFirst: false }),
+      supabase.from("team_formation_settings").select("*"),
       supabase.from("matches").select("*").order("scheduled_at", { ascending: true }),
       friendlyQuery,
       user || normalizedJoinCode ? supabase.from("tournament_teams").select("tournament_id,team_id,group_code,seed,status,created_at") : emptyResult,
@@ -103,6 +105,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
     const rawVenues = (venuesResult.data ?? []) as ArenaVenue[];
     const rawTeams = (teamsResult.data ?? []) as ArenaTeam[];
     const rawPlayers = (playersResult.data ?? []) as ArenaPlayer[];
+    const rawTeamFormations = (teamFormationsResult.data ?? []) as ArenaTeamFormation[];
     const rawMatches = (matchesResult.data ?? []) as ArenaMatch[];
     const rawFriendlyMatches = (friendlyMatchesResult.data ?? []) as FriendlyMatch[];
     const rawLiveEvents = (liveEventsResult.data ?? []) as LiveStreamEvent[];
@@ -112,6 +115,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
     let venues = rawVenues;
     let teams = rawTeams;
     let players = rawPlayers;
+    let teamFormations = rawTeamFormations;
     let matchRows = rawMatches;
     let friendlyMatchRows = rawFriendlyMatches;
     let liveEvents = rawLiveEvents;
@@ -129,6 +133,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       );
       teams = invitedTeamIds.size ? rawTeams.filter((team) => invitedTeamIds.has(team.id)) : [];
       players = invitedTeamIds.size ? rawPlayers.filter((player) => invitedTeamIds.has(player.team_id)) : [];
+      teamFormations = invitedTeamIds.size ? rawTeamFormations.filter((formation) => invitedTeamIds.has(formation.team_id)) : [];
       matchRows = rawMatches.filter((match) => match.tournament_id === invitedTournament.id);
       friendlyMatchRows = rawFriendlyMatches.filter((match) => {
         return Boolean(
@@ -180,6 +185,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
 
       teams = rawTeams.filter((team) => relatedTeamIds.has(team.id));
       players = rawPlayers.filter((player) => relatedTeamIds.has(player.team_id));
+      teamFormations = rawTeamFormations.filter((formation) => relatedTeamIds.has(formation.team_id));
       matchRows = rawMatches.filter((match) => {
         const belongsToTournament = relatedTournamentIds.has(match.tournament_id);
         const belongsToTeam = Boolean(
@@ -239,6 +245,7 @@ export async function getArenaData({ joinCode, friendlyCode }: { joinCode?: stri
       tournaments,
       tournamentDraws: tournamentDrawRows,
       tournamentTeams: tournamentTeamRows,
+      teamFormations,
       venues,
       teams,
       players,

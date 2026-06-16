@@ -179,6 +179,15 @@ export type ArenaTournamentTeam = {
   created_at?: string;
 };
 
+export type ArenaTeamFormation = {
+  team_id: string;
+  field_mode: FieldMode;
+  formation: string;
+  slot_order: string[];
+  updated_by: string | null;
+  updated_at: string;
+};
+
 export type ArenaMatch = {
   id: string;
   tournament_id: string;
@@ -453,6 +462,7 @@ export type ArenaData = {
   tournaments: ArenaTournament[];
   tournamentDraws: ArenaTournamentDraw[];
   tournamentTeams: ArenaTournamentTeam[];
+  teamFormations: ArenaTeamFormation[];
   venues: ArenaVenue[];
   teams: ArenaTeam[];
   players: ArenaPlayer[];

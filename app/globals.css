@@ -17991,3 +17991,681 @@ body::after,
     padding: 10px;
   }
 }
+
+/* Team management and compact shareable player cards */
+.team-formation-manager {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(85, 246, 255, .18);
+  border-radius: 20px;
+  padding: 14px;
+  background:
+    radial-gradient(circle at 0 0, rgba(85,246,255,.14), transparent 36%),
+    linear-gradient(140deg, rgba(10, 25, 42, .92), rgba(7, 13, 27, .84));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.07);
+}
+
+.team-formation-manager > header,
+.team-slot-editor,
+.team-bench-panel,
+.team-roster-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.team-formation-manager > header span,
+.team-slot-editor span,
+.team-bench-panel span {
+  color: #ffe47a;
+  font-size: .68rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.team-formation-manager > header strong,
+.team-slot-editor strong,
+.team-bench-panel strong {
+  display: block;
+  color: #fff7df;
+  font-size: 1.02rem;
+}
+
+.team-formation-manager small,
+.team-bench-panel p,
+.team-roster-tools span {
+  color: var(--muted);
+  font-size: .78rem;
+  line-height: 1.3;
+}
+
+.team-save-formation,
+.team-slot-editor button,
+.team-roster-tools a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  border: 1px solid rgba(255,220,112,.34);
+  border-radius: 13px;
+  padding: 9px 12px;
+  background: linear-gradient(135deg, rgba(255,232,134,.94), rgba(210,132,19,.9));
+  color: #110b04;
+  font-weight: 1000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.team-slot-editor {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px;
+  padding: 10px;
+  background: rgba(3, 8, 18, .62);
+}
+
+.team-slot-editor select {
+  min-width: 0;
+  flex: 1 1 180px;
+}
+
+.team-lineup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.team-lineup-grid button,
+.team-bench-list button {
+  display: grid;
+  justify-items: center;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 14px;
+  padding: 9px 6px;
+  background: rgba(7, 13, 27, .72);
+  color: #fff;
+  cursor: pointer;
+}
+
+.team-lineup-grid button.is-selected {
+  border-color: rgba(255,226,106,.72);
+  background:
+    radial-gradient(circle at 50% 0, rgba(255,226,106,.24), transparent 48%),
+    rgba(19, 25, 34, .88);
+}
+
+.team-lineup-grid span,
+.team-bench-list span {
+  max-width: 100%;
+  overflow: hidden;
+  color: rgba(255,255,255,.66);
+  font-size: .66rem;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.team-lineup-grid strong {
+  max-width: 100%;
+  overflow: hidden;
+  color: #fff7df;
+  font-size: .76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-bench-panel {
+  align-items: flex-start;
+  border-top: 1px solid rgba(255,255,255,.08);
+  padding-top: 10px;
+}
+
+.team-bench-list {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 3px;
+}
+
+.team-bench-list button {
+  min-width: 76px;
+}
+
+.team-roster-tools {
+  border-radius: 14px;
+  padding: 10px;
+  background: rgba(8, 17, 31, .62);
+}
+
+.team-roster-tools a.is-disabled {
+  pointer-events: none;
+  opacity: .55;
+}
+
+.team-roster-admin {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(1, 6, 15, .5);
+}
+
+.team-roster-admin summary {
+  cursor: pointer;
+  padding: 12px;
+  color: #ffe47a;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.team-roster-admin > div {
+  display: grid;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.team-roster-admin article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 13px;
+  padding: 8px;
+  background: rgba(9, 15, 26, .76);
+}
+
+.team-roster-admin__player {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+  gap: 9px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.team-roster-admin__player span {
+  min-width: 0;
+}
+
+.team-roster-admin__player strong,
+.team-roster-admin__player small {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-roster-admin__player small {
+  color: var(--muted);
+}
+
+.team-roster-admin__delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255,107,107,.36);
+  border-radius: 12px;
+  padding: 8px 9px;
+  background: rgba(255,107,107,.11);
+  color: #ffd2d2;
+  font-weight: 900;
+}
+
+.player-self-edit {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(3, 8, 18, .54);
+}
+
+.player-self-edit summary {
+  cursor: pointer;
+  padding: 12px;
+  color: #ffe47a;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.player-self-edit .action-grid {
+  padding: 0 10px 10px;
+}
+
+.player-card-backdrop {
+  align-items: center;
+  overflow: auto;
+  padding: 12px 10px 92px;
+}
+
+.player-ultimate-card {
+  width: min(336px, calc(100vw - 28px));
+  min-height: auto;
+  max-height: calc(100dvh - 116px);
+  overflow: auto;
+  gap: 6px;
+  padding: 14px 14px 12px;
+}
+
+.player-ultimate-card::after {
+  inset: -12% auto auto -46%;
+  width: 44%;
+  height: 125%;
+  border-radius: 34px;
+  background: linear-gradient(102deg, transparent, rgba(255,255,255,.5), rgba(85,246,255,.28), transparent);
+  filter: blur(5px);
+  opacity: .62;
+  transform: rotate(12deg);
+  animation: player-card-light-sweep 3.8s ease-in-out infinite;
+}
+
+.player-card-edition {
+  padding: 4px 10px;
+  font-size: .58rem;
+}
+
+.player-card-top {
+  min-height: 74px;
+  padding-right: 38px;
+}
+
+.player-card-rating {
+  width: 62px;
+}
+
+.player-card-rating strong {
+  font-size: 2.45rem;
+}
+
+.player-card-club .team-crest {
+  width: 38px;
+  height: 38px;
+}
+
+.player-card-art {
+  min-height: 168px;
+  margin-top: -38px;
+}
+
+.player-ultimate-card .player-card-portrait {
+  width: min(166px, 54vw);
+  height: 180px;
+}
+
+.player-card-name h2 {
+  font-size: clamp(1.36rem, 5.4vw, 1.78rem);
+}
+
+.player-card-share {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  justify-self: center;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(85,246,255,.32);
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(3, 14, 31, .76);
+  color: #eafbff;
+  font-size: .74rem;
+  font-weight: 1000;
+  cursor: pointer;
+}
+
+.player-card-share-message {
+  position: relative;
+  z-index: 3;
+  margin: -2px 0 0;
+  color: rgba(255,255,255,.72);
+  font-size: .68rem;
+  text-align: center;
+}
+
+.player-card-stats-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px 8px;
+  margin: 0 8px;
+  padding: 8px 3px;
+}
+
+.player-card-stats-grid div {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 0;
+}
+
+.player-card-stats-grid dt {
+  font-size: .76rem;
+}
+
+.player-card-stats-grid dd {
+  font-size: .92rem;
+}
+
+.player-card-metrics div {
+  min-height: 44px;
+  padding: 7px;
+}
+
+.player-ultimate-card footer {
+  padding: 7px;
+  font-size: .68rem;
+}
+
+@keyframes player-card-light-sweep {
+  0%, 38% {
+    transform: translateX(0) rotate(12deg);
+    opacity: 0;
+  }
+  52% {
+    opacity: .65;
+  }
+  78%, 100% {
+    transform: translateX(420%) rotate(12deg);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .team-formation-manager {
+    padding: 12px;
+  }
+
+  .team-formation-manager > header,
+  .team-slot-editor,
+  .team-bench-panel,
+  .team-roster-tools {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .team-save-formation,
+  .team-roster-tools a {
+    width: 100%;
+  }
+
+  .team-lineup-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .player-ultimate-card {
+    width: min(318px, calc(100vw - 28px));
+    max-height: calc(100dvh - 116px);
+    padding: 12px 12px 10px;
+  }
+
+  .player-card-top {
+    min-height: 68px;
+  }
+
+  .player-card-art {
+    min-height: 154px;
+    margin-top: -32px;
+  }
+
+  .player-ultimate-card .player-card-portrait {
+    width: 150px;
+    height: 162px;
+  }
+
+  .player-card-metrics {
+    gap: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .player-ultimate-card::after {
+    animation: none;
+  }
+}
+
+/* Equipo v2: flujo por secciones y carta social compacta */
+.squad-section-tabs {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.squad-section-tabs button {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 72px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 16px;
+  padding: 9px 6px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(85, 246, 255, .12), transparent 48%),
+    rgba(9, 15, 28, .82);
+  color: rgba(235, 244, 255, .78);
+  cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.squad-section-tabs button.is-active {
+  border-color: rgba(255, 219, 105, .72);
+  background:
+    radial-gradient(circle at 50% 0, rgba(255, 226, 108, .26), transparent 52%),
+    linear-gradient(145deg, rgba(43, 37, 17, .94), rgba(11, 17, 28, .9));
+  color: #fff7d6;
+  box-shadow: 0 0 18px rgba(255, 219, 105, .12), inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.squad-section-tabs svg {
+  color: #7eeaff;
+}
+
+.squad-section-tabs button.is-active svg {
+  color: #ffdf6f;
+}
+
+.squad-section-tabs span,
+.squad-section-tabs small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.squad-section-tabs span {
+  font-size: .76rem;
+  font-weight: 1000;
+}
+
+.squad-section-tabs small {
+  color: rgba(235, 244, 255, .62);
+  font-size: .6rem;
+  font-weight: 800;
+}
+
+.team-formation-manager--bench .team-bench-panel {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.team-formation-manager--invite .team-roster-tools {
+  border: 1px solid rgba(85, 246, 255, .18);
+  background: rgba(4, 28, 39, .62);
+}
+
+.player-card-backdrop {
+  align-items: flex-start;
+  padding-top: max(76px, calc(env(safe-area-inset-top) + 72px));
+}
+
+.player-ultimate-card {
+  width: min(304px, calc(100vw - 34px));
+  max-height: calc(100dvh - 168px);
+  border-radius: 28px;
+  padding: 11px 12px 10px;
+}
+
+.player-card-top {
+  min-height: 58px;
+}
+
+.player-card-rating {
+  width: 52px;
+}
+
+.player-card-rating strong {
+  font-size: 2.05rem;
+}
+
+.player-card-rating span,
+.player-card-rating small {
+  font-size: .68rem;
+}
+
+.player-card-club .team-crest {
+  width: 32px;
+  height: 32px;
+}
+
+.player-card-art {
+  min-height: 126px;
+  margin-top: -26px;
+}
+
+.player-ultimate-card .player-card-portrait {
+  width: min(128px, 42vw);
+  height: 140px;
+}
+
+.player-card-name h2 {
+  font-size: clamp(1.1rem, 4.6vw, 1.42rem);
+  line-height: .98;
+}
+
+.player-card-name span {
+  font-size: .68rem;
+}
+
+.player-card-stars {
+  margin-top: -1px;
+}
+
+.player-card-stars svg {
+  width: 14px;
+  height: 14px;
+}
+
+.player-card-actions {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+.player-card-actions .player-card-share {
+  justify-self: auto;
+  min-height: 32px;
+  padding: 6px 9px;
+  font-size: .66rem;
+}
+
+.player-card-share--secondary {
+  border-color: rgba(255, 219, 105, .34);
+  background: rgba(40, 31, 13, .7);
+  color: #ffe9a9;
+}
+
+.player-card-share--change {
+  border-color: rgba(65, 255, 155, .34);
+  background: rgba(7, 54, 36, .74);
+  color: #d9ffe8;
+}
+
+.player-card-stats-grid {
+  margin: 0 2px;
+  padding: 6px 0;
+}
+
+.player-card-stats-grid dt {
+  font-size: .66rem;
+}
+
+.player-card-stats-grid dd {
+  font-size: .8rem;
+}
+
+.player-card-metrics {
+  gap: 5px;
+}
+
+.player-card-metrics div {
+  min-height: 38px;
+  padding: 6px;
+}
+
+.player-card-metrics dt {
+  font-size: .58rem;
+}
+
+.player-card-metrics dd {
+  font-size: .82rem;
+}
+
+.player-ultimate-card footer {
+  padding: 6px;
+  font-size: .62rem;
+}
+
+@media (max-width: 760px) {
+  .squad-section-tabs {
+    grid-template-columns: repeat(5, minmax(64px, 1fr));
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .squad-section-tabs button {
+    min-height: 64px;
+    padding: 8px 5px;
+  }
+
+  .squad-section-tabs span {
+    font-size: .68rem;
+  }
+
+  .squad-section-tabs small {
+    display: none;
+  }
+
+  .player-card-backdrop {
+    padding: max(86px, calc(env(safe-area-inset-top) + 82px)) 10px 118px;
+  }
+
+  .player-ultimate-card {
+    width: min(288px, calc(100vw - 30px));
+    max-height: calc(100dvh - 196px);
+  }
+
+  .player-card-art {
+    min-height: 118px;
+  }
+
+  .player-ultimate-card .player-card-portrait {
+    width: 120px;
+    height: 132px;
+  }
+
+  .player-card-actions .player-card-share {
+    flex: 1 1 92px;
+  }
+}

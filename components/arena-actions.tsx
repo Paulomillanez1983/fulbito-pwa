@@ -53,6 +53,32 @@ type SlotDraft = {
   position: string;
 };
 
+const playerPositionGroups = [
+  {
+    label: "Base",
+    options: ["Arquero", "Defensa", "Volante", "Delantero"]
+  },
+  {
+    label: "Futbol 5",
+    options: ["Cierre", "Ala derecha", "Ala izquierda", "Pivot"]
+  },
+  {
+    label: "Futbol 7 / 11",
+    options: [
+      "Defensa central",
+      "Lateral derecho",
+      "Lateral izquierdo",
+      "Carrilero",
+      "Volante defensivo",
+      "Volante mixto",
+      "Mediocampista",
+      "Enganche",
+      "Extremo derecho",
+      "Extremo izquierdo"
+    ]
+  }
+];
+
 type ReverseGeocodeResult = {
   neighborhood?: string;
   address?: string;
@@ -539,6 +565,8 @@ export function ArenaActions({
   const playerTeamId = managedTeam?.id ?? "";
   const rosterRule = getRosterRule(data.activeTournament?.field_mode);
   const managedTeamPlayers = data.players.filter((player) => player.team_id === playerTeamId);
+  const ownManagedPlayer = data.user ? managedTeamPlayers.find((player) => player.profile_id === data.user?.id) : null;
+  const defaultPlayerPosition = slotDraft?.position ?? ownManagedPlayer?.position ?? "";
   const rosterFull = Boolean(playerTeamId && managedTeamPlayers.length >= rosterRule.maxPlayers);
   const showPlayer = Boolean(managedTeam) && (mode === "all" || mode === "squad" || mode === "slot" || selfPlayerMode);
   const [venueMode, setVenueMode] = useState<"simple" | "pro">("simple");
@@ -1004,10 +1032,27 @@ export function ArenaActions({
     if (!existingSelfPlayer && currentCount >= rosterRule.maxPlayers) {
       return setMessage(`Plantel completo para ${rosterRule.label}: ${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes.`);
     }
+    const photoFile = formData.get("playerPhoto");
+    const wantsPhotoUpload = photoFile instanceof File && photoFile.size > 0;
+    if (selfRegister && wantsPhotoUpload) {
+      const monthStart = new Date();
+      monthStart.setDate(1);
+      monthStart.setHours(0, 0, 0, 0);
+      const { count, error: limitError } = await supabase
+        .from("profile_media_updates")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("target_type", "player_photo")
+        .gte("created_at", monthStart.toISOString());
+      if (limitError) return setMessage(limitError.message);
+      if ((count ?? 0) >= 3) {
+        return setMessage("Ya cambiaste tu foto 3 veces este mes. Podes volver a cambiarla el mes que viene.");
+      }
+    }
     let photoSet: Awaited<ReturnType<typeof uploadPlayerPhotoSet>> = null;
     if (hasTeamProAccess(teamId)) {
       try {
-        photoSet = await uploadPlayerPhotoSet(supabase, userId, formData.get("playerPhoto"), readImageFrameOptions(formData, "playerPhoto", { shape: "circle", zoom: 1.08 }));
+        photoSet = await uploadPlayerPhotoSet(supabase, userId, photoFile, readImageFrameOptions(formData, "playerPhoto", { shape: "circle", zoom: 1.08 }));
       } catch (error) {
         return setMessage(error instanceof Error ? error.message : "No se pudo subir la foto del jugador.");
       }
@@ -1029,6 +1074,13 @@ export function ArenaActions({
     const { error } = selfRegister
       ? await supabase.from("team_members").upsert(payload, { onConflict: "team_id,profile_id" })
       : await supabase.from("team_members").insert(payload);
+    if (!error && selfRegister && photoSet?.photoUrl) {
+      await supabase.from("profile_media_updates").insert({
+        user_id: userId,
+        target_type: "player_photo",
+        target_id: existingSelfPlayer?.id ?? null
+      });
+    }
     if (!error) window.setTimeout(() => window.location.reload(), 800);
     setMessage(error ? error.message : selfRegister ? "Tu ficha quedo guardada en el plantel." : "Jugador agregado al plantel.");
   }
@@ -1223,10 +1275,19 @@ export function ArenaActions({
           <select name="playerTeamId" defaultValue={playerTeamId}>
             {managedTeam ? <option value={managedTeam.id}>{managedTeam.name}</option> : null}
           </select>
-          <input name="playerName" placeholder="Nombre y apellido" />
-          <input name="alias" placeholder="Apodo" />
-          <input name="jerseyNumber" inputMode="numeric" placeholder="Dorsal" defaultValue={slotDraft?.jersey} />
-          <input name="position" placeholder="Posicion" defaultValue={slotDraft?.position} />
+          <input name="playerName" placeholder="Nombre y apellido" defaultValue={selfPlayerMode ? ownManagedPlayer?.display_name ?? "" : ""} />
+          <input name="alias" placeholder="Apodo" defaultValue={selfPlayerMode ? ownManagedPlayer?.alias ?? "" : ""} />
+          <input name="jerseyNumber" inputMode="numeric" placeholder="Dorsal" defaultValue={slotDraft?.jersey ?? ownManagedPlayer?.jersey_number ?? ""} />
+          <select name="position" defaultValue={defaultPlayerPosition}>
+            <option value="">Selecciona posicion</option>
+            {playerPositionGroups.map((group) => (
+              <optgroup key={group.label} label={group.label}>
+                {group.options.map((position) => (
+                  <option key={position} value={position}>{position}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
           {hasTeamProAccess(playerTeamId) ? (
             <>
               <PlayerPhotoGuide />

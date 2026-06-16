@@ -274,6 +274,7 @@ export const demoArenaData: ArenaData = {
     seed: index % 2 + 1,
     status: "approved"
   })),
+  teamFormations: [],
   venues,
   teams,
   players,
