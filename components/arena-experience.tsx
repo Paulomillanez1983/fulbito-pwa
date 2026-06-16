@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, FormEvent, ReactNode } from "react";
 import {
-  Activity,
   ArrowRight,
   BadgeCheck,
   BellRing,
@@ -1133,6 +1132,170 @@ function PlayerCardModal({
         </footer>
       </article>
     </div>
+  );
+}
+
+function PlayerTacticalCard({
+  canManage,
+  onChangePlayer,
+  onFullCard,
+  onOpenFormationTools,
+  player,
+  slotLabel,
+  team
+}: {
+  canManage: boolean;
+  onChangePlayer: (playerId: string) => void;
+  onFullCard: (playerId: string) => void;
+  onOpenFormationTools: () => void;
+  player?: ArenaPlayer | null;
+  slotLabel: string;
+  team?: ArenaTeam;
+}) {
+  const [shareMessage, setShareMessage] = useState("");
+
+  if (!player) {
+    return (
+      <aside className="player-tactical-card player-tactical-card--empty">
+        <span className="player-tactical-card__eyebrow">Puesto libre</span>
+        <strong>{slotLabel}</strong>
+        <p>Toca un jugador cargado para ver su ficha. Si sos creador del club, podes completar este puesto desde Formacion.</p>
+        {canManage ? <button onClick={onOpenFormationTools} type="button">Cargar puesto</button> : null}
+      </aside>
+    );
+  }
+
+  const activePlayer = player;
+  const rating = getPlayerRating(activePlayer, team);
+  const stars = getPlayerStars(rating);
+  const status = getPlayerStatus(activePlayer);
+  const portraitUrl = playerCardImage(activePlayer) || playerAvatarImage(activePlayer);
+  const initials = getPlayerInitials(activePlayer);
+  const stats = playerGameStats(activePlayer, team).slice(0, 4);
+
+  async function shareCard() {
+    setShareMessage("Generando WebP...");
+    try {
+      const file = await createPlayerCardShareFile(activePlayer, team);
+      const title = `${activePlayer.alias || activePlayer.display_name} en Fulbito Arena`;
+      const text = `${activePlayer.alias || activePlayer.display_name} | ${rating} OVR | ${team?.name ?? "Fulbito Arena"}`;
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ title, text, files: [file] });
+        setShareMessage("Carta compartida.");
+      } else {
+        const url = URL.createObjectURL(file);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = file.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+        setShareMessage("Carta descargada.");
+      }
+    } catch {
+      setShareMessage("No se pudo compartir.");
+    }
+    window.setTimeout(() => setShareMessage(""), 2200);
+  }
+
+  return (
+    <aside className={`player-tactical-card player-tactical-card--${status.toLowerCase()}`}>
+      <div className="player-tactical-card__head">
+        <div className="player-tactical-card__photo">
+          {portraitUrl ? <img alt="" src={portraitUrl} /> : <span>{initials}</span>}
+        </div>
+        <div>
+          <span className="player-tactical-card__eyebrow">{playerPositionCode(activePlayer)} #{activePlayer.jersey_number ?? "--"}</span>
+          <strong>{activePlayer.alias || activePlayer.display_name}</strong>
+          <small>{activePlayer.display_name} / {activePlayer.position ?? "Posicion"}</small>
+        </div>
+        <b>{rating}</b>
+      </div>
+      <div className="player-tactical-card__stars" aria-label={`${stars} estrellas`}>
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Star className={index < stars ? "is-active" : ""} fill="currentColor" key={index} size={13} />
+        ))}
+      </div>
+      <dl className="player-tactical-card__stats">
+        {stats.map((stat) => (
+          <div key={stat.label}>
+            <dt>{stat.label}</dt>
+            <dd>{stat.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="player-tactical-card__meta">
+        <span>{activePlayer.goals ?? 0} goles</span>
+        <span>{status}</span>
+        <span>{team?.short_name ?? "FA"}</span>
+      </div>
+      <div className="player-tactical-card__actions">
+        <button onClick={() => onFullCard(activePlayer.id)} type="button">Ver card</button>
+        <button onClick={shareCard} type="button">
+          <Share2 size={14} />
+          Compartir
+        </button>
+        {canManage ? (
+          <button onClick={() => onChangePlayer(activePlayer.id)} type="button">
+            <Repeat2 size={14} />
+            Cambiar
+          </button>
+        ) : null}
+      </div>
+      {shareMessage ? <p>{shareMessage}</p> : null}
+    </aside>
+  );
+}
+
+function SquadBenchRail({
+  benchPlayers,
+  canManage,
+  onOpenPlayer,
+  onUseBenchPlayer,
+  pendingSwap,
+  rosterRule
+}: {
+  benchPlayers: ArenaPlayer[];
+  canManage: boolean;
+  onOpenPlayer: (playerId: string) => void;
+  onUseBenchPlayer?: (playerId: string) => void;
+  pendingSwap?: boolean;
+  rosterRule: ReturnType<typeof getRosterRule>;
+}) {
+  return (
+    <section className="squad-bench-rail">
+      <header>
+        <div>
+          <span>Suplentes</span>
+          <strong>{benchPlayers.length}/{rosterRule.substitutes}</strong>
+        </div>
+        <small>{pendingSwap ? "Elegi quien entra al campo." : `${rosterRule.label}: ${rosterRule.starters} titulares + ${rosterRule.substitutes} suplentes`}</small>
+      </header>
+      {benchPlayers.length ? (
+        <div className="squad-bench-rail__list">
+          {benchPlayers.map((player) => (
+            <button
+              key={player.id}
+              onClick={() => {
+                if (pendingSwap && canManage && onUseBenchPlayer) {
+                  onUseBenchPlayer(player.id);
+                  return;
+                }
+                onOpenPlayer(player.id);
+              }}
+              type="button"
+            >
+              <PlayerAvatar player={player} />
+              <span>{player.alias || player.display_name}</span>
+              <small>#{player.jersey_number ?? "-"} / {playerPositionCode(player)}</small>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p>Sin suplentes cargados. El creador puede invitar jugadores desde el panel Invitar.</p>
+      )}
+    </section>
   );
 }
 
@@ -3550,7 +3713,7 @@ function SquadSectionTabs({
   onChange: (panel: SquadPanel) => void;
 }) {
   const items: Array<{ id: SquadPanel; label: string; helper: string; icon: ReactNode; managerOnly?: boolean }> = [
-    { id: "field", label: "Cancha", helper: "Titulares", icon: <Gamepad2 size={16} /> },
+    { id: "field", label: "Titulares", helper: "Campo del equipo", icon: <Shield size={16} /> },
     { id: "formation", label: "Formacion", helper: "Guardar esquema", icon: <Save size={16} /> },
     { id: "bench", label: "Suplentes", helper: "Cambios", icon: <Users size={16} /> },
     { id: "invite", label: "Invitar", helper: "Nuevos jugadores", icon: <UserCheck size={16} /> },
@@ -4215,6 +4378,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const [formationSlotOrder, setFormationSlotOrder] = useState<string[]>([]);
   const [formationSaveState, setFormationSaveState] = useState("");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [playerCardModalId, setPlayerCardModalId] = useState<string | null>(null);
   const [squadPanel, setSquadPanel] = useState<SquadPanel>("field");
   const [pendingSwapSlotIndex, setPendingSwapSlotIndex] = useState<number | null>(null);
   const [origin, setOrigin] = useState("");
@@ -4356,6 +4520,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const previewVenue = venuePreviewId ? nearbyVenues.find((venue) => venue.id === venuePreviewId) : undefined;
   const selectedPlayers = data.players.filter((player) => player.team_id === selectedTeam?.id);
   const selectedPlayer = selectedPlayers.find((player) => player.id === selectedPlayerId) ?? null;
+  const modalPlayer = selectedPlayers.find((player) => player.id === playerCardModalId) ?? null;
   const selectedTeamEnrolledInActiveTournament = Boolean(
     selectedTeam &&
     data.activeTournament &&
@@ -4961,6 +5126,34 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
       );
     }
 
+    const firstFieldPlayer = formationSlotPlayers.find((player): player is ArenaPlayer => Boolean(player)) ?? null;
+    const tacticalPlayer = selectedPlayer ?? selectedFormationSlotPlayer ?? firstFieldPlayer;
+    const renderFormationPanel = () => (
+      <FormationPanel
+        isManager={isTeamManager}
+        mode={formationMode}
+        onModeChange={(mode) => {
+          setFormationMode(mode);
+          const nextPreset = formationPresets[mode][0];
+          setFormationPresetId(nextPreset.id);
+          setSelectedSlotIndex(Math.min(selectedSlotIndex, nextPreset.slots.length - 1));
+        }}
+        onPresetChange={(presetId) => {
+          const nextPreset = getFormationPreset(formationMode, presetId);
+          setFormationPresetId(presetId);
+          setSelectedSlotIndex(Math.min(selectedSlotIndex, nextPreset.slots.length - 1));
+        }}
+        onOpenPlayer={openFormationPlayer}
+        onSelectSlot={setSelectedSlotIndex}
+        players={formationSlotPlayers}
+        preset={currentFormation}
+        presetId={formationPresetId}
+        selectedSlotIndex={selectedSlotIndex}
+        team={selectedTeam}
+        lockedMode={inviteMode}
+      />
+    );
+
     return (
       <>
         <ScreenHeader compact eyebrow={isTeamManager ? "Panel del club" : "Club"} title="Equipo">
@@ -4981,32 +5174,32 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
         {data.user && (playerInviteMode || (selectedTeam.owner_id === data.user.id && !selectedPlayers.some((player) => player.profile_id === data.user?.id))) ? (
           <PlayerSelfJoinPanel data={data} players={selectedPlayers} rosterRule={rosterRule} team={selectedTeam} />
         ) : null}
-        <FormationPanel
-          isManager={isTeamManager}
-          mode={formationMode}
-          onModeChange={(mode) => {
-            setFormationMode(mode);
-            const nextPreset = formationPresets[mode][0];
-            setFormationPresetId(nextPreset.id);
-            setSelectedSlotIndex(Math.min(selectedSlotIndex, nextPreset.slots.length - 1));
-          }}
-          onPresetChange={(presetId) => {
-            const nextPreset = getFormationPreset(formationMode, presetId);
-            setFormationPresetId(presetId);
-            setSelectedSlotIndex(Math.min(selectedSlotIndex, nextPreset.slots.length - 1));
-          }}
-          onOpenPlayer={openFormationPlayer}
-          onSelectSlot={(index) => {
-            setSelectedSlotIndex(index);
-            if (isTeamManager) setSquadPanel("formation");
-          }}
-          players={formationSlotPlayers}
-          preset={currentFormation}
-          presetId={formationPresetId}
-          selectedSlotIndex={selectedSlotIndex}
-          team={selectedTeam}
-          lockedMode={inviteMode}
-        />
+        {squadPanel === "field" ? (
+          <section className="squad-tactical-stage">
+            <div className="squad-tactical-stage__pitch">
+              {renderFormationPanel()}
+            </div>
+            <PlayerTacticalCard
+              canManage={isTeamManager}
+              onChangePlayer={startSwapForPlayer}
+              onFullCard={setPlayerCardModalId}
+              onOpenFormationTools={() => setSquadPanel("formation")}
+              player={tacticalPlayer}
+              slotLabel={`${selectedSlot.label} ${selectedSlotIndex + 1}`}
+              team={selectedTeam}
+            />
+          </section>
+        ) : renderFormationPanel()}
+        {squadPanel === "field" ? (
+          <SquadBenchRail
+            benchPlayers={formationBenchPlayers}
+            canManage={isTeamManager}
+            onOpenPlayer={setSelectedPlayerId}
+            onUseBenchPlayer={useBenchPlayerForPendingSwap}
+            pendingSwap={pendingSwapSlotIndex != null}
+            rosterRule={rosterRule}
+          />
+        ) : null}
         <SquadSectionTabs
           active={squadPanel}
           canEdit={isTeamManager}
@@ -5024,7 +5217,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             onAssignSlot={assignPlayerToFormationSlot}
             onClearSlot={clearFormationSlot}
             onDeletePlayer={deleteSelectedTeamPlayer}
-            onOpenPlayer={setSelectedPlayerId}
+            onOpenPlayer={setPlayerCardModalId}
             onSaveFormation={saveSelectedTeamFormation}
             onSelectSlot={setSelectedSlotIndex}
             onUseBenchPlayer={useBenchPlayerForPendingSwap}
@@ -5053,31 +5246,10 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             <p>Toca un jugador cargado para ver su card. Solo el creador del club puede modificar escudo, formacion, sustituciones y bajas.</p>
           )}
         </section> : null}
-        {squadPanel === "field" ? <TeamCarousel onSelect={setSelectedTeamId} selectedTeamId={selectedTeam.id} teams={data.teams} /> : null}
-        {squadPanel === "field" ? <TeamProfile
-          isManager={isTeamManager}
-          players={selectedPlayers}
-          rating={selectedTeam ? computeTeamRating(selectedTeam, data.matches, data.friendlyMatches) : undefined}
-          team={selectedTeam}
-        /> : null}
-        {squadPanel === "field" ? <section className="player-strip">
-          {selectedPlayers.map((player) => {
-            const level = playerLevel(player);
-            return (
-              <button key={player.id} onClick={() => setSelectedPlayerId(player.id)} type="button">
-                <PlayerAvatar player={player} />
-                <div>
-                  <strong>{player.display_name}</strong>
-                  <span>#{player.jersey_number ?? "-"} / {player.position ?? "Posicion"} / {player.goals} goles / {level.rating} {level.tier}</span>
-                </div>
-                <Activity size={16} />
-              </button>
-            );
-          })}
-        </section> : null}
+        {squadPanel === "field" && data.teams.length > 1 ? <TeamCarousel onSelect={setSelectedTeamId} selectedTeamId={selectedTeam.id} teams={data.teams} /> : null}
         {squadPanel === "edit" && isTeamManager ? <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} /> : null}
         {squadPanel === "edit" && data.user && isTeamManager ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}
-        {selectedPlayer ? <PlayerCardModal canManage={isTeamManager} onChangePlayer={startSwapForPlayer} onClose={() => setSelectedPlayerId(null)} player={selectedPlayer} team={selectedTeam} /> : null}
+        {modalPlayer ? <PlayerCardModal canManage={isTeamManager} onChangePlayer={startSwapForPlayer} onClose={() => setPlayerCardModalId(null)} player={modalPlayer} team={selectedTeam} /> : null}
       </>
     );
   }
