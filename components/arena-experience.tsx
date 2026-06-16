@@ -2371,9 +2371,9 @@ function sponsorCreativeAnimation(campaign: AdCampaign) {
   return "stadium_bounce";
 }
 
-type SponsorSplashScene = "yellow_card" | "free_kick" | "goal_impact" | "keeper_save" | "stadium_spotlight" | "confetti_final";
+type SponsorSplashScene = "yellow_card" | "official_ball" | "official_cup" | "match_ready" | "fulbito_tv_fans" | "yellow_card_premium";
 
-const sponsorSplashScenes: SponsorSplashScene[] = ["yellow_card", "free_kick", "goal_impact", "keeper_save", "stadium_spotlight", "confetti_final"];
+const sponsorSplashScenes: SponsorSplashScene[] = ["yellow_card", "official_ball", "official_cup", "match_ready", "fulbito_tv_fans", "yellow_card_premium"];
 
 function pickSponsorSplashScene(): SponsorSplashScene {
   const fallback = "yellow_card";
@@ -2391,12 +2391,21 @@ function pickSponsorSplashScene(): SponsorSplashScene {
 }
 
 function sponsorSplashSceneLabel(scene: SponsorSplashScene) {
-  if (scene === "free_kick") return "Tiro libre Fulbito";
-  if (scene === "goal_impact") return "Gol contra la pantalla";
-  if (scene === "keeper_save") return "Atajada de barrio";
-  if (scene === "stadium_spotlight") return "Noche de estadio";
-  if (scene === "confetti_final") return "Festejo de final";
+  if (scene === "official_ball") return "Balon oficial Fulbito";
+  if (scene === "official_cup") return "Copa oficial Fulbito";
+  if (scene === "match_ready") return "Todo listo para jugar";
+  if (scene === "fulbito_tv_fans") return "Fulbito TV en vivo";
+  if (scene === "yellow_card_premium") return "Presenta esta jugada";
   return "Tarjeta del arbitro";
+}
+
+function sponsorSplashSceneImage(scene: SponsorSplashScene) {
+  if (scene === "official_ball") return "/assets/sponsor-scene-official-ball.webp";
+  if (scene === "official_cup") return "/assets/sponsor-scene-official-cup.webp";
+  if (scene === "match_ready") return "/assets/sponsor-scene-match-ready.webp";
+  if (scene === "fulbito_tv_fans") return "/assets/sponsor-scene-fulbito-tv-fans.webp";
+  if (scene === "yellow_card_premium") return "/assets/sponsor-scene-yellow-card-premium.webp";
+  return "/assets/sponsor-yellow-card-hand.webp";
 }
 
 function SponsorSplashOverlay({
@@ -2473,6 +2482,7 @@ function SponsorSplashOverlay({
   const creativeAnimation = sponsorCreativeAnimation(campaign);
   const creativeStyle = { "--sponsor-creative-scale": creativeScale } as CSSProperties;
   const sceneLabel = sponsorSplashSceneLabel(scene);
+  const sceneImageUrl = sponsorSplashSceneImage(scene);
 
   function visitSponsor() {
     if (!campaign) return;
@@ -2498,15 +2508,7 @@ function SponsorSplashOverlay({
         </div>
         <div className={`sponsor-splash__stage sponsor-splash__stage--${scene}`} aria-hidden="true">
           <div className={`sponsor-splash__scene sponsor-splash__scene--${scene}`}>
-            {scene === "yellow_card" ? <img alt="" className="sponsor-splash__photo" src="/assets/sponsor-yellow-card-hand.webp" /> : null}
-            <span className="sponsor-splash__pitch" />
-            <span className="sponsor-splash__goal" />
-            <span className="sponsor-splash__ball-hit" />
-            <span className="sponsor-splash__impact" />
-            <span className="sponsor-splash__glove" />
-            <span className="sponsor-splash__spotlight" />
-            <span className="sponsor-splash__confetti sponsor-splash__confetti--one" />
-            <span className="sponsor-splash__confetti sponsor-splash__confetti--two" />
+            <img alt="" className="sponsor-splash__photo" src={sceneImageUrl} />
           </div>
           <span className="sponsor-splash__card-aura" />
           <div className={`sponsor-splash__brand sponsor-splash__brand--${creativeAnimation}`} style={creativeStyle}>
@@ -4465,12 +4467,7 @@ function SplashScreen() {
         <span className="arena-splash__orbit arena-splash__orbit--cyan" aria-hidden="true" />
         <span className="arena-splash__orbit arena-splash__orbit--gold" aria-hidden="true" />
         <div className="arena-splash__ball" aria-hidden="true">
-          <span className="arena-splash__texture" />
-          <span className="arena-splash__patch arena-splash__patch--center" />
-          <span className="arena-splash__patch arena-splash__patch--top" />
-          <span className="arena-splash__patch arena-splash__patch--left" />
-          <span className="arena-splash__patch arena-splash__patch--right" />
-          <span className="arena-splash__patch arena-splash__patch--bottom" />
+          <img alt="" className="arena-splash__ball-image" src="/assets/fulbito-splash-ball.webp" />
           <span className="arena-splash__shine" />
         </div>
         <span className="arena-splash__ground" aria-hidden="true" />
