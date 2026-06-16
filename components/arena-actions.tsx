@@ -79,6 +79,11 @@ const playerPositionGroups = [
   }
 ];
 
+const playerRoleOptions = [
+  { value: "player", label: "Jugador", helper: "Ficha normal" },
+  { value: "captain", label: "Capitan", helper: "Responsable" }
+] as const;
+
 type ReverseGeocodeResult = {
   neighborhood?: string;
   address?: string;
@@ -197,6 +202,67 @@ function PlayerPhotoGuide() {
         <li>Ajusta zoom y posicion antes de guardar.</li>
       </ul>
     </aside>
+  );
+}
+
+function PlayerPositionPicker({
+  value,
+  onChange
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <section className="player-position-picker" aria-label="Seleccionar posicion">
+      <input name="position" type="hidden" value={value} />
+      {playerPositionGroups.map((group) => (
+        <div className="player-position-picker__group" key={group.label}>
+          <span>{group.label}</span>
+          <div>
+            {group.options.map((position) => (
+              <button
+                aria-pressed={value === position}
+                className={value === position ? "is-active" : ""}
+                key={position}
+                onClick={() => onChange(position)}
+                type="button"
+              >
+                {position}
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function PlayerRolePicker({
+  value,
+  onChange
+}: {
+  value: "player" | "captain";
+  onChange: (value: "player" | "captain") => void;
+}) {
+  return (
+    <section className="player-role-picker" aria-label="Rol dentro del club">
+      <input name="playerRole" type="hidden" value={value} />
+      <span>Rol de tu ficha</span>
+      <div>
+        {playerRoleOptions.map((option) => (
+          <button
+            aria-pressed={value === option.value}
+            className={value === option.value ? "is-active" : ""}
+            key={option.value}
+            onClick={() => onChange(option.value)}
+            type="button"
+          >
+            <strong>{option.label}</strong>
+            <small>{option.helper}</small>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -567,8 +633,16 @@ export function ArenaActions({
   const managedTeamPlayers = data.players.filter((player) => player.team_id === playerTeamId);
   const ownManagedPlayer = data.user ? managedTeamPlayers.find((player) => player.profile_id === data.user?.id) : null;
   const defaultPlayerPosition = slotDraft?.position ?? ownManagedPlayer?.position ?? "";
+  const defaultPlayerRole = ownManagedPlayer?.role === "captain" ? "captain" : "player";
   const rosterFull = Boolean(playerTeamId && managedTeamPlayers.length >= rosterRule.maxPlayers);
   const showPlayer = Boolean(managedTeam) && (mode === "all" || mode === "squad" || mode === "slot" || selfPlayerMode);
+  const [playerDraft, setPlayerDraft] = useState({
+    name: selfPlayerMode ? ownManagedPlayer?.display_name ?? "" : "",
+    alias: selfPlayerMode ? ownManagedPlayer?.alias ?? "" : "",
+    jersey: String(slotDraft?.jersey ?? ownManagedPlayer?.jersey_number ?? ""),
+    position: defaultPlayerPosition,
+    role: defaultPlayerRole as "player" | "captain"
+  });
   const [venueMode, setVenueMode] = useState<"simple" | "pro">("simple");
   const [venueSurfaces, setVenueSurfaces] = useState<VenueSurfaceValue[]>([venueSurfaceOptions[0].value]);
   const [venuePhoneCountryIso, setVenuePhoneCountryIso] = useState<SouthAmericanPhoneCountryIso>(southAmericanPhoneCountries[0].iso);
@@ -591,6 +665,27 @@ export function ArenaActions({
     : venueMode === "pro" && !venueProofReady
       ? "Adjunta el comprobante para enviar Cancha Pro"
       : "Completa los datos";
+  const jerseyNumberValue = Number(playerDraft.jersey);
+  const playerCanSubmit = Boolean(
+    playerTeamId &&
+    playerDraft.name.trim() &&
+    playerDraft.alias.trim() &&
+    playerDraft.position.trim() &&
+    /^\d{1,3}$/.test(playerDraft.jersey.trim()) &&
+    jerseyNumberValue >= 1 &&
+    jerseyNumberValue <= 99
+  );
+  const playerSubmitDisabledLabel = !playerDraft.name.trim()
+    ? "Completa nombre"
+    : !playerDraft.alias.trim()
+      ? "Completa apodo"
+      : !playerDraft.jersey.trim()
+        ? "Completa dorsal"
+        : !/^\d{1,3}$/.test(playerDraft.jersey.trim()) || jerseyNumberValue < 1 || jerseyNumberValue > 99
+          ? "Dorsal entre 1 y 99"
+          : !playerDraft.position.trim()
+            ? "Elegi posicion"
+            : "Completa la ficha";
 
   function toggleVenueSurface(value: VenueSurfaceValue) {
     setVenueSurfaces((current) => {
@@ -613,6 +708,27 @@ export function ArenaActions({
   useEffect(() => {
     setOrigin(window.location.origin);
   }, []);
+
+  useEffect(() => {
+    setPlayerDraft({
+      name: selfPlayerMode ? ownManagedPlayer?.display_name ?? "" : "",
+      alias: selfPlayerMode ? ownManagedPlayer?.alias ?? "" : "",
+      jersey: String(slotDraft?.jersey ?? ownManagedPlayer?.jersey_number ?? ""),
+      position: slotDraft?.position ?? ownManagedPlayer?.position ?? "",
+      role: ownManagedPlayer?.role === "captain" ? "captain" : "player"
+    });
+  }, [
+    selfPlayerMode,
+    ownManagedPlayer?.id,
+    ownManagedPlayer?.display_name,
+    ownManagedPlayer?.alias,
+    ownManagedPlayer?.jersey_number,
+    ownManagedPlayer?.position,
+    ownManagedPlayer?.role,
+    slotDraft?.jersey,
+    slotDraft?.position,
+    playerTeamId
+  ]);
 
   useEffect(() => () => {
     venueImagePreviews.forEach((preview) => URL.revokeObjectURL(preview));
@@ -847,9 +963,23 @@ export function ArenaActions({
     if (!hasTeamProAccess(team.id)) return setMessage("Activa Equipo Pro para subir escudo premium.");
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Entra con Google para continuar.");
+    const badgeFile = formData.get("badgeFile");
+    if (!(badgeFile instanceof File) || badgeFile.size === 0) return setMessage("Selecciona una imagen para el escudo.");
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const { count, error: limitError } = await supabase
+      .from("profile_media_updates")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("target_type", "team_badge")
+      .eq("target_id", team.id)
+      .gte("created_at", monthStart.toISOString());
+    if (limitError) return setMessage(limitError.message);
+    if ((count ?? 0) >= 3) return setMessage("Este club ya cambio el escudo 3 veces este mes. Podes volver a cambiarlo el mes que viene.");
     let badgeSet: Awaited<ReturnType<typeof uploadTeamBadgeSet>> = null;
     try {
-      badgeSet = await uploadTeamBadgeSet(supabase, userId, formData.get("badgeFile"), readImageFrameOptions(formData, "badgeFile", { shape: "shield" }));
+      badgeSet = await uploadTeamBadgeSet(supabase, userId, badgeFile, readImageFrameOptions(formData, "badgeFile", { shape: "shield" }));
     } catch (error) {
       return setMessage(error instanceof Error ? error.message : "No se pudo subir el escudo.");
     }
@@ -865,6 +995,13 @@ export function ArenaActions({
         primary_color: primaryColor
       })
       .eq("id", team.id);
+    if (!error) {
+      await supabase.from("profile_media_updates").insert({
+        user_id: userId,
+        target_type: "team_badge",
+        target_id: team.id
+      });
+    }
     if (!error) window.setTimeout(() => window.location.reload(), 800);
     setMessage(error ? error.message : "Escudo premium actualizado.");
   }
@@ -1022,11 +1159,23 @@ export function ArenaActions({
   async function createPlayer(formData: FormData) {
     setMessage("");
     const displayName = String(formData.get("playerName") || "").trim();
+    const alias = String(formData.get("alias") || "").trim();
+    const jerseyRaw = String(formData.get("jerseyNumber") || "").trim();
+    const jerseyNumber = Number(jerseyRaw);
+    const position = String(formData.get("position") || "").trim();
     const teamId = String(formData.get("playerTeamId") || "");
     const selfRegister = String(formData.get("selfRegister") || "") === "1";
-    if (!displayName || !teamId) return setMessage("El jugador necesita nombre y equipo.");
+    if (!displayName || !teamId || !alias || !jerseyRaw || !position) {
+      return setMessage("Completa nombre, apodo, dorsal y posicion para guardar la ficha.");
+    }
+    if (!Number.isInteger(jerseyNumber) || jerseyNumber < 1 || jerseyNumber > 99) {
+      return setMessage("El dorsal tiene que ser un numero entre 1 y 99.");
+    }
     const { supabase, userId } = await getUserId();
     if (!userId) return setMessage("Entra con Google para continuar.");
+    const currentTeam = data.teams.find((team) => team.id === teamId);
+    const requestedRole = String(formData.get("playerRole") || "player") === "captain" ? "captain" : "player";
+    const memberRole = requestedRole === "captain" && selfRegister && currentTeam?.owner_id === userId ? "captain" : "player";
     const existingSelfPlayer = selfRegister ? data.players.find((player) => player.team_id === teamId && player.profile_id === userId) : null;
     const currentCount = data.players.filter((player) => player.team_id === teamId).length;
     if (!existingSelfPlayer && currentCount >= rosterRule.maxPlayers) {
@@ -1061,24 +1210,35 @@ export function ArenaActions({
     const payload = {
       team_id: teamId,
       profile_id: selfRegister ? userId : null,
-      role: "player",
+      role: memberRole,
       display_name: displayName,
-      alias: String(formData.get("alias") || "").trim() || null,
-      jersey_number: Number(formData.get("jerseyNumber") || 0) || null,
-      position: String(formData.get("position") || "").trim() || null,
+      alias,
+      jersey_number: jerseyNumber,
+      position,
       photo_url: resolvedPhotoUrl,
       avatar_url: photoSet?.avatarUrl ?? (selfRegister ? existingSelfPlayer?.avatar_url ?? existingSelfPlayer?.photo_url ?? null : null),
       card_photo_url: photoSet?.cardPhotoUrl ?? (selfRegister ? existingSelfPlayer?.card_photo_url ?? existingSelfPlayer?.photo_url ?? null : null),
       photo_frame: photoSet?.frame ?? (selfRegister ? existingSelfPlayer?.photo_frame ?? null : null)
     };
-    const { error } = selfRegister
+    const { data: savedPlayer, error } = selfRegister
       ? await supabase.from("team_members").upsert(payload, { onConflict: "team_id,profile_id" })
+        .select("id")
+        .single()
       : await supabase.from("team_members").insert(payload);
+    const savedPlayerId = savedPlayer?.id ?? existingSelfPlayer?.id ?? null;
+    if (!error && memberRole === "captain" && savedPlayerId) {
+      await supabase
+        .from("team_members")
+        .update({ role: "player" })
+        .eq("team_id", teamId)
+        .eq("role", "captain")
+        .neq("id", savedPlayerId);
+    }
     if (!error && selfRegister && photoSet?.photoUrl) {
       await supabase.from("profile_media_updates").insert({
         user_id: userId,
         target_type: "player_photo",
-        target_id: existingSelfPlayer?.id ?? null
+        target_id: savedPlayerId
       });
     }
     if (!error) window.setTimeout(() => window.location.reload(), 800);
@@ -1137,7 +1297,7 @@ export function ArenaActions({
           <form action={updateTeamBadge} className="action-card action-card--premium">
             <ShieldPlus />
             <h3>Escudo premium</h3>
-            <p>{selectedOwnedTeam.name} tiene Equipo Pro activo. Subi un escudo optimizado para la app, links y cartas.</p>
+            <p>{selectedOwnedTeam.name} tiene Equipo Pro activo. Subi un escudo optimizado para la app, links y cartas. Limite: 3 cambios por mes.</p>
             <input name="teamId" type="hidden" value={selectedOwnedTeam.id} />
             <MediaField accept="image/png,image/jpeg,image/webp" helper="PNG, JPG o WebP. Fulbito lo convierte a WebP liviano antes de subir." label="Escudo del equipo" name="badgeFile" variant="crest" />
             <input name="primaryColor" type="color" defaultValue={selectedOwnedTeam.primary_color || "#eec15c"} />
@@ -1275,19 +1435,20 @@ export function ArenaActions({
           <select name="playerTeamId" defaultValue={playerTeamId}>
             {managedTeam ? <option value={managedTeam.id}>{managedTeam.name}</option> : null}
           </select>
-          <input name="playerName" placeholder="Nombre y apellido" defaultValue={selfPlayerMode ? ownManagedPlayer?.display_name ?? "" : ""} />
-          <input name="alias" placeholder="Apodo" defaultValue={selfPlayerMode ? ownManagedPlayer?.alias ?? "" : ""} />
-          <input name="jerseyNumber" inputMode="numeric" placeholder="Dorsal" defaultValue={slotDraft?.jersey ?? ownManagedPlayer?.jersey_number ?? ""} />
-          <select name="position" defaultValue={defaultPlayerPosition}>
-            <option value="">Selecciona posicion</option>
-            {playerPositionGroups.map((group) => (
-              <optgroup key={group.label} label={group.label}>
-                {group.options.map((position) => (
-                  <option key={position} value={position}>{position}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+          <input name="playerName" onChange={(event) => setPlayerDraft((current) => ({ ...current, name: event.target.value }))} placeholder="Nombre y apellido" value={playerDraft.name} />
+          <input name="alias" onChange={(event) => setPlayerDraft((current) => ({ ...current, alias: event.target.value }))} placeholder="Apodo" value={playerDraft.alias} />
+          <input name="jerseyNumber" inputMode="numeric" onChange={(event) => setPlayerDraft((current) => ({ ...current, jersey: event.target.value.replace(/\D/g, "").slice(0, 2) }))} placeholder="Dorsal" value={playerDraft.jersey} />
+          <PlayerPositionPicker value={playerDraft.position} onChange={(position) => setPlayerDraft((current) => ({ ...current, position }))} />
+          {selfPlayerMode && managedTeam?.owner_id === data.user?.id ? (
+            <PlayerRolePicker value={playerDraft.role} onChange={(role) => setPlayerDraft((current) => ({ ...current, role }))} />
+          ) : (
+            <input name="playerRole" type="hidden" value={ownManagedPlayer?.role ?? "player"} />
+          )}
+          {selfPlayerMode ? (
+            <div className="player-form-rules">
+              Tu cuenta puede tener una sola ficha en este club. Si ya existe, Fulbito actualiza esa misma ficha.
+            </div>
+          ) : null}
           {hasTeamProAccess(playerTeamId) ? (
             <>
               <PlayerPhotoGuide />
@@ -1299,7 +1460,12 @@ export function ArenaActions({
               <span>Activa Equipo Pro para subir rostros, generar cartas y compartir fichas premium.</span>
             </div>
           )}
-          <SubmitButton idle={selfPlayerMode ? "Guardar mi ficha" : mode === "slot" ? "Guardar en posicion" : "Guardar jugador"} pending="Guardando jugador" />
+          <SubmitButton
+            disabled={!playerCanSubmit}
+            disabledLabel={playerSubmitDisabledLabel}
+            idle={selfPlayerMode ? "Guardar mi ficha" : mode === "slot" ? "Guardar en posicion" : "Guardar jugador"}
+            pending="Guardando jugador"
+          />
         </form> : null}
 
         {showResult ? <form action={submitResult} className="action-card">

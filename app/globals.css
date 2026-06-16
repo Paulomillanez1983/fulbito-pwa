@@ -8005,6 +8005,84 @@ body::after {
   line-height: 1.25;
 }
 
+.player-position-picker,
+.player-role-picker {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 18px;
+  padding: 12px;
+  background:
+    radial-gradient(circle at 0 0, rgba(85,246,255,.09), transparent 40%),
+    rgba(4, 9, 17, .58);
+}
+
+.player-position-picker__group {
+  display: grid;
+  gap: 7px;
+}
+
+.player-position-picker__group > span,
+.player-role-picker > span {
+  color: #ffe47a;
+  font-size: .72rem;
+  font-weight: 1000;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.player-position-picker__group > div,
+.player-role-picker > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.player-position-picker button,
+.player-role-picker button {
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  background: rgba(11, 18, 31, .86);
+  color: rgba(241, 247, 255, .82);
+  min-height: 34px;
+  padding: 7px 11px;
+  font-weight: 900;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+
+.player-position-picker button.is-active,
+.player-role-picker button.is-active {
+  border-color: rgba(255, 220, 106, .85);
+  background:
+    radial-gradient(circle at 35% 0, rgba(255, 236, 147, .45), transparent 55%),
+    linear-gradient(135deg, #ffe47a, #c98418);
+  color: #07101a;
+  box-shadow: 0 0 18px rgba(255, 210, 77, .25);
+}
+
+.player-role-picker button {
+  display: grid;
+  justify-items: start;
+  border-radius: 16px;
+  min-width: min(46%, 190px);
+}
+
+.player-role-picker small {
+  color: inherit;
+  opacity: .72;
+  font-size: .68rem;
+}
+
+.player-form-rules {
+  border: 1px solid rgba(85,246,255,.18);
+  border-radius: 14px;
+  padding: 10px 12px;
+  color: rgba(232, 240, 255, .76);
+  background: rgba(7, 31, 43, .52);
+  font-size: .82rem;
+  line-height: 1.35;
+}
+
 @keyframes player-card-fade {
   from {
     opacity: 0;
@@ -18219,6 +18297,33 @@ body::after,
   background: rgba(255,107,107,.11);
   color: #ffd2d2;
   font-weight: 900;
+}
+
+.team-roster-admin__captain {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(85,246,255,.24);
+  border-radius: 12px;
+  padding: 8px 9px;
+  background: rgba(85,246,255,.09);
+  color: #bdf7ff;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.team-roster-admin__captain.is-active {
+  border-color: rgba(255,220,106,.64);
+  background:
+    radial-gradient(circle at 50% 0, rgba(255,220,106,.28), transparent 55%),
+    rgba(53, 42, 18, .78);
+  color: #ffe47a;
+}
+
+.team-roster-admin__captain:disabled,
+.team-roster-admin__delete:disabled {
+  opacity: .68;
+  cursor: not-allowed;
 }
 
 .player-self-edit {

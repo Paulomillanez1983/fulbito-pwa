@@ -3533,6 +3533,7 @@ function TeamFormationManager({
   onDeletePlayer,
   onOpenPlayer,
   onSaveFormation,
+  onSetCaptain,
   onSelectSlot,
   onUseBenchPlayer,
   pendingSwapSlotIndex,
@@ -3554,6 +3555,7 @@ function TeamFormationManager({
   onDeletePlayer: (playerId: string) => Promise<void>;
   onOpenPlayer: (playerId: string) => void;
   onSaveFormation: () => Promise<void>;
+  onSetCaptain: (playerId: string) => Promise<void>;
   onSelectSlot: (slotIndex: number) => void;
   onUseBenchPlayer?: (playerId: string) => void;
   pendingSwapSlotIndex?: number | null;
@@ -3567,6 +3569,7 @@ function TeamFormationManager({
   teamProActive: boolean;
 }) {
   const [deletingId, setDeletingId] = useState("");
+  const [captainSavingId, setCaptainSavingId] = useState("");
   const activeSlotIndex = pendingSwapSlotIndex ?? selectedSlotIndex;
   const selectedSlot = slots[activeSlotIndex] ?? slots[0];
   const selectedPlayer = slotPlayers[activeSlotIndex] ?? null;
@@ -3581,6 +3584,15 @@ function TeamFormationManager({
       await onDeletePlayer(playerId);
     } finally {
       setDeletingId("");
+    }
+  }
+
+  async function setCaptain(playerId: string) {
+    setCaptainSavingId(playerId);
+    try {
+      await onSetCaptain(playerId);
+    } finally {
+      setCaptainSavingId("");
     }
   }
 
@@ -3685,9 +3697,20 @@ function TeamFormationManager({
                   <PlayerAvatar player={player} />
                   <span>
                     <strong>{player.display_name}</strong>
-                    <small>#{player.jersey_number ?? "-"} / {player.position ?? "Posicion"} / {player.goals} goles</small>
+                    <small>#{player.jersey_number ?? "-"} / {player.position ?? "Posicion"} / {player.goals} goles{player.role === "captain" ? " / Capitan" : ""}</small>
                   </span>
                 </button>
+                {canEdit ? (
+                  <button
+                    className={`team-roster-admin__captain ${player.role === "captain" ? "is-active" : ""}`}
+                    disabled={player.role === "captain" || captainSavingId === player.id}
+                    onClick={() => setCaptain(player.id)}
+                    type="button"
+                  >
+                    {captainSavingId === player.id ? <LoaderCircle className="button-spinner" size={15} /> : <UserCheck size={15} />}
+                    {player.role === "captain" ? "Capitan" : "Hacer capitan"}
+                  </button>
+                ) : null}
                 {canDelete ? (
                   <button className="team-roster-admin__delete" disabled={deletingId === player.id} onClick={() => deletePlayer(player.id)} type="button">
                     {deletingId === player.id ? <LoaderCircle className="button-spinner" size={15} /> : <UserMinus size={15} />}
@@ -4182,7 +4205,7 @@ function PlayerSelfJoinPanel({
         <div>
           <span>Entrada de jugador</span>
           <strong>{ownPlayer ? "Tu ficha ya esta en el plantel" : `Completa tu ficha en ${team.name}`}</strong>
-          <small>{rosterRule.label}: {rosterRule.starters} titulares + {rosterRule.substitutes} suplentes.</small>
+          <small>{rosterRule.label}: {rosterRule.starters} titulares + {rosterRule.substitutes} suplentes. Una cuenta, una ficha por club.</small>
         </div>
       </header>
       {ownPlayer ? (
@@ -4640,6 +4663,33 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
       return;
     }
     setFormationSlotOrder((current) => current.map((item) => item === playerId ? "" : item));
+    window.setTimeout(() => window.location.reload(), 700);
+  }, [data.user, selectedTeam]);
+  const setSelectedTeamCaptain = useCallback(async (playerId: string) => {
+    if (!data.user || !selectedTeam || selectedTeam.owner_id !== data.user.id) return;
+    const supabase = createSupabaseBrowserClient();
+    const { error } = await supabase
+      .from("team_members")
+      .update({ role: "captain" })
+      .eq("id", playerId)
+      .eq("team_id", selectedTeam.id);
+    if (error) {
+      setFormationSaveState(error.message);
+      window.setTimeout(() => setFormationSaveState(""), 2600);
+      return;
+    }
+    const { error: demoteError } = await supabase
+      .from("team_members")
+      .update({ role: "player" })
+      .eq("team_id", selectedTeam.id)
+      .eq("role", "captain")
+      .neq("id", playerId);
+    if (demoteError) {
+      setFormationSaveState(demoteError.message);
+      window.setTimeout(() => setFormationSaveState(""), 2600);
+      return;
+    }
+    setFormationSaveState("Capitan actualizado");
     window.setTimeout(() => window.location.reload(), 700);
   }, [data.user, selectedTeam]);
   const openFormationPlayer = useCallback((playerId: string, slotIndex: number) => {
@@ -5171,7 +5221,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             <button disabled type="button">Inscribir equipo abajo</button>
           </section>
         ) : null}
-        {data.user && (playerInviteMode || (selectedTeam.owner_id === data.user.id && !selectedPlayers.some((player) => player.profile_id === data.user?.id))) ? (
+        {data.user && (playerInviteMode || selectedTeam.owner_id === data.user.id) ? (
           <PlayerSelfJoinPanel data={data} players={selectedPlayers} rosterRule={rosterRule} team={selectedTeam} />
         ) : null}
         {squadPanel === "field" ? (
@@ -5219,6 +5269,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             onDeletePlayer={deleteSelectedTeamPlayer}
             onOpenPlayer={setPlayerCardModalId}
             onSaveFormation={saveSelectedTeamFormation}
+            onSetCaptain={setSelectedTeamCaptain}
             onSelectSlot={setSelectedSlotIndex}
             onUseBenchPlayer={useBenchPlayerForPendingSwap}
             pendingSwapSlotIndex={pendingSwapSlotIndex}

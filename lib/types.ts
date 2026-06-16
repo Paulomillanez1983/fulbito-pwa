@@ -104,6 +104,7 @@ export type ArenaPlayer = {
   id: string;
   team_id: string;
   profile_id?: string | null;
+  role?: "player" | "captain" | "coach";
   display_name: string;
   alias: string | null;
   jersey_number: number | null;
