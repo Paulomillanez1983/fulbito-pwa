@@ -2619,9 +2619,9 @@ function TeamCarousel({
 }) {
   if (!teams.length) return null;
   return (
-    <section className="team-carousel" aria-label="Selector de equipos">
+    <section className="team-carousel" aria-label="Selector de mis equipos">
       <header>
-        <span>Equipos</span>
+        <span>Mis equipos</span>
         <strong>{teams.length} clubes</strong>
       </header>
       <div className="team-carousel__track">
@@ -2636,7 +2636,7 @@ function TeamCarousel({
               type="button"
             >
               <TeamCrest team={team} size="large" />
-              <span>{selected ? "Seleccionado" : "Ver club"}</span>
+              <span>{selected ? "Seleccionado" : "Cambiar club"}</span>
               <strong>{team.name}</strong>
               <small>{team.neighborhood ?? "Barrio"} / {team.played ?? 0} PJ</small>
               <b>{team.points ?? 0} pts</b>
@@ -4354,9 +4354,21 @@ function LiveMatchPanel({
 
 export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }: { data: ArenaData; joinCode?: string; inviteTeamCode?: string; friendlyCode?: string }) {
   const inviteMode = Boolean(joinCode && data.activeTournament);
-  const ownedTeam = data.user ? data.teams.find((team) => team.owner_id === data.user?.id) : null;
-  const memberTeamId = data.user ? data.players.find((player) => player.profile_id === data.user?.id)?.team_id : null;
-  const memberTeam = memberTeamId ? data.teams.find((team) => team.id === memberTeamId) : null;
+  const ownedTeams = useMemo(
+    () => data.user ? data.teams.filter((team) => team.owner_id === data.user?.id) : [],
+    [data.teams, data.user]
+  );
+  const memberTeamIds = useMemo(() => {
+    if (!data.user) return new Set<string>();
+    return new Set(data.players.filter((player) => player.profile_id === data.user?.id).map((player) => player.team_id));
+  }, [data.players, data.user]);
+  const memberTeams = useMemo(
+    () => data.user ? data.teams.filter((team) => memberTeamIds.has(team.id)) : [],
+    [data.teams, data.user, memberTeamIds]
+  );
+  const ownedTeam = ownedTeams[0] ?? null;
+  const memberTeam = memberTeams[0] ?? null;
+  const squadTeams = ownedTeams.length ? ownedTeams : memberTeams;
   const invitedTeam = inviteTeamCode
     ? data.teams.find((team) => team.slug === inviteTeamCode || team.id === inviteTeamCode || team.short_name.toLowerCase() === inviteTeamCode.toLowerCase())
     : null;
@@ -4366,7 +4378,9 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     ? invitedTeam
     : inviteMode
       ? ownedTeam ?? null
-      : ownedTeam ?? memberTeam ?? data.teams[0] ?? null;
+      : data.user
+        ? ownedTeam ?? memberTeam ?? null
+        : data.teams[0] ?? null;
   const inferredAccountRoles = useMemo<AppRole[]>(() => {
     const roles: AppRole[] = data.user?.roles.length ? [...data.user.roles] : ["player"];
     if (!data.user) return uniqueRoles(roles);
@@ -4499,7 +4513,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const selectedMatchLiveEvent = selectedMatch ? liveEventByMatch.get(selectedMatch.id) ?? null : null;
   const selectedTeam = selectedTeamId === "__new__"
     ? undefined
-    : data.teams.find((team) => team.id === selectedTeamId) ?? (inviteMode && !inferredTeam ? undefined : data.teams[0]);
+    : data.teams.find((team) => team.id === selectedTeamId) ?? (inviteMode && !inferredTeam ? undefined : inferredTeam ?? undefined);
+  const selectedTeamIsPersonal = Boolean(selectedTeam && squadTeams.some((team) => team.id === selectedTeam.id));
   const selectedTeamFormation = selectedTeam ? data.teamFormations.find((formation) => formation.team_id === selectedTeam.id) : undefined;
   const nearbyVenues = useMemo(() => {
     if (!venueLocation) return data.venues;
@@ -4710,7 +4725,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     setPendingSwapSlotIndex(null);
     setSquadPanel("formation");
   }, [assignPlayerToFormationSlot, pendingSwapSlotIndex]);
-  const myTeam = ownedTeam ?? memberTeam ?? selectedTeam;
+  const myTeam = ownedTeam ?? memberTeam ?? null;
   const hasCreatedTournament = Boolean(data.user && data.tournaments.some((tournament) => tournament.organizer_id === data.user?.id));
   const canManageSelectedMatchLive = Boolean(
     data.user &&
@@ -4790,7 +4805,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
       }, 140);
     } else if (startTarget === "squad") {
       activeRef.current = "squad";
-      if (!ownedTeam && !memberTeam) setSelectedTeamId("__new__");
+      setSelectedTeamId(squadTeams[0]?.id ?? "__new__");
       setActive("squad");
     } else if (startTarget === "venues") {
       activeRef.current = "venues";
@@ -4800,7 +4815,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
       return;
     }
     window.history.replaceState({ ...(window.history.state ?? {}), fulbitoTab: activeRef.current }, "", "/");
-  }, [data.user, inviteMode]);
+  }, [data.user, inviteMode, squadTeams]);
 
   function openLoginPanel(nextTarget = "/") {
     setLoginNextTarget(nextTarget);
@@ -4850,8 +4865,19 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
     }, 80);
   }
 
+  const openPersonalSquad = useCallback(() => {
+    setSquadPanel("field");
+    setPendingSwapSlotIndex(null);
+    setSelectedPlayerId(null);
+    setPlayerCardModalId(null);
+    setSelectedTeamId(squadTeams[0]?.id ?? "__new__");
+    setActiveTab("squad");
+  }, [setActiveTab, squadTeams]);
+
   const openTeam = useCallback((teamId: string) => {
     setSelectedTeamId(teamId);
+    setSquadPanel("field");
+    setPendingSwapSlotIndex(null);
     setActiveTab("squad");
   }, [setActiveTab]);
 
@@ -4904,7 +4930,22 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
               <strong>{playerInviteMode ? invitedTeam?.name : data.activeTournament?.name}</strong>
               <small>{playerInviteMode ? `Este link te suma al equipo en ${data.activeTournament?.name}.` : "Este link te lleva a la misma copa que creo el organizador."}</small>
             </div>
-            <button onClick={() => (data.user ? setActiveTab("squad") : openLoginPanel())} type="button">{playerInviteMode ? "Cargar ficha" : "Cargar equipo"}</button>
+            <button
+              onClick={() => {
+                if (!data.user) {
+                  openLoginPanel();
+                  return;
+                }
+                if (playerInviteMode && invitedTeam) {
+                  openTeam(invitedTeam.id);
+                  return;
+                }
+                openPersonalSquad();
+              }}
+              type="button"
+            >
+              {playerInviteMode ? "Cargar ficha" : "Cargar equipo"}
+            </button>
           </section>
         ) : null}
 
@@ -4940,10 +4981,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             myTeam={myTeam}
             onCreateTournament={hasCreatedTournament ? openMyTournaments : openTournamentStarter}
             onLogin={openLoginPanel}
-            onOpenSquad={() => {
-              if (!ownedTeam && !memberTeam) setSelectedTeamId("__new__");
-              setActiveTab("squad");
-            }}
+            onOpenSquad={openPersonalSquad}
             onOpenTeam={openTeam}
             onOpenVenues={() => {
               setActiveTab("venues");
@@ -4990,7 +5028,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
         {(!inviteMode || data.user) && !showModeFocus ? (
           <section className="mini-grid">
             <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActiveTab("league")} value={data.activeTournament?.name ?? "Torneo"} />
-            <MiniStat icon={<Users />} label="Equipos" onClick={() => setActiveTab("squad")} value={data.teams.length} />
+            <MiniStat icon={<Users />} label="Mis equipos" onClick={openPersonalSquad} value={squadTeams.length} />
             <MiniStat icon={<CalendarDays />} label="Partidos" onClick={() => setActiveTab("matches")} value={data.matches.length} />
             <MiniStat icon={<Trophy />} label="Mis torneos" onClick={openMyTournaments} value={data.tournaments.length} />
           </section>
@@ -5003,10 +5041,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             focusCode={friendlyCode}
             nearbyVenues={nearbyVenues}
             onCloseFocus={() => setFriendlyFocus(false)}
-            onCreateTeam={() => {
-              if (!ownedTeam && !memberTeam) setSelectedTeamId("__new__");
-              setActiveTab("squad");
-            }}
+            onCreateTeam={openPersonalSquad}
             onOpenTeamPro={() => {
               window.dispatchEvent(new CustomEvent("fulbito:open-payment-plan", { detail: "team_pro" }));
               window.setTimeout(() => document.getElementById("pro")?.scrollIntoView({ block: "center", behavior: "smooth" }), 80);
@@ -5297,7 +5332,9 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             <p>Toca un jugador cargado para ver su card. Solo el creador del club puede modificar escudo, formacion, sustituciones y bajas.</p>
           )}
         </section> : null}
-        {squadPanel === "field" && data.teams.length > 1 ? <TeamCarousel onSelect={setSelectedTeamId} selectedTeamId={selectedTeam.id} teams={data.teams} /> : null}
+        {squadPanel === "field" && selectedTeamIsPersonal && squadTeams.length > 1 ? (
+          <TeamCarousel onSelect={setSelectedTeamId} selectedTeamId={selectedTeam.id} teams={squadTeams} />
+        ) : null}
         {squadPanel === "edit" && isTeamManager ? <ArenaActions data={data} mode="squad" selectedTeamId={selectedTeam?.id} /> : null}
         {squadPanel === "edit" && data.user && isTeamManager ? <PaymentConsole data={data} planCodes={["team_pro"]} /> : null}
         {modalPlayer ? <PlayerCardModal canManage={isTeamManager} onChangePlayer={startSwapForPlayer} onClose={() => setPlayerCardModalId(null)} player={modalPlayer} team={selectedTeam} /> : null}
@@ -5448,7 +5485,7 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
         {tabs.map((item) => {
           const Icon = item.icon;
           return (
-            <button className={active === item.id ? "is-active" : ""} key={item.id} onClick={() => setActiveTab(item.id)} type="button">
+            <button className={active === item.id ? "is-active" : ""} key={item.id} onClick={() => item.id === "squad" ? openPersonalSquad() : setActiveTab(item.id)} type="button">
               <Icon size={19} />
               <span>{item.label}</span>
             </button>
