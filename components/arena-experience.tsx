@@ -2371,9 +2371,9 @@ function sponsorCreativeAnimation(campaign: AdCampaign) {
   return "stadium_bounce";
 }
 
-type SponsorSplashScene = "yellow_card" | "official_ball" | "official_cup" | "match_ready" | "fulbito_tv_fans" | "yellow_card_premium";
+type SponsorSplashScene = "yellow_card" | "yellow_match" | "official_ball" | "official_cup" | "match_ready" | "fulbito_tv_fans" | "yellow_card_premium";
 
-const sponsorSplashScenes: SponsorSplashScene[] = ["yellow_card", "official_ball", "official_cup", "match_ready", "fulbito_tv_fans", "yellow_card_premium"];
+const sponsorSplashScenes: SponsorSplashScene[] = ["yellow_card", "yellow_match", "official_ball", "official_cup", "match_ready", "fulbito_tv_fans", "yellow_card_premium"];
 
 function pickSponsorSplashScene(): SponsorSplashScene {
   const fallback = "yellow_card";
@@ -2391,6 +2391,7 @@ function pickSponsorSplashScene(): SponsorSplashScene {
 }
 
 function sponsorSplashSceneLabel(scene: SponsorSplashScene) {
+  if (scene === "yellow_match") return "Tarjeta en cancha";
   if (scene === "official_ball") return "Balon oficial Fulbito";
   if (scene === "official_cup") return "Copa oficial Fulbito";
   if (scene === "match_ready") return "Todo listo para jugar";
@@ -2400,6 +2401,7 @@ function sponsorSplashSceneLabel(scene: SponsorSplashScene) {
 }
 
 function sponsorSplashSceneImage(scene: SponsorSplashScene) {
+  if (scene === "yellow_match") return "/assets/sponsor-scene-yellow-match.webp";
   if (scene === "official_ball") return "/assets/sponsor-scene-official-ball.webp";
   if (scene === "official_cup") return "/assets/sponsor-scene-official-cup.webp";
   if (scene === "match_ready") return "/assets/sponsor-scene-match-ready.webp";
