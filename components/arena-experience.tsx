@@ -41,6 +41,7 @@ import { PaymentConsole } from "@/components/payment-console";
 import { VenueMap } from "@/components/venue-map";
 import { isSponsorSoundVariant } from "@/lib/ad-sounds";
 import { buildTournamentDraw, type DrawResult } from "@/lib/draw";
+import { storedImageFrameShape, type StoredImageFrameShape } from "@/lib/image-frame";
 import { roleCatalog } from "@/lib/demo";
 import { getRosterRule } from "@/lib/roster";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
@@ -718,7 +719,11 @@ function findDrawDestination(draw: DrawResult, team: DrawResult["teams"][number]
 function TeamCrest({ team, size = "normal" }: { team?: ArenaTeam | null; size?: "normal" | "large" }) {
   const badgeUrl = teamBadgeImage(team);
   return (
-    <span className={`team-crest ${size === "large" ? "team-crest--large" : ""}`} style={{ "--crest": team?.primary_color ?? "#eec15c" } as CSSProperties}>
+    <span
+      className={`team-crest ${size === "large" ? "team-crest--large" : ""}`}
+      data-frame-shape={storedImageFrameShape(team?.badge_frame, "shield")}
+      style={{ "--crest": team?.primary_color ?? "#eec15c" } as CSSProperties}
+    >
       {badgeUrl ? <img alt="" src={badgeUrl} /> : <b>{team?.short_name ?? "FC"}</b>}
     </span>
   );
@@ -803,11 +808,54 @@ function roundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, widt
   ctx.closePath();
 }
 
+function frameShapePath(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, shape: StoredImageFrameShape) {
+  ctx.beginPath();
+  if (shape === "circle") {
+    ctx.arc(x + width / 2, y + height / 2, Math.min(width, height) / 2, 0, Math.PI * 2);
+  } else if (shape === "shield") {
+    ctx.moveTo(x + width * 0.5, y + height * 0.015);
+    ctx.lineTo(x + width * 0.88, y + height * 0.12);
+    ctx.lineTo(x + width * 0.98, y + height * 0.43);
+    ctx.lineTo(x + width * 0.78, y + height * 0.78);
+    ctx.lineTo(x + width * 0.5, y + height * 0.99);
+    ctx.lineTo(x + width * 0.22, y + height * 0.78);
+    ctx.lineTo(x + width * 0.02, y + height * 0.43);
+    ctx.lineTo(x + width * 0.12, y + height * 0.12);
+  } else if (shape === "hex") {
+    ctx.moveTo(x + width * 0.5, y);
+    ctx.lineTo(x + width * 0.94, y + height * 0.25);
+    ctx.lineTo(x + width * 0.94, y + height * 0.75);
+    ctx.lineTo(x + width * 0.5, y + height);
+    ctx.lineTo(x + width * 0.06, y + height * 0.75);
+    ctx.lineTo(x + width * 0.06, y + height * 0.25);
+  } else {
+    roundRectPath(ctx, x, y, width, height, Math.min(width, height) * 0.18);
+    return;
+  }
+  ctx.closePath();
+}
+
 function drawCoverImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number) {
   const ratio = Math.max(width / image.naturalWidth, height / image.naturalHeight);
   const drawWidth = image.naturalWidth * ratio;
   const drawHeight = image.naturalHeight * ratio;
   ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function drawContainImage(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number) {
+  const ratio = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+  const drawWidth = image.naturalWidth * ratio;
+  const drawHeight = image.naturalHeight * ratio;
+  ctx.drawImage(image, x + (width - drawWidth) / 2, y + (height - drawHeight) / 2, drawWidth, drawHeight);
+}
+
+function drawFramedBadge(ctx: CanvasRenderingContext2D, image: HTMLImageElement, x: number, y: number, width: number, height: number, shape: StoredImageFrameShape) {
+  const padding = Math.max(4, Math.min(width, height) * 0.08);
+  ctx.save();
+  frameShapePath(ctx, x, y, width, height, shape);
+  ctx.clip();
+  drawContainImage(ctx, image, x + padding, y + padding, width - padding * 2, height - padding * 2);
+  ctx.restore();
 }
 
 function loadCanvasImage(src: string) {
@@ -888,11 +936,7 @@ async function createPlayerCardShareFile(player: ArenaPlayer, team?: ArenaTeam) 
   ctx.fillText(`#${player.jersey_number ?? "--"}`, 116, 268);
 
   if (badge) {
-    ctx.save();
-    roundRectPath(ctx, 706, 126, 96, 96, 30);
-    ctx.clip();
-    drawCoverImage(ctx, badge, 706, 126, 96, 96);
-    ctx.restore();
+    drawFramedBadge(ctx, badge, 706, 126, 96, 96, storedImageFrameShape(team?.badge_frame, "shield"));
   }
   ctx.fillStyle = "rgba(255,255,255,.92)";
   ctx.font = "900 30px Arial";
@@ -1011,11 +1055,7 @@ async function createTeamLineupShareFile(
   ctx.fillText(`${mode} / ${preset.shape} / ${players.filter(Boolean).length} titulares`, 72, 216);
 
   if (badge) {
-    ctx.save();
-    roundRectPath(ctx, 884, 48, 126, 126, 34);
-    ctx.clip();
-    drawCoverImage(ctx, badge, 884, 48, 126, 126);
-    ctx.restore();
+    drawFramedBadge(ctx, badge, 884, 48, 126, 126, storedImageFrameShape(team.badge_frame, "shield"));
   }
 
   const pitch = { x: 70, y: 270, width: 940, height: 830 };
@@ -1683,7 +1723,7 @@ function DrawLiveTeaser({
           </div>
           <div className="draw-reveal-card">
             <span>{currentReveal ? `Extraccion ${currentReveal.index}/${currentReveal.total}` : "Proxima bolilla"}</span>
-            <div className="draw-reveal-card__crest">
+            <div className="draw-reveal-card__crest" data-frame-shape={storedImageFrameShape(currentReveal?.team.badgeFrame, "shield")}>
               {currentReveal?.team.badgeUrl ? <img alt="" src={currentReveal.team.badgeUrl} /> : <b>{currentReveal?.team.shortName ?? "FA"}</b>}
             </div>
             <strong>{currentReveal?.team.name ?? "Equipo por revelar"}</strong>

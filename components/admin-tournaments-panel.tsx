@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { CalendarDays, CheckCircle2, Clock3, Crown, Filter, MapPin, Medal, Search, ShieldCheck, Trophy, Users } from "lucide-react";
+import { storedImageFrameShape } from "@/lib/image-frame";
 import type { AccountEntitlement, ArenaMatch, ArenaTeam, ArenaTournament, ArenaTournamentDraw, ArenaTournamentTeam, ArenaVenue, FieldMode, TournamentFormat } from "@/lib/types";
 
 type AdminProfile = {
@@ -198,9 +199,10 @@ function zoneFor(venue?: AdminTournamentVenue | null, organizer?: AdminProfile |
 }
 
 function teamBadge(team: ArenaTeam, compact = false) {
+  const badgeUrl = team.badge_icon_url || team.badge_url;
   return (
-    <span className={`admin-tournament-team-badge ${compact ? "is-compact" : ""}`} style={{ "--team-color": team.primary_color || "#f1c75b" } as CSSProperties}>
-      {team.badge_url ? <img alt="" src={team.badge_url} /> : team.short_name.slice(0, 3)}
+    <span className={`admin-tournament-team-badge ${compact ? "is-compact" : ""}`} data-frame-shape={storedImageFrameShape(team.badge_frame, "shield")} style={{ "--team-color": team.primary_color || "#f1c75b" } as CSSProperties}>
+      {badgeUrl ? <img alt="" src={badgeUrl} /> : team.short_name.slice(0, 3)}
     </span>
   );
 }

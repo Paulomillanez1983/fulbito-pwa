@@ -150,6 +150,7 @@ export type ArenaTournamentDraw = {
     name: string;
     shortName: string;
     badgeUrl: string | null;
+    badgeFrame?: Record<string, unknown> | null;
   }>;
   groups: Array<{
     code: string;
@@ -158,6 +159,7 @@ export type ArenaTournamentDraw = {
       name: string;
       shortName: string;
       badgeUrl: string | null;
+      badgeFrame?: Record<string, unknown> | null;
     }>;
   }>;
   bracket: Array<{

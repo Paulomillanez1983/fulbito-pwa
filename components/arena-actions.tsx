@@ -6,6 +6,7 @@ import { Camera, Clipboard, Flag, LoaderCircle, LocateFixed, MapPinned, ShieldPl
 import { FrameHiddenInputs, ImageFrameTuner, defaultImageFrame, framePreviewStyle } from "@/components/image-frame-controls";
 import type { ImageFrameDraft } from "@/components/image-frame-controls";
 import { SlideSubmitButton } from "@/components/slide-submit-button";
+import { storedImageFrameTransform } from "@/lib/image-frame";
 import { optimizeImageForUpload, readImageFrameOptions, type ImageFrameOptions, type UploadImagePreset } from "@/lib/image-optimizer";
 import { formatPaymentMoney, mergePaymentPlans, paymentAccount } from "@/lib/payments";
 import { getRosterRule } from "@/lib/roster";
@@ -52,6 +53,17 @@ type SlotDraft = {
   jersey: number;
   position: string;
 };
+
+function mediaInitialFrame(variant: "crest" | "avatar" | "wide" | "square", initialFrame?: unknown): ImageFrameDraft {
+  const base = defaultImageFrame(variant);
+  const stored = storedImageFrameTransform(initialFrame, base.shape);
+  return {
+    shape: stored.shape as ImageFrameDraft["shape"],
+    zoom: stored.zoom,
+    offsetX: stored.offsetX,
+    offsetY: stored.offsetY
+  };
+}
 
 const playerPositionGroups = [
   {
@@ -138,7 +150,8 @@ function MediaField({
   label,
   helper,
   variant = "square",
-  currentSrc
+  currentSrc,
+  initialFrame
 }: {
   name: string;
   accept: string;
@@ -146,12 +159,18 @@ function MediaField({
   helper: string;
   variant?: "crest" | "avatar" | "wide" | "square";
   currentSrc?: string | null;
+  initialFrame?: unknown;
 }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [filename, setFilename] = useState("");
-  const [frame, setFrame] = useState<ImageFrameDraft>(() => defaultImageFrame(variant));
+  const [frame, setFrame] = useState<ImageFrameDraft>(() => mediaInitialFrame(variant, initialFrame));
   const [status, setStatus] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const initialFrameKey = JSON.stringify(initialFrame ?? null);
+
+  useEffect(() => {
+    setFrame(mediaInitialFrame(variant, initialFrame));
+  }, [initialFrameKey, variant]);
 
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview);
@@ -194,7 +213,7 @@ function MediaField({
             : "jpg";
       const file = new File([blob], `${name}-actual.${extension}`, { type: blob.type || "image/jpeg" });
       setInputFile(file);
-      setFrame(defaultImageFrame(variant));
+      setFrame(mediaInitialFrame(variant, initialFrame));
       setPreviewFromFile(file);
       setStatus("Foto actual lista para reencuadrar.");
     } catch {
@@ -203,7 +222,7 @@ function MediaField({
   }
 
   function autoFrame() {
-    setFrame(defaultImageFrame(variant));
+    setFrame((current) => ({ ...defaultImageFrame(variant), shape: current.shape }));
     setStatus("Autoencuadre aplicado. Podes ajustar fino si hace falta.");
   }
 
@@ -1362,7 +1381,7 @@ export function ArenaActions({
             <h3>{teamEditorOnly ? "Subir nuevo escudo" : "Escudo premium"}</h3>
             <p>{selectedOwnedTeam.name} tiene Equipo Pro activo. Elegi la imagen, ajusta forma, zoom y posicion. Limite: 3 cambios por mes.</p>
             <input name="teamId" type="hidden" value={selectedOwnedTeam.id} />
-            <MediaField accept="image/png,image/jpeg,image/webp,image/avif" currentSrc={selectedBadgeUrl} helper="PNG, JPG, AVIF o WebP. Fulbito lo convierte a WebP liviano antes de subir." label="Escudo del equipo" name="badgeFile" variant="crest" />
+            <MediaField accept="image/png,image/jpeg,image/webp,image/avif" currentSrc={selectedBadgeUrl} helper="PNG, JPG, AVIF o WebP. Fulbito lo convierte a WebP liviano antes de subir." initialFrame={selectedOwnedTeam.badge_frame} label="Escudo del equipo" name="badgeFile" variant="crest" />
             <input name="primaryColor" type="color" defaultValue={selectedOwnedTeam.primary_color || "#eec15c"} />
             <SubmitButton idle="Actualizar escudo" pending="Guardando escudo" />
           </form>

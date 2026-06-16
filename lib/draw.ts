@@ -5,6 +5,7 @@ export type DrawTeam = {
   name: string;
   shortName: string;
   badgeUrl: string | null;
+  badgeFrame?: Record<string, unknown> | null;
 };
 
 export type DrawGroup = {
@@ -73,7 +74,8 @@ function teamToDrawTeam(team: ArenaTeam): DrawTeam {
     id: team.id,
     name: team.name,
     shortName: team.short_name,
-    badgeUrl: team.badge_url
+    badgeUrl: team.badge_card_url || team.badge_icon_url || team.badge_url,
+    badgeFrame: team.badge_frame ?? null
   };
 }
 

@@ -21,6 +21,7 @@ type AdminTeamRow = {
   badge_url: string | null;
   badge_icon_url: string | null;
   badge_card_url: string | null;
+  badge_frame: Record<string, unknown> | null;
   primary_color: string;
   neighborhood: string | null;
   created_at: string;
@@ -114,7 +115,7 @@ export default async function AdminPage() {
     supabase.from("billing_plan_settings").select("*").order("sort_order", { ascending: true }),
     supabase.from("ad_campaigns").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }).limit(200),
     supabase.from("ad_campaign_events").select("*").order("created_at", { ascending: false }).limit(2000),
-    supabase.from("teams").select("id,owner_id,name,slug,short_name,badge_url,badge_icon_url,badge_card_url,primary_color,neighborhood,created_at").order("created_at", { ascending: false }).limit(160),
+    supabase.from("teams").select("id,owner_id,name,slug,short_name,badge_url,badge_icon_url,badge_card_url,badge_frame,primary_color,neighborhood,created_at").order("created_at", { ascending: false }).limit(160),
     supabase.from("team_members").select("id,team_id").limit(3000),
     supabase.from("tournament_teams").select("tournament_id,team_id,status,created_at").order("created_at", { ascending: false }).limit(600),
     supabase.from("tournaments").select("id,organizer_id,name,slug,status,field_mode").order("created_at", { ascending: false }).limit(160),

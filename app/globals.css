@@ -19733,3 +19733,60 @@ body::after,
     grid-column: 1 / -1;
   }
 }
+
+/* Persistent team badge frame shapes */
+.team-crest[data-frame-shape="circle"],
+.admin-team-badge[data-frame-shape="circle"],
+.admin-tournament-team-badge[data-frame-shape="circle"],
+.draw-reveal-card__crest[data-frame-shape="circle"] {
+  clip-path: circle(50% at 50% 50%);
+  border-radius: 50%;
+}
+
+.team-crest[data-frame-shape="hex"],
+.admin-team-badge[data-frame-shape="hex"],
+.admin-tournament-team-badge[data-frame-shape="hex"],
+.draw-reveal-card__crest[data-frame-shape="hex"] {
+  clip-path: polygon(50% 0%, 94% 25%, 94% 75%, 50% 100%, 6% 75%, 6% 25%);
+  border-radius: 0;
+}
+
+.team-crest[data-frame-shape="shield"],
+.admin-team-badge[data-frame-shape="shield"],
+.admin-tournament-team-badge[data-frame-shape="shield"],
+.draw-reveal-card__crest[data-frame-shape="shield"] {
+  clip-path: polygon(50% 2%, 86% 12%, 96% 40%, 80% 78%, 50% 98%, 20% 78%, 4% 40%, 14% 12%);
+  border-radius: 0;
+}
+
+.team-crest[data-frame-shape="rounded"],
+.team-crest[data-frame-shape="none"],
+.admin-team-badge[data-frame-shape="rounded"],
+.admin-team-badge[data-frame-shape="none"],
+.admin-tournament-team-badge[data-frame-shape="rounded"],
+.admin-tournament-team-badge[data-frame-shape="none"],
+.draw-reveal-card__crest[data-frame-shape="rounded"],
+.draw-reveal-card__crest[data-frame-shape="none"] {
+  clip-path: inset(0 round 20%);
+  border-radius: 20%;
+}
+
+.team-crest[data-frame-shape="circle"],
+.team-crest[data-frame-shape="hex"],
+.team-crest[data-frame-shape="rounded"],
+.team-crest[data-frame-shape="none"] {
+  aspect-ratio: 1 / 1;
+  height: auto;
+}
+
+.team-crest[data-frame-shape]::after {
+  clip-path: inherit;
+}
+
+.team-crest[data-frame-shape] img,
+.admin-team-badge[data-frame-shape] img,
+.admin-tournament-team-badge[data-frame-shape] img,
+.draw-reveal-card__crest[data-frame-shape] img {
+  object-fit: contain;
+  object-position: center;
+}
