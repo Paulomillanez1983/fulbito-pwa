@@ -2591,6 +2591,21 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
         clearcoat: 0.45,
         clearcoatRoughness: 0.18
       });
+      const trophyMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xf4c65d,
+        roughness: 0.16,
+        metalness: 0.92,
+        clearcoat: 0.86,
+        clearcoatRoughness: 0.1,
+        reflectivity: 0.88
+      });
+      const trophyShadowMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x3a2508,
+        roughness: 0.28,
+        metalness: 0.74,
+        clearcoat: 0.5,
+        clearcoatRoughness: 0.14
+      });
       const darkMaterial = new THREE.MeshPhysicalMaterial({
         color: 0x07131c,
         roughness: 0.5,
@@ -2625,11 +2640,11 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
           new THREE.Vector2(0.82, 1.12),
           new THREE.Vector2(0.38, 1.24)
         ];
-        const cup = new THREE.Mesh(addGeometry(new THREE.LatheGeometry(points, 72)), goldMaterial);
+        const cup = new THREE.Mesh(addGeometry(new THREE.LatheGeometry(points, 96)), trophyMaterial);
         cup.scale.set(0.94, 1.02, 0.94);
         root.add(cup);
 
-        const topRim = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.8, 0.045, 16, 96)), goldMaterial);
+        const topRim = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.8, 0.052, 18, 112)), trophyMaterial);
         topRim.position.y = 1.14;
         topRim.rotation.x = Math.PI / 2;
         topRim.scale.z = 0.72;
@@ -2647,7 +2662,7 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
           new THREE.Vector3(-1.2, 0.08, 0.08),
           new THREE.Vector3(-0.76, -0.1, 0.03)
         ]);
-        const leftHandle = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(leftCurve, 48, 0.045, 14, false)), goldMaterial);
+        const leftHandle = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(leftCurve, 64, 0.052, 18, false)), trophyMaterial);
         root.add(leftHandle);
         const rightCurve = new THREE.CatmullRomCurve3([
           new THREE.Vector3(0.74, 0.82, 0.03),
@@ -2655,17 +2670,23 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
           new THREE.Vector3(1.2, 0.08, 0.08),
           new THREE.Vector3(0.76, -0.1, 0.03)
         ]);
-        const rightHandle = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(rightCurve, 48, 0.045, 14, false)), goldMaterial);
+        const rightHandle = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(rightCurve, 64, 0.052, 18, false)), trophyMaterial);
         root.add(rightHandle);
 
-        const leftHandleCore = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(leftCurve, 48, 0.022, 10, false)), darkMaterial);
+        const leftHandleCore = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(leftCurve, 48, 0.022, 10, false)), trophyShadowMaterial);
         leftHandleCore.scale.setScalar(0.86);
         root.add(leftHandleCore);
-        const rightHandleCore = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(rightCurve, 48, 0.022, 10, false)), darkMaterial);
+        const rightHandleCore = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(rightCurve, 48, 0.022, 10, false)), trophyShadowMaterial);
         rightHandleCore.scale.setScalar(0.86);
         root.add(rightHandleCore);
 
-        const waistRing = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.5, 0.032, 12, 72)), goldMaterial);
+        const shoulderRing = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.72, 0.025, 12, 96)), trophyMaterial);
+        shoulderRing.position.y = 0.67;
+        shoulderRing.rotation.x = Math.PI / 2;
+        shoulderRing.scale.z = 0.78;
+        root.add(shoulderRing);
+
+        const waistRing = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.5, 0.036, 14, 88)), trophyMaterial);
         waistRing.position.y = -0.62;
         waistRing.rotation.x = Math.PI / 2;
         root.add(waistRing);
@@ -2673,25 +2694,37 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
         const base = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.82, 1.02, 0.22, 72)), darkMaterial);
         base.position.y = -1.25;
         root.add(base);
-        const baseTop = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.62, 0.72, 0.14, 72)), goldMaterial);
+        const baseTop = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.62, 0.72, 0.14, 96)), trophyMaterial);
         baseTop.position.y = -1.08;
         root.add(baseTop);
+        const baseRing = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.83, 0.04, 14, 96)), trophyMaterial);
+        baseRing.position.y = -1.14;
+        baseRing.rotation.x = Math.PI / 2;
+        root.add(baseRing);
 
-        const frontPlateBack = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(0.62, 0.62, 0.055)), goldMaterial);
+        const frontPlateBack = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(0.7, 0.7, 0.055)), trophyMaterial);
         frontPlateBack.position.set(0, 0.25, 0.78);
         frontPlateBack.rotation.x = -0.06;
         root.add(frontPlateBack);
-        const frontBadge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.3, 64)), sponsorMaterial);
-        frontBadge.position.set(0, 0.25, 0.815);
+        const frontFrame = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.36, 0.026, 12, 72)), trophyMaterial);
+        frontFrame.position.set(0, 0.25, 0.837);
+        frontFrame.rotation.x = -0.06;
+        root.add(frontFrame);
+        const frontBadge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.31, 72)), sponsorMaterial);
+        frontBadge.position.set(0, 0.25, 0.846);
         frontBadge.rotation.x = -0.06;
         root.add(frontBadge);
 
-        const backPlateBack = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(0.52, 0.52, 0.045)), goldMaterial);
+        const backPlateBack = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(0.58, 0.58, 0.045)), trophyMaterial);
         backPlateBack.position.set(0, 0.18, -0.78);
         backPlateBack.rotation.set(0.06, Math.PI, 0);
         root.add(backPlateBack);
-        const backBadge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.25, 64)), sponsorMaterial);
-        backBadge.position.set(0, 0.18, -0.812);
+        const backFrame = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.3, 0.022, 12, 72)), trophyMaterial);
+        backFrame.position.set(0, 0.18, -0.835);
+        backFrame.rotation.set(0.06, Math.PI, 0);
+        root.add(backFrame);
+        const backBadge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.255, 72)), sponsorMaterial);
+        backBadge.position.set(0, 0.18, -0.846);
         backBadge.rotation.set(0.06, Math.PI, 0);
         root.add(backBadge);
 
@@ -2700,6 +2733,11 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
         shine.rotation.z = -0.18;
         shine.userData.material = shine.material;
         root.add(shine);
+        const highlight = new THREE.Mesh(addGeometry(new THREE.PlaneGeometry(0.1, 1.28)), new THREE.MeshBasicMaterial({ color: 0xfff2b0, transparent: true, opacity: 0.24 }));
+        highlight.position.set(0.3, 0.22, 0.9);
+        highlight.rotation.z = 0.14;
+        highlight.userData.material = highlight.material;
+        root.add(highlight);
         root.scale.setScalar(0.9);
       } else if (sceneType === "match_ready") {
         const watch = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.86, 0.86, 0.24, 72)), darkMaterial);
@@ -2743,6 +2781,14 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
       scene.add(keyLight);
       const ambient = new THREE.AmbientLight(0xffffff, 0.9);
       scene.add(ambient);
+      if (sceneType === "official_cup") {
+        const trophyGlow = new THREE.PointLight(0xffd66d, 2.4, 5.6);
+        trophyGlow.position.set(0.2, 1.25, 2.2);
+        scene.add(trophyGlow);
+        const coolEdge = new THREE.PointLight(0x4ef5ff, 1.25, 4.2);
+        coolEdge.position.set(-1.7, 0.7, 2.1);
+        scene.add(coolEdge);
+      }
 
       const resize = () => {
         const rect = mount.getBoundingClientRect();
@@ -2760,7 +2806,7 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
       const animate = () => {
         if (cancelled) return;
         frame = window.requestAnimationFrame(animate);
-        root.rotation.y += sceneType === "official_ball" ? 0.0105 : 0.0072;
+        root.rotation.y += sceneType === "official_ball" ? 0.0105 : sceneType === "official_cup" ? 0.0062 : 0.0072;
         root.rotation.x = -0.08 + Math.sin(performance.now() * 0.001) * 0.035;
         root.rotation.z = Math.sin(performance.now() * 0.0008) * 0.022;
         renderer.render(scene, camera);
@@ -2774,6 +2820,8 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
         disposableGeometries.forEach((geometry) => geometry.dispose());
         ballMaterial.dispose();
         goldMaterial.dispose();
+        trophyMaterial.dispose();
+        trophyShadowMaterial.dispose();
         darkMaterial.dispose();
         sponsorMaterial.dispose();
         root.children.forEach((child) => {
