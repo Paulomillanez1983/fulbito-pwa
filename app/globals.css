@@ -20465,12 +20465,13 @@ body::after,
 
 .sponsor-splash--official_cup .sponsor-splash__card {
   background:
-    linear-gradient(180deg, rgba(5, 12, 17, .58), rgba(3, 8, 13, .82) 48%, rgba(2, 5, 9, .96) 100%),
-    radial-gradient(circle at 50% 24%, rgba(255, 225, 112, .3), transparent 20%),
-    radial-gradient(circle at 17% 28%, rgba(255, 255, 255, .7), transparent 8%),
-    radial-gradient(circle at 83% 28%, rgba(255, 255, 255, .7), transparent 8%),
-    radial-gradient(ellipse at 50% 40%, rgba(15, 111, 62, .48), transparent 37%),
-    linear-gradient(180deg, #081923 0%, #071219 46%, #03070c 100%);
+    linear-gradient(180deg, rgba(3, 10, 16, .38), rgba(3, 8, 13, .76) 44%, rgba(2, 5, 9, .95) 100%),
+    radial-gradient(circle at 50% 24%, rgba(255, 225, 112, .23), transparent 22%),
+    radial-gradient(circle at 18% 30%, rgba(255, 255, 255, .3), transparent 9%),
+    radial-gradient(circle at 82% 30%, rgba(255, 255, 255, .3), transparent 9%),
+    url("/assets/arena-stadium-bg-v2.webp");
+  background-size: cover;
+  background-position: center top;
   box-shadow:
     0 28px 70px rgba(0, 0, 0, .72),
     inset 0 0 0 1px rgba(255, 226, 129, .24),
@@ -20479,18 +20480,17 @@ body::after,
 
 .sponsor-splash--official_cup .sponsor-splash__card::before {
   background:
-    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, .68), transparent 7%),
-    radial-gradient(circle at 82% 22%, rgba(255, 255, 255, .68), transparent 7%),
-    linear-gradient(180deg, transparent 0 34%, rgba(20, 115, 57, .22) 35% 82%, transparent 100%),
-    repeating-linear-gradient(90deg, rgba(43, 150, 78, .22) 0 28px, rgba(7, 72, 42, .18) 28px 56px);
-  opacity: .82;
+    radial-gradient(circle at 18% 28%, rgba(255, 255, 255, .54), transparent 8%),
+    radial-gradient(circle at 82% 28%, rgba(255, 255, 255, .54), transparent 8%),
+    linear-gradient(180deg, rgba(1, 8, 14, .1), rgba(1, 8, 14, .38) 54%, rgba(1, 6, 10, .78) 100%);
+  opacity: .86;
 }
 
 .sponsor-splash--official_cup .sponsor-splash__card::after {
   background:
-    linear-gradient(90deg, transparent 0 12%, rgba(255, 255, 255, .25) 12.2% 12.6%, transparent 13% 87%, rgba(255, 255, 255, .25) 87.4% 87.8%, transparent 88%),
-    radial-gradient(ellipse at 50% 86%, rgba(12, 128, 66, .52), rgba(3, 36, 23, .28) 48%, transparent 70%);
-  opacity: .74;
+    radial-gradient(ellipse at 50% 92%, rgba(18, 142, 67, .5), rgba(3, 36, 23, .2) 44%, transparent 72%),
+    linear-gradient(180deg, transparent, rgba(0, 0, 0, .46));
+  opacity: .72;
 }
 
 .sponsor-splash__stage--official_cup {
@@ -20512,11 +20512,11 @@ body::after,
   border: 1px solid rgba(255, 222, 107, .34);
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 32%, rgba(255, 231, 127, .24), transparent 22%),
-    radial-gradient(circle at 18% 20%, rgba(255, 255, 255, .78), transparent 9%),
-    radial-gradient(circle at 82% 20%, rgba(255, 255, 255, .78), transparent 9%),
-    linear-gradient(180deg, rgba(2, 12, 18, .06), rgba(2, 10, 15, .62) 43%, rgba(0, 0, 0, .9) 100%),
-    repeating-linear-gradient(90deg, rgba(35, 139, 71, .92) 0 30px, rgba(17, 94, 49, .94) 30px 60px);
+    radial-gradient(circle at 50% 30%, rgba(255, 231, 127, .24), transparent 22%),
+    linear-gradient(180deg, rgba(2, 12, 18, .03), rgba(2, 10, 15, .52) 48%, rgba(0, 0, 0, .86) 100%),
+    url("/assets/arena-stadium-bg-v2.webp");
+  background-size: cover;
+  background-position: center 56%;
   box-shadow:
     0 24px 48px rgba(0, 0, 0, .5),
     inset 0 0 0 1px rgba(255, 255, 255, .1),
@@ -20535,8 +20535,9 @@ body::after,
   border-radius: 50%;
   transform: translateX(-50%) perspective(420px) rotateX(70deg);
   box-shadow:
-    0 -128px 0 -1px rgba(255, 255, 255, .2),
+    0 -128px 0 -1px rgba(255, 255, 255, .16),
     inset 0 0 32px rgba(255, 255, 255, .12);
+  opacity: .76;
 }
 
 .sponsor-splash__stage--official_cup .sponsor-splash__scene::after {
