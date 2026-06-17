@@ -2392,7 +2392,7 @@ function pickSponsorSplashScene(): SponsorSplashScene {
 
 function sponsorSplashSceneLabel(scene: SponsorSplashScene) {
   if (scene === "yellow_match") return "Tarjeta en cancha";
-  if (scene === "official_ball") return "Balon oficial Fulbito";
+  if (scene === "official_ball") return "Balon auspiciado";
   if (scene === "official_cup") return "Copa oficial Fulbito";
   if (scene === "match_ready") return "Todo listo para jugar";
   if (scene === "fulbito_tv_fans") return "Fulbito TV en vivo";
@@ -2485,6 +2485,7 @@ function SponsorSplashOverlay({
   const creativeStyle = { "--sponsor-creative-scale": creativeScale } as CSSProperties;
   const sceneLabel = sponsorSplashSceneLabel(scene);
   const sceneImageUrl = sponsorSplashSceneImage(scene);
+  const isBallSponsorScene = scene === "official_ball";
 
   function visitSponsor() {
     if (!campaign) return;
@@ -2518,6 +2519,15 @@ function SponsorSplashOverlay({
             {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={46} />}
             <span className="sponsor-splash__card-footer">Fulbito Arena</span>
           </div>
+          {isBallSponsorScene ? (
+            <div className="sponsor-splash__ball-brand-cloud" aria-hidden="true">
+              {[0, 1, 2, 3].map((item) => (
+                <span className={`sponsor-splash__ball-brand-chip sponsor-splash__ball-brand-chip--${item + 1}`} key={item}>
+                  {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={18} />}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="sponsor-splash__copy">
           <span className="sponsor-splash__presented">{sceneLabel}</span>
