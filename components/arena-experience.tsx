@@ -2440,104 +2440,205 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.ClampToEdgeWrapping;
       texture.anisotropy = 4;
+      const bumpCanvas = document.createElement("canvas");
+      bumpCanvas.width = 1024;
+      bumpCanvas.height = 512;
+      const bumpTexture = new THREE.CanvasTexture(bumpCanvas);
+      bumpTexture.wrapS = THREE.RepeatWrapping;
+      bumpTexture.wrapT = THREE.ClampToEdgeWrapping;
+      bumpTexture.anisotropy = 4;
       const sponsorTextureCanvas = document.createElement("canvas");
       sponsorTextureCanvas.width = 512;
       sponsorTextureCanvas.height = 512;
       const sponsorTexture = new THREE.CanvasTexture(sponsorTextureCanvas);
       sponsorTexture.colorSpace = THREE.SRGBColorSpace;
 
+      const ballStyle = {
+        name: "modern-premium",
+        base: "#f7f4e8",
+        seam: "#17212b",
+        shadow: "#cfd8dc",
+        colors: ["#f23142", "#1268ff", "#11b875", "#f5ca48"],
+        brandingPanels: [
+          { x: 514, y: 256, width: 190, height: 118, rotation: -3 },
+          { x: 248, y: 178, width: 150, height: 92, rotation: -18 },
+          { x: 776, y: 344, width: 150, height: 92, rotation: 18 }
+        ]
+      } as const;
+
       const drawTexture = (logo?: HTMLImageElement) => {
         const ctx = textureCanvas.getContext("2d");
         if (!ctx) return;
+        const bumpCtx = bumpCanvas.getContext("2d");
+        if (!bumpCtx) return;
         const width = textureCanvas.width;
         const height = textureCanvas.height;
-        const gradient = ctx.createLinearGradient(0, 0, width, height);
-        gradient.addColorStop(0, "#f7f1dc");
-        gradient.addColorStop(0.18, "#f3d262");
-        gradient.addColorStop(0.4, "#10222d");
-        gradient.addColorStop(0.62, "#14c7d6");
-        gradient.addColorStop(0.82, "#071219");
-        gradient.addColorStop(1, "#f3c44e");
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, width, height);
 
-        ctx.globalAlpha = 0.36;
-        ctx.strokeStyle = "#031018";
-        ctx.lineWidth = 9;
-        for (let x = -160; x < width + 220; x += 170) {
-          ctx.beginPath();
-          ctx.moveTo(x, 0);
-          ctx.bezierCurveTo(x + 72, 150, x - 28, 330, x + 80, height);
-          ctx.stroke();
+        ctx.clearRect(0, 0, width, height);
+        bumpCtx.clearRect(0, 0, width, height);
+
+        const baseGradient = ctx.createLinearGradient(0, 0, width, height);
+        baseGradient.addColorStop(0, "#ffffff");
+        baseGradient.addColorStop(0.22, ballStyle.base);
+        baseGradient.addColorStop(0.5, "#eef4f2");
+        baseGradient.addColorStop(0.76, "#fff8de");
+        baseGradient.addColorStop(1, "#e8edf0");
+        ctx.fillStyle = baseGradient;
+        ctx.fillRect(0, 0, width, height);
+        bumpCtx.fillStyle = "#787878";
+        bumpCtx.fillRect(0, 0, width, height);
+
+        // Microtextura: ruido liviano sobre canvas, barato y editable, para evitar aspecto plastico plano.
+        const grain = ctx.createImageData(width, height);
+        for (let i = 0; i < grain.data.length; i += 4) {
+          const shade = 225 + Math.floor(Math.random() * 24);
+          grain.data[i] = shade;
+          grain.data[i + 1] = shade;
+          grain.data[i + 2] = shade;
+          grain.data[i + 3] = 18;
         }
-        ctx.globalAlpha = 0.28;
-        ctx.strokeStyle = "#ffe68a";
-        ctx.lineWidth = 4;
-        for (let y = 70; y < height; y += 118) {
-          ctx.beginPath();
-          ctx.moveTo(0, y);
-          ctx.bezierCurveTo(260, y - 46, 650, y + 54, width, y - 10);
-          ctx.stroke();
-        }
+        ctx.putImageData(grain, 0, 0);
+        ctx.globalCompositeOperation = "multiply";
+        ctx.globalAlpha = 0.08;
+        ctx.fillStyle = "#eef3f0";
+        ctx.fillRect(0, 0, width, height);
+        ctx.globalCompositeOperation = "source-over";
         ctx.globalAlpha = 1;
 
-        const panels = [
-          [512, 256, 118, 0],
-          [246, 170, 88, -13],
-          [756, 170, 88, 13],
-          [260, 342, 82, 18],
-          [756, 344, 82, -18],
-          [510, 84, 76, 0],
-          [508, 430, 76, 0],
-          [78, 258, 70, -8],
-          [946, 258, 70, 8],
-          [400, 250, 62, -22],
-          [624, 250, 62, 22]
-        ];
-
-        panels.forEach(([cx, cy, size, rotation], index) => {
+        const drawSeam = (points: Array<[number, number]>, widthPx = 12) => {
           ctx.save();
-          ctx.translate(cx, cy);
-          ctx.rotate((rotation * Math.PI) / 180);
+          bumpCtx.save();
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.strokeStyle = "rgba(9, 22, 31, .16)";
+          ctx.lineWidth = widthPx + 9;
+          bumpCtx.strokeStyle = "#4e4e4e";
+          bumpCtx.lineWidth = widthPx + 10;
+          bumpCtx.lineCap = "round";
+          bumpCtx.lineJoin = "round";
           ctx.beginPath();
-          for (let i = 0; i < 6; i += 1) {
-            const angle = -Math.PI / 2 + (i * Math.PI * 2) / 6;
-            const px = Math.cos(angle) * size;
-            const py = Math.sin(angle) * size * 0.82;
-            if (i === 0) ctx.moveTo(px, py);
-            else ctx.lineTo(px, py);
-          }
-          ctx.closePath();
-          ctx.fillStyle = index % 3 === 0 ? "rgba(255, 219, 76, .94)" : index % 3 === 1 ? "rgba(2, 15, 22, .92)" : "rgba(22, 210, 220, .82)";
-          ctx.fill();
-          ctx.lineWidth = Math.max(5, size * 0.07);
-          ctx.strokeStyle = "rgba(255, 239, 151, .72)";
+          bumpCtx.beginPath();
+          points.forEach(([x, y], index) => {
+            if (index === 0) {
+              ctx.moveTo(x, y);
+              bumpCtx.moveTo(x, y);
+            } else {
+              const [px, py] = points[index - 1];
+              ctx.quadraticCurveTo(px, py, (px + x) / 2, (py + y) / 2);
+              bumpCtx.quadraticCurveTo(px, py, (px + x) / 2, (py + y) / 2);
+            }
+          });
           ctx.stroke();
+          bumpCtx.stroke();
+          ctx.strokeStyle = "rgba(255, 255, 255, .6)";
+          ctx.lineWidth = Math.max(2, widthPx * 0.22);
+          ctx.stroke();
+          bumpCtx.strokeStyle = "#9b9b9b";
+          bumpCtx.lineWidth = Math.max(2, widthPx * 0.22);
+          bumpCtx.stroke();
+          ctx.restore();
+          bumpCtx.restore();
+        };
+
+        const drawRibbon = (x: number, y: number, color: string, flip = 1) => {
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.scale(flip, 1);
+          const ribbon = ctx.createLinearGradient(-140, -70, 150, 78);
+          ribbon.addColorStop(0, color);
+          ribbon.addColorStop(0.58, `${color}dd`);
+          ribbon.addColorStop(1, "rgba(255,255,255,.28)");
+          ctx.fillStyle = ribbon;
+          ctx.beginPath();
+          ctx.moveTo(-168, -56);
+          ctx.bezierCurveTo(-94, -96, 12, -60, 84, -18);
+          ctx.bezierCurveTo(154, 23, 172, 78, 116, 96);
+          ctx.bezierCurveTo(36, 124, -54, 84, -128, 44);
+          ctx.bezierCurveTo(-190, 10, -212, -28, -168, -56);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,255,255,.32)";
+          ctx.lineWidth = 5;
+          ctx.stroke();
+          ctx.restore();
+        };
+
+        drawRibbon(206, 128, ballStyle.colors[0]);
+        drawRibbon(810, 136, ballStyle.colors[1], -1);
+        drawRibbon(300, 388, ballStyle.colors[2], -1);
+        drawRibbon(720, 392, ballStyle.colors[3]);
+
+        const seamPaths: Array<Array<[number, number]>> = [
+          [[-40, 64], [138, 88], [286, 154], [438, 228], [612, 280], [820, 286], [1088, 240]],
+          [[-28, 348], [154, 298], [318, 278], [502, 292], [688, 360], [874, 426], [1088, 448]],
+          [[148, -24], [206, 100], [196, 236], [142, 356], [126, 536]],
+          [[882, -24], [810, 100], [826, 236], [894, 358], [908, 536]],
+          [[388, -26], [456, 72], [500, 184], [512, 302], [552, 536]],
+          [[642, -26], [580, 80], [550, 196], [528, 312], [474, 536]]
+        ];
+        seamPaths.forEach((path, index) => drawSeam(path, index < 2 ? 13 : 10));
+
+        const drawBrandingPanel = (panel: { x: number; y: number; width: number; height: number; rotation: number }, index: number) => {
+          ctx.save();
+          bumpCtx.save();
+          ctx.translate(panel.x, panel.y);
+          bumpCtx.translate(panel.x, panel.y);
+          ctx.rotate((panel.rotation * Math.PI) / 180);
+          bumpCtx.rotate((panel.rotation * Math.PI) / 180);
+
+          const rx = -panel.width / 2;
+          const ry = -panel.height / 2;
+          const radius = 28;
+          ctx.beginPath();
+          ctx.roundRect(rx, ry, panel.width, panel.height, radius);
+          ctx.fillStyle = index === 0 ? "rgba(7, 18, 28, .94)" : "rgba(255, 255, 255, .88)";
+          ctx.fill();
+          ctx.lineWidth = 9;
+          ctx.strokeStyle = index === 0 ? "rgba(255, 211, 75, .9)" : "rgba(12, 206, 221, .72)";
+          ctx.stroke();
+
+          bumpCtx.beginPath();
+          bumpCtx.roundRect(rx, ry, panel.width, panel.height, radius);
+          bumpCtx.fillStyle = "#9e9e9e";
+          bumpCtx.fill();
+          bumpCtx.lineWidth = 8;
+          bumpCtx.strokeStyle = "#4a4a4a";
+          bumpCtx.stroke();
+
           ctx.clip();
           ctx.globalAlpha = 0.22;
           ctx.fillStyle = "#ffffff";
-          ctx.fillRect(-size, -size, size * 0.7, size * 2);
+          ctx.fillRect(rx, ry, panel.width * 0.4, panel.height);
           ctx.globalAlpha = 1;
           if (logo) {
-            const logoSize = size * 1.18;
+            const logoSize = Math.min(panel.width * 0.62, panel.height * 0.82);
             ctx.drawImage(logo, -logoSize / 2, -logoSize / 2, logoSize, logoSize);
           } else {
-            ctx.fillStyle = index % 3 === 1 ? "#f4d45d" : "#061018";
-            ctx.font = `900 ${Math.max(15, size * 0.25)}px system-ui, sans-serif`;
+            ctx.fillStyle = index === 0 ? "#f7d45c" : "#07131c";
+            ctx.font = `900 ${Math.max(22, panel.height * 0.22)}px system-ui, sans-serif`;
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText("SPONSOR", 0, 0);
+            ctx.fillText("FULBITO", 0, -6);
+            ctx.font = `800 ${Math.max(13, panel.height * 0.14)}px system-ui, sans-serif`;
+            ctx.fillText("SPONSOR", 0, 22);
           }
           ctx.restore();
-        });
+          bumpCtx.restore();
+        };
+        ballStyle.brandingPanels.forEach(drawBrandingPanel);
 
-        ctx.globalAlpha = 0.18;
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath();
-        ctx.ellipse(290, 84, 230, 42, -0.15, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.globalAlpha = 0.26;
+        ctx.strokeStyle = "rgba(255,255,255,.72)";
+        ctx.lineWidth = 3;
+        for (let y = 44; y < height; y += 72) {
+          ctx.beginPath();
+          ctx.moveTo(-20, y);
+          ctx.bezierCurveTo(240, y - 28, 650, y + 34, width + 20, y - 16);
+          ctx.stroke();
+        }
+
         ctx.globalAlpha = 1;
         texture.needsUpdate = true;
+        bumpTexture.needsUpdate = true;
 
         const sponsorCtx = sponsorTextureCanvas.getContext("2d");
         if (!sponsorCtx) return;
@@ -2579,10 +2680,12 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
 
       const ballMaterial = new THREE.MeshPhysicalMaterial({
         map: texture,
-        roughness: 0.44,
-        metalness: 0.08,
-        clearcoat: 0.68,
-        clearcoatRoughness: 0.26
+        bumpMap: bumpTexture,
+        bumpScale: 0.045,
+        roughness: 0.34,
+        metalness: 0.04,
+        clearcoat: 0.78,
+        clearcoatRoughness: 0.24
       });
       const goldMaterial = new THREE.MeshPhysicalMaterial({
         color: 0xe9b83f,
@@ -2829,6 +2932,7 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
           if (extraMaterial && typeof extraMaterial.dispose === "function") extraMaterial.dispose();
         });
         texture.dispose();
+        bumpTexture.dispose();
         sponsorTexture.dispose();
         renderer.dispose();
         renderer.domElement.remove();
