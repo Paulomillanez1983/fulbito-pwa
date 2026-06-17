@@ -2520,9 +2520,9 @@ function SponsorSplashOverlay({
             <span className="sponsor-splash__card-footer">Fulbito Arena</span>
           </div>
           {isBallSponsorScene ? (
-            <div className="sponsor-splash__ball-brand-cloud" aria-hidden="true">
-              {[0, 1, 2, 3].map((item) => (
-                <span className={`sponsor-splash__ball-brand-chip sponsor-splash__ball-brand-chip--${item + 1}`} key={item}>
+            <div className="sponsor-splash__dynamic-ball" aria-hidden="true">
+              {[0, 1, 2, 3, 4, 5, 6, 7].map((item) => (
+                <span className={`sponsor-splash__ball-panel sponsor-splash__ball-panel--${item + 1}`} key={item}>
                   {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={18} />}
                 </span>
               ))}
