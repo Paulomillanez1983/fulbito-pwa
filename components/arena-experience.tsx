@@ -2410,6 +2410,206 @@ function sponsorSplashSceneImage(scene: SponsorSplashScene) {
   return "/assets/sponsor-yellow-card-hand.webp";
 }
 
+function SponsorBall3D({ logoUrl, advertiserName }: { logoUrl?: string | null; advertiserName: string }) {
+  const mountRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let cleanup = () => {};
+
+    async function mountBall() {
+      const mount = mountRef.current;
+      if (!mount) return;
+      const THREE = await import("three");
+      if (cancelled || !mountRef.current) return;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+      camera.position.set(0, 0, 4.1);
+
+      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.65));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      mount.appendChild(renderer.domElement);
+
+      const textureCanvas = document.createElement("canvas");
+      textureCanvas.width = 1024;
+      textureCanvas.height = 512;
+      const texture = new THREE.CanvasTexture(textureCanvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.ClampToEdgeWrapping;
+      texture.anisotropy = 4;
+
+      const drawTexture = (logo?: HTMLImageElement) => {
+        const ctx = textureCanvas.getContext("2d");
+        if (!ctx) return;
+        const width = textureCanvas.width;
+        const height = textureCanvas.height;
+        const gradient = ctx.createLinearGradient(0, 0, width, height);
+        gradient.addColorStop(0, "#f7f1dc");
+        gradient.addColorStop(0.18, "#f3d262");
+        gradient.addColorStop(0.4, "#10222d");
+        gradient.addColorStop(0.62, "#14c7d6");
+        gradient.addColorStop(0.82, "#071219");
+        gradient.addColorStop(1, "#f3c44e");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+
+        ctx.globalAlpha = 0.36;
+        ctx.strokeStyle = "#031018";
+        ctx.lineWidth = 9;
+        for (let x = -160; x < width + 220; x += 170) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.bezierCurveTo(x + 72, 150, x - 28, 330, x + 80, height);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 0.28;
+        ctx.strokeStyle = "#ffe68a";
+        ctx.lineWidth = 4;
+        for (let y = 70; y < height; y += 118) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.bezierCurveTo(260, y - 46, 650, y + 54, width, y - 10);
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+
+        const panels = [
+          [512, 256, 118, 0],
+          [246, 170, 88, -13],
+          [756, 170, 88, 13],
+          [260, 342, 82, 18],
+          [756, 344, 82, -18],
+          [510, 84, 76, 0],
+          [508, 430, 76, 0],
+          [78, 258, 70, -8],
+          [946, 258, 70, 8],
+          [400, 250, 62, -22],
+          [624, 250, 62, 22]
+        ];
+
+        panels.forEach(([cx, cy, size, rotation], index) => {
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate((rotation * Math.PI) / 180);
+          ctx.beginPath();
+          for (let i = 0; i < 6; i += 1) {
+            const angle = -Math.PI / 2 + (i * Math.PI * 2) / 6;
+            const px = Math.cos(angle) * size;
+            const py = Math.sin(angle) * size * 0.82;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fillStyle = index % 3 === 0 ? "rgba(255, 219, 76, .94)" : index % 3 === 1 ? "rgba(2, 15, 22, .92)" : "rgba(22, 210, 220, .82)";
+          ctx.fill();
+          ctx.lineWidth = Math.max(5, size * 0.07);
+          ctx.strokeStyle = "rgba(255, 239, 151, .72)";
+          ctx.stroke();
+          ctx.clip();
+          ctx.globalAlpha = 0.22;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(-size, -size, size * 0.7, size * 2);
+          ctx.globalAlpha = 1;
+          if (logo) {
+            const logoSize = size * 1.18;
+            ctx.drawImage(logo, -logoSize / 2, -logoSize / 2, logoSize, logoSize);
+          } else {
+            ctx.fillStyle = index % 3 === 1 ? "#f4d45d" : "#061018";
+            ctx.font = `900 ${Math.max(15, size * 0.25)}px system-ui, sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("SPONSOR", 0, 0);
+          }
+          ctx.restore();
+        });
+
+        ctx.globalAlpha = 0.18;
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.ellipse(290, 84, 230, 42, -0.15, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        texture.needsUpdate = true;
+      };
+
+      drawTexture();
+      if (logoUrl) {
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.decoding = "async";
+        image.onload = () => drawTexture(image);
+        image.onerror = () => drawTexture();
+        image.src = logoUrl;
+      }
+
+      const geometry = new THREE.SphereGeometry(1.18, 96, 64);
+      const material = new THREE.MeshPhysicalMaterial({
+        map: texture,
+        roughness: 0.44,
+        metalness: 0.08,
+        clearcoat: 0.68,
+        clearcoatRoughness: 0.26
+      });
+      const ball = new THREE.Mesh(geometry, material);
+      ball.rotation.set(-0.16, -0.32, 0.08);
+      scene.add(ball);
+
+      const rimLight = new THREE.DirectionalLight(0x5df4ff, 2.25);
+      rimLight.position.set(-3.2, 2.4, 4);
+      scene.add(rimLight);
+      const keyLight = new THREE.DirectionalLight(0xffdf84, 2.6);
+      keyLight.position.set(3.4, 3.1, 4.8);
+      scene.add(keyLight);
+      const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+      scene.add(ambient);
+
+      const resize = () => {
+        const rect = mount.getBoundingClientRect();
+        const size = Math.max(180, Math.min(rect.width, rect.height || rect.width));
+        renderer.setSize(size, size, false);
+        camera.aspect = 1;
+        camera.updateProjectionMatrix();
+      };
+      resize();
+      const observer = new ResizeObserver(resize);
+      observer.observe(mount);
+
+      let frame = 0;
+      const animate = () => {
+        if (cancelled) return;
+        frame = window.requestAnimationFrame(animate);
+        ball.rotation.y += 0.0105;
+        ball.rotation.x = -0.16 + Math.sin(performance.now() * 0.001) * 0.025;
+        ball.rotation.z = 0.08 + Math.sin(performance.now() * 0.0008) * 0.018;
+        renderer.render(scene, camera);
+      };
+      animate();
+
+      cleanup = () => {
+        cancelled = true;
+        window.cancelAnimationFrame(frame);
+        observer.disconnect();
+        geometry.dispose();
+        material.dispose();
+        texture.dispose();
+        renderer.dispose();
+        renderer.domElement.remove();
+      };
+    }
+
+    void mountBall();
+    return () => {
+      cancelled = true;
+      cleanup();
+    };
+  }, [advertiserName, logoUrl]);
+
+  return <div className="sponsor-splash__ball3d" ref={mountRef} aria-label={`Balon 3D auspiciado por ${advertiserName}`} />;
+}
+
 function SponsorSplashOverlay({
   campaigns,
   enabled,
@@ -2519,15 +2719,7 @@ function SponsorSplashOverlay({
             {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={46} />}
             <span className="sponsor-splash__card-footer">Fulbito Arena</span>
           </div>
-          {isBallSponsorScene ? (
-            <div className="sponsor-splash__dynamic-ball" aria-hidden="true">
-              {[0, 1, 2, 3, 4, 5, 6, 7].map((item) => (
-                <span className={`sponsor-splash__ball-panel sponsor-splash__ball-panel--${item + 1}`} key={item}>
-                  {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={18} />}
-                </span>
-              ))}
-            </div>
-          ) : null}
+          {isBallSponsorScene ? <SponsorBall3D logoUrl={logoUrl} advertiserName={campaign.advertiser_name} /> : null}
         </div>
         <div className="sponsor-splash__copy">
           <span className="sponsor-splash__presented">{sceneLabel}</span>

@@ -20394,24 +20394,7 @@ body::after,
 }
 
 .sponsor-splash__stage--official_ball .sponsor-splash__brand {
-  top: min(43vw, 178px) !important;
-  z-index: 8 !important;
-  width: min(21vw, 82px) !important;
-  height: min(19vw, 72px) !important;
-  padding: 8px !important;
-  clip-path: polygon(50% 0, 94% 30%, 78% 100%, 22% 100%, 6% 30%);
-  border-radius: 0 !important;
-  background:
-    radial-gradient(circle at 35% 24%, rgba(255,255,255,.24), transparent 22%),
-    linear-gradient(145deg, rgba(255, 218, 76, .98), rgba(8, 20, 28, .96) 58%, rgba(3, 8, 12, .98));
-  border: 2px solid rgba(255, 221, 103, .78) !important;
-  box-shadow:
-    0 0 0 4px rgba(31, 236, 255, .08),
-    0 0 24px rgba(42, 239, 255, .26),
-    0 12px 24px rgba(0, 0, 0, .48),
-    inset 0 0 0 1px rgba(255, 255, 255, .14) !important;
-  transform: translate(-50%, -51%) rotate(-3deg) scale(var(--sponsor-creative-scale)) !important;
-  animation: sponsor-ball-center-badge 3.6s ease-in-out .45s infinite;
+  display: none;
 }
 
 .sponsor-splash__stage--official_ball .sponsor-splash__brand .sponsor-splash__card-label,
@@ -20436,6 +20419,27 @@ body::after,
   background:
     linear-gradient(125deg, transparent 0 34%, rgba(255,255,255,.42) 42%, transparent 52%),
     radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255, 219, 86, .25) 59% 100%);
+}
+
+.sponsor-splash__ball3d {
+  position: absolute;
+  left: 50%;
+  top: min(47vw, 190px);
+  z-index: 8;
+  width: min(52vw, 206px);
+  height: min(52vw, 206px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter:
+    drop-shadow(0 0 24px rgba(35, 239, 255, .26))
+    drop-shadow(0 28px 34px rgba(0, 0, 0, .58));
+  animation: sponsor-ball3d-enter .9s cubic-bezier(.18, .92, .22, 1) both;
+}
+
+.sponsor-splash__ball3d canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .sponsor-splash__dynamic-ball {
@@ -20765,6 +20769,21 @@ body::after,
   }
 }
 
+@keyframes sponsor-ball3d-enter {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -42%) scale(.72);
+  }
+  68% {
+    opacity: 1;
+    transform: translate(-50%, -51%) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
 @keyframes sponsor-ball-slow-roll {
   0%, 100% {
     transform: translate(-50%, -50%) perspective(560px) rotateX(5deg) rotateY(-9deg) rotateZ(-1.5deg);
@@ -20792,52 +20811,13 @@ body::after,
   }
 
   .sponsor-splash__stage--official_ball .sponsor-splash__brand {
-    top: min(43vw, 154px) !important;
-    width: 66px !important;
-    height: 58px !important;
-    padding: 7px !important;
+    display: none;
   }
 
-  .sponsor-splash__dynamic-ball {
-    top: min(43vw, 154px);
-    width: 138px;
-    height: 138px;
-  }
-
-  .sponsor-splash__ball-panel {
-    width: 35px;
-    height: 32px;
-    padding: 6px;
-  }
-
-  .sponsor-splash__ball-panel--1 {
-    left: 10px;
-    top: 18px;
-  }
-
-  .sponsor-splash__ball-panel--2 {
-    right: 10px;
-    top: 20px;
-  }
-
-  .sponsor-splash__ball-panel--3 {
-    left: 14px;
-    bottom: 22px;
-  }
-
-  .sponsor-splash__ball-panel--4 {
-    right: 16px;
-    bottom: 20px;
-  }
-
-  .sponsor-splash__ball-panel--5 {
-    left: 50px;
-    top: 6px;
-  }
-
-  .sponsor-splash__ball-panel--6 {
-    left: 50px;
-    bottom: 6px;
+  .sponsor-splash__ball3d {
+    top: min(48vw, 168px);
+    width: min(58vw, 206px);
+    height: min(58vw, 206px);
   }
 
   .sponsor-splash__stage--yellow_match .sponsor-splash__photo,

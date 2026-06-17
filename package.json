@@ -26,7 +26,8 @@
     "maplibre-gl": "^5.24.0",
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "three": "^0.184.0"
   },
   "overrides": {
     "postcss": "8.5.10"
@@ -35,6 +36,7 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@types/three": "^0.184.1",
     "typescript": "latest"
   }
 }
