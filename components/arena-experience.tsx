@@ -2685,8 +2685,8 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
 
       const resize = () => {
         const rect = mount.getBoundingClientRect();
-        const width = Math.max(180, Math.round(rect.width || mount.clientWidth || 180));
-        const height = Math.max(180, Math.round(rect.height || mount.clientHeight || width));
+        const width = Math.max(240, Math.round(rect.width || mount.clientWidth || 240));
+        const height = Math.max(240, Math.round(rect.height || mount.clientHeight || width));
         renderer.setSize(width, height, false);
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
