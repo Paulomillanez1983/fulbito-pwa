@@ -20385,12 +20385,54 @@ body::after,
 }
 
 .sponsor-splash__stage--official_ball .sponsor-splash__photo {
-  filter:
-    brightness(.8)
-    saturate(1.08)
-    drop-shadow(0 24px 42px rgba(0, 0, 0, .5));
-  opacity: .88;
+  display: none;
+}
+
+.sponsor-splash__stage--official_ball .sponsor-splash__scene {
+  width: min(74vw, 292px);
+  height: min(86vw, 372px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 214, 91, .28);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 218, 96, .28), transparent 20%),
+    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, .72), transparent 9%),
+    radial-gradient(circle at 80% 18%, rgba(255, 255, 255, .72), transparent 9%),
+    linear-gradient(180deg, rgba(1, 9, 14, .26), rgba(1, 9, 14, .72) 34%, rgba(0,0,0,.92) 100%),
+    repeating-linear-gradient(90deg, rgba(35, 132, 66, .95) 0 32px, rgba(18, 99, 50, .95) 32px 64px);
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, .46),
+    inset 0 0 0 1px rgba(255, 255, 255, .1);
   animation: sponsor-official-ball-scene 4.2s ease-in-out both;
+}
+
+.sponsor-splash__stage--official_ball .sponsor-splash__scene::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  width: 68%;
+  height: 46%;
+  border: 2px solid rgba(255, 255, 255, .5);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) perspective(420px) rotateX(68deg);
+  box-shadow:
+    0 0 0 999px rgba(0, 0, 0, .08),
+    inset 0 0 30px rgba(255, 255, 255, .12);
+}
+
+.sponsor-splash__stage--official_ball .sponsor-splash__scene::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 7%;
+  width: 74%;
+  height: 2px;
+  background: rgba(255, 255, 255, .5);
+  transform: translateX(-50%);
+  box-shadow:
+    0 -92px 0 rgba(255, 255, 255, .28),
+    0 -184px 0 rgba(255, 255, 255, .16);
 }
 
 .sponsor-splash__stage--official_ball .sponsor-splash__brand {
@@ -20421,7 +20463,7 @@ body::after,
     radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255, 219, 86, .25) 59% 100%);
 }
 
-.sponsor-splash__ball3d {
+.sponsor-splash__showpiece3d {
   position: absolute;
   left: 50%;
   top: min(47vw, 190px);
@@ -20436,10 +20478,23 @@ body::after,
   animation: sponsor-ball3d-enter .9s cubic-bezier(.18, .92, .22, 1) both;
 }
 
-.sponsor-splash__ball3d canvas {
+.sponsor-splash__showpiece3d canvas {
   display: block;
   width: 100% !important;
   height: 100% !important;
+}
+
+.sponsor-splash__showpiece3d--official_cup {
+  top: min(42vw, 176px);
+  width: min(54vw, 214px);
+  height: min(62vw, 246px);
+}
+
+.sponsor-splash__showpiece3d--match_ready,
+.sponsor-splash__showpiece3d--fulbito_tv_fans {
+  top: min(41vw, 170px);
+  width: min(50vw, 198px);
+  height: min(50vw, 198px);
 }
 
 .sponsor-splash__dynamic-ball {
@@ -20814,10 +20869,23 @@ body::after,
     display: none;
   }
 
-  .sponsor-splash__ball3d {
+  .sponsor-splash__showpiece3d {
     top: min(48vw, 168px);
     width: min(58vw, 206px);
     height: min(58vw, 206px);
+  }
+
+  .sponsor-splash__showpiece3d--official_cup {
+    top: min(45vw, 164px);
+    width: min(58vw, 204px);
+    height: min(66vw, 232px);
+  }
+
+  .sponsor-splash__showpiece3d--match_ready,
+  .sponsor-splash__showpiece3d--fulbito_tv_fans {
+    top: min(42vw, 154px);
+    width: min(54vw, 190px);
+    height: min(54vw, 190px);
   }
 
   .sponsor-splash__stage--yellow_match .sponsor-splash__photo,

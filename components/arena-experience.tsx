@@ -2410,14 +2410,14 @@ function sponsorSplashSceneImage(scene: SponsorSplashScene) {
   return "/assets/sponsor-yellow-card-hand.webp";
 }
 
-function SponsorBall3D({ logoUrl, advertiserName }: { logoUrl?: string | null; advertiserName: string }) {
+function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: string | null; advertiserName: string; sceneType: SponsorSplashScene }) {
   const mountRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     let cleanup = () => {};
 
-    async function mountBall() {
+    async function mountShowpiece() {
       const mount = mountRef.current;
       if (!mount) return;
       const THREE = await import("three");
@@ -2425,7 +2425,7 @@ function SponsorBall3D({ logoUrl, advertiserName }: { logoUrl?: string | null; a
 
       const scene = new THREE.Scene();
       const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
-      camera.position.set(0, 0, 4.1);
+      camera.position.set(0, 0, sceneType === "official_cup" ? 4.8 : 4.1);
 
       const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: "high-performance" });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.65));
@@ -2440,6 +2440,11 @@ function SponsorBall3D({ logoUrl, advertiserName }: { logoUrl?: string | null; a
       texture.wrapS = THREE.RepeatWrapping;
       texture.wrapT = THREE.ClampToEdgeWrapping;
       texture.anisotropy = 4;
+      const sponsorTextureCanvas = document.createElement("canvas");
+      sponsorTextureCanvas.width = 512;
+      sponsorTextureCanvas.height = 512;
+      const sponsorTexture = new THREE.CanvasTexture(sponsorTextureCanvas);
+      sponsorTexture.colorSpace = THREE.SRGBColorSpace;
 
       const drawTexture = (logo?: HTMLImageElement) => {
         const ctx = textureCanvas.getContext("2d");
@@ -2533,6 +2538,33 @@ function SponsorBall3D({ logoUrl, advertiserName }: { logoUrl?: string | null; a
         ctx.fill();
         ctx.globalAlpha = 1;
         texture.needsUpdate = true;
+
+        const sponsorCtx = sponsorTextureCanvas.getContext("2d");
+        if (!sponsorCtx) return;
+        sponsorCtx.clearRect(0, 0, sponsorTextureCanvas.width, sponsorTextureCanvas.height);
+        const sponsorGradient = sponsorCtx.createRadialGradient(190, 150, 18, 256, 256, 280);
+        sponsorGradient.addColorStop(0, "rgba(255,255,255,.96)");
+        sponsorGradient.addColorStop(0.42, "rgba(255,222,82,.96)");
+        sponsorGradient.addColorStop(1, "rgba(5,16,24,.94)");
+        sponsorCtx.fillStyle = sponsorGradient;
+        sponsorCtx.fillRect(0, 0, 512, 512);
+        sponsorCtx.strokeStyle = "rgba(255,235,140,.9)";
+        sponsorCtx.lineWidth = 16;
+        sponsorCtx.strokeRect(18, 18, 476, 476);
+        sponsorCtx.fillStyle = "rgba(4,12,18,.88)";
+        sponsorCtx.beginPath();
+        sponsorCtx.roundRect(76, 76, 360, 360, 48);
+        sponsorCtx.fill();
+        if (logo) {
+          sponsorCtx.drawImage(logo, 122, 122, 268, 268);
+        } else {
+          sponsorCtx.fillStyle = "#f7d45c";
+          sponsorCtx.font = "900 46px system-ui, sans-serif";
+          sponsorCtx.textAlign = "center";
+          sponsorCtx.textBaseline = "middle";
+          sponsorCtx.fillText("SPONSOR", 256, 256);
+        }
+        sponsorTexture.needsUpdate = true;
       };
 
       drawTexture();
@@ -2545,17 +2577,102 @@ function SponsorBall3D({ logoUrl, advertiserName }: { logoUrl?: string | null; a
         image.src = logoUrl;
       }
 
-      const geometry = new THREE.SphereGeometry(1.18, 96, 64);
-      const material = new THREE.MeshPhysicalMaterial({
+      const ballMaterial = new THREE.MeshPhysicalMaterial({
         map: texture,
         roughness: 0.44,
         metalness: 0.08,
         clearcoat: 0.68,
         clearcoatRoughness: 0.26
       });
-      const ball = new THREE.Mesh(geometry, material);
-      ball.rotation.set(-0.16, -0.32, 0.08);
-      scene.add(ball);
+      const goldMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0xe9b83f,
+        roughness: 0.28,
+        metalness: 0.76,
+        clearcoat: 0.45,
+        clearcoatRoughness: 0.18
+      });
+      const darkMaterial = new THREE.MeshPhysicalMaterial({
+        color: 0x07131c,
+        roughness: 0.5,
+        metalness: 0.34,
+        clearcoat: 0.35
+      });
+      const sponsorMaterial = new THREE.MeshPhysicalMaterial({
+        map: sponsorTexture,
+        roughness: 0.38,
+        metalness: 0.08,
+        clearcoat: 0.6,
+        transparent: true
+      });
+
+      const root = new THREE.Group();
+      scene.add(root);
+      const disposableGeometries: Array<{ dispose: () => void }> = [];
+      const addGeometry = <T extends { dispose: () => void }>(geometry: T) => {
+        disposableGeometries.push(geometry);
+        return geometry;
+      };
+
+      if (sceneType === "official_cup") {
+        const points = [
+          new THREE.Vector2(0.16, -1.08),
+          new THREE.Vector2(0.5, -0.94),
+          new THREE.Vector2(0.58, -0.24),
+          new THREE.Vector2(0.84, 0.36),
+          new THREE.Vector2(0.68, 0.95),
+          new THREE.Vector2(0.24, 1.12)
+        ];
+        const cup = new THREE.Mesh(addGeometry(new THREE.LatheGeometry(points, 72)), goldMaterial);
+        cup.scale.set(1.03, 1.03, 1.03);
+        root.add(cup);
+        const leftHandle = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.48, 0.045, 12, 42, Math.PI * 1.15)), goldMaterial);
+        leftHandle.position.set(-0.7, 0.34, 0);
+        leftHandle.rotation.set(0.2, 0.05, 1.28);
+        root.add(leftHandle);
+        const rightHandle = leftHandle.clone();
+        rightHandle.position.x = 0.7;
+        rightHandle.rotation.z = -1.28;
+        root.add(rightHandle);
+        const base = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.82, 0.98, 0.22, 72)), darkMaterial);
+        base.position.y = -1.25;
+        root.add(base);
+        const badge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.34, 48)), sponsorMaterial);
+        badge.position.set(0, 0.2, 0.86);
+        root.add(badge);
+        root.scale.setScalar(0.92);
+      } else if (sceneType === "match_ready") {
+        const watch = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.86, 0.86, 0.24, 72)), darkMaterial);
+        watch.rotation.x = Math.PI / 2;
+        root.add(watch);
+        const bezel = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.86, 0.06, 18, 80)), goldMaterial);
+        root.add(bezel);
+        const face = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.68, 64)), sponsorMaterial);
+        face.position.z = 0.14;
+        root.add(face);
+        const whistle = new THREE.Mesh(addGeometry(new THREE.CapsuleGeometry(0.34, 0.62, 12, 24)), goldMaterial);
+        whistle.position.set(-0.92, -0.64, 0.08);
+        whistle.rotation.set(0.48, 0.3, -0.7);
+        root.add(whistle);
+        root.scale.setScalar(1.08);
+      } else if (sceneType === "fulbito_tv_fans") {
+        const phone = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(1.62, 2.54, 0.12, 4, 4, 1)), darkMaterial);
+        phone.rotation.z = -0.12;
+        root.add(phone);
+        const screen = new THREE.Mesh(addGeometry(new THREE.PlaneGeometry(1.34, 2.08)), sponsorMaterial);
+        screen.position.set(0, 0, 0.08);
+        screen.rotation.z = -0.12;
+        root.add(screen);
+        const liveDotMaterial = new THREE.MeshBasicMaterial({ color: 0xff315a });
+        const liveDot = new THREE.Mesh(addGeometry(new THREE.SphereGeometry(0.08, 24, 16)), liveDotMaterial);
+        liveDot.position.set(0.48, 0.88, 0.16);
+        liveDot.userData.material = liveDotMaterial;
+        root.add(liveDot);
+        root.scale.setScalar(0.98);
+      } else {
+        const ball = new THREE.Mesh(addGeometry(new THREE.SphereGeometry(1.18, 96, 64)), ballMaterial);
+        ball.rotation.set(-0.16, -0.32, 0.08);
+        root.add(ball);
+      }
 
       const rimLight = new THREE.DirectionalLight(0x5df4ff, 2.25);
       rimLight.position.set(-3.2, 2.4, 4);
@@ -2581,9 +2698,9 @@ function SponsorBall3D({ logoUrl, advertiserName }: { logoUrl?: string | null; a
       const animate = () => {
         if (cancelled) return;
         frame = window.requestAnimationFrame(animate);
-        ball.rotation.y += 0.0105;
-        ball.rotation.x = -0.16 + Math.sin(performance.now() * 0.001) * 0.025;
-        ball.rotation.z = 0.08 + Math.sin(performance.now() * 0.0008) * 0.018;
+        root.rotation.y += sceneType === "official_ball" ? 0.0105 : 0.0072;
+        root.rotation.x = -0.08 + Math.sin(performance.now() * 0.001) * 0.035;
+        root.rotation.z = Math.sin(performance.now() * 0.0008) * 0.022;
         renderer.render(scene, camera);
       };
       animate();
@@ -2592,22 +2709,28 @@ function SponsorBall3D({ logoUrl, advertiserName }: { logoUrl?: string | null; a
         cancelled = true;
         window.cancelAnimationFrame(frame);
         observer.disconnect();
-        geometry.dispose();
-        material.dispose();
+        disposableGeometries.forEach((geometry) => geometry.dispose());
+        ballMaterial.dispose();
+        goldMaterial.dispose();
+        darkMaterial.dispose();
+        sponsorMaterial.dispose();
+        const liveDotMaterial = root.children.find((child) => child.userData.material)?.userData.material;
+        if (liveDotMaterial && typeof liveDotMaterial.dispose === "function") liveDotMaterial.dispose();
         texture.dispose();
+        sponsorTexture.dispose();
         renderer.dispose();
         renderer.domElement.remove();
       };
     }
 
-    void mountBall();
+    void mountShowpiece();
     return () => {
       cancelled = true;
       cleanup();
     };
-  }, [advertiserName, logoUrl]);
+  }, [advertiserName, logoUrl, sceneType]);
 
-  return <div className="sponsor-splash__ball3d" ref={mountRef} aria-label={`Balon 3D auspiciado por ${advertiserName}`} />;
+  return <div className={`sponsor-splash__showpiece3d sponsor-splash__showpiece3d--${sceneType}`} ref={mountRef} aria-label={`Pieza 3D auspiciada por ${advertiserName}`} />;
 }
 
 function SponsorSplashOverlay({
@@ -2685,7 +2808,7 @@ function SponsorSplashOverlay({
   const creativeStyle = { "--sponsor-creative-scale": creativeScale } as CSSProperties;
   const sceneLabel = sponsorSplashSceneLabel(scene);
   const sceneImageUrl = sponsorSplashSceneImage(scene);
-  const isBallSponsorScene = scene === "official_ball";
+  const isThreeSponsorScene = ["official_ball", "official_cup", "match_ready", "fulbito_tv_fans"].includes(scene);
 
   function visitSponsor() {
     if (!campaign) return;
@@ -2719,7 +2842,7 @@ function SponsorSplashOverlay({
             {logoUrl ? <img alt="" src={logoUrl} /> : <Megaphone size={46} />}
             <span className="sponsor-splash__card-footer">Fulbito Arena</span>
           </div>
-          {isBallSponsorScene ? <SponsorBall3D logoUrl={logoUrl} advertiserName={campaign.advertiser_name} /> : null}
+          {isThreeSponsorScene ? <SponsorShowpiece3D logoUrl={logoUrl} advertiserName={campaign.advertiser_name} sceneType={scene} /> : null}
         </div>
         <div className="sponsor-splash__copy">
           <span className="sponsor-splash__presented">{sceneLabel}</span>
