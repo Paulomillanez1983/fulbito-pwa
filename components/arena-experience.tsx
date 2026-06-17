@@ -2615,31 +2615,92 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
 
       if (sceneType === "official_cup") {
         const points = [
-          new THREE.Vector2(0.16, -1.08),
-          new THREE.Vector2(0.5, -0.94),
-          new THREE.Vector2(0.58, -0.24),
-          new THREE.Vector2(0.84, 0.36),
-          new THREE.Vector2(0.68, 0.95),
-          new THREE.Vector2(0.24, 1.12)
+          new THREE.Vector2(0.18, -1.12),
+          new THREE.Vector2(0.5, -1.02),
+          new THREE.Vector2(0.54, -0.78),
+          new THREE.Vector2(0.38, -0.55),
+          new THREE.Vector2(0.54, -0.18),
+          new THREE.Vector2(0.76, 0.36),
+          new THREE.Vector2(0.94, 0.86),
+          new THREE.Vector2(0.82, 1.12),
+          new THREE.Vector2(0.38, 1.24)
         ];
         const cup = new THREE.Mesh(addGeometry(new THREE.LatheGeometry(points, 72)), goldMaterial);
-        cup.scale.set(1.03, 1.03, 1.03);
+        cup.scale.set(0.94, 1.02, 0.94);
         root.add(cup);
-        const leftHandle = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.48, 0.045, 12, 42, Math.PI * 1.15)), goldMaterial);
-        leftHandle.position.set(-0.7, 0.34, 0);
-        leftHandle.rotation.set(0.2, 0.05, 1.28);
+
+        const topRim = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.8, 0.045, 16, 96)), goldMaterial);
+        topRim.position.y = 1.14;
+        topRim.rotation.x = Math.PI / 2;
+        topRim.scale.z = 0.72;
+        root.add(topRim);
+
+        const innerShadow = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.72, 72)), darkMaterial);
+        innerShadow.position.set(0, 1.145, 0);
+        innerShadow.rotation.x = -Math.PI / 2;
+        innerShadow.scale.z = 0.62;
+        root.add(innerShadow);
+
+        const leftCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(-0.74, 0.82, 0.03),
+          new THREE.Vector3(-1.17, 0.62, 0.08),
+          new THREE.Vector3(-1.2, 0.08, 0.08),
+          new THREE.Vector3(-0.76, -0.1, 0.03)
+        ]);
+        const leftHandle = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(leftCurve, 48, 0.045, 14, false)), goldMaterial);
         root.add(leftHandle);
-        const rightHandle = leftHandle.clone();
-        rightHandle.position.x = 0.7;
-        rightHandle.rotation.z = -1.28;
+        const rightCurve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0.74, 0.82, 0.03),
+          new THREE.Vector3(1.17, 0.62, 0.08),
+          new THREE.Vector3(1.2, 0.08, 0.08),
+          new THREE.Vector3(0.76, -0.1, 0.03)
+        ]);
+        const rightHandle = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(rightCurve, 48, 0.045, 14, false)), goldMaterial);
         root.add(rightHandle);
-        const base = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.82, 0.98, 0.22, 72)), darkMaterial);
+
+        const leftHandleCore = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(leftCurve, 48, 0.022, 10, false)), darkMaterial);
+        leftHandleCore.scale.setScalar(0.86);
+        root.add(leftHandleCore);
+        const rightHandleCore = new THREE.Mesh(addGeometry(new THREE.TubeGeometry(rightCurve, 48, 0.022, 10, false)), darkMaterial);
+        rightHandleCore.scale.setScalar(0.86);
+        root.add(rightHandleCore);
+
+        const waistRing = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.5, 0.032, 12, 72)), goldMaterial);
+        waistRing.position.y = -0.62;
+        waistRing.rotation.x = Math.PI / 2;
+        root.add(waistRing);
+
+        const base = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.82, 1.02, 0.22, 72)), darkMaterial);
         base.position.y = -1.25;
         root.add(base);
-        const badge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.34, 48)), sponsorMaterial);
-        badge.position.set(0, 0.2, 0.86);
-        root.add(badge);
-        root.scale.setScalar(0.92);
+        const baseTop = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.62, 0.72, 0.14, 72)), goldMaterial);
+        baseTop.position.y = -1.08;
+        root.add(baseTop);
+
+        const frontPlateBack = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(0.62, 0.62, 0.055)), goldMaterial);
+        frontPlateBack.position.set(0, 0.25, 0.78);
+        frontPlateBack.rotation.x = -0.06;
+        root.add(frontPlateBack);
+        const frontBadge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.3, 64)), sponsorMaterial);
+        frontBadge.position.set(0, 0.25, 0.815);
+        frontBadge.rotation.x = -0.06;
+        root.add(frontBadge);
+
+        const backPlateBack = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(0.52, 0.52, 0.045)), goldMaterial);
+        backPlateBack.position.set(0, 0.18, -0.78);
+        backPlateBack.rotation.set(0.06, Math.PI, 0);
+        root.add(backPlateBack);
+        const backBadge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.25, 64)), sponsorMaterial);
+        backBadge.position.set(0, 0.18, -0.812);
+        backBadge.rotation.set(0.06, Math.PI, 0);
+        root.add(backBadge);
+
+        const shine = new THREE.Mesh(addGeometry(new THREE.PlaneGeometry(0.14, 1.75)), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2 }));
+        shine.position.set(-0.22, 0.14, 0.88);
+        shine.rotation.z = -0.18;
+        shine.userData.material = shine.material;
+        root.add(shine);
+        root.scale.setScalar(0.9);
       } else if (sceneType === "match_ready") {
         const watch = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.86, 0.86, 0.24, 72)), darkMaterial);
         watch.rotation.x = Math.PI / 2;
@@ -2715,8 +2776,10 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
         goldMaterial.dispose();
         darkMaterial.dispose();
         sponsorMaterial.dispose();
-        const liveDotMaterial = root.children.find((child) => child.userData.material)?.userData.material;
-        if (liveDotMaterial && typeof liveDotMaterial.dispose === "function") liveDotMaterial.dispose();
+        root.children.forEach((child) => {
+          const extraMaterial = child.userData.material;
+          if (extraMaterial && typeof extraMaterial.dispose === "function") extraMaterial.dispose();
+        });
         texture.dispose();
         sponsorTexture.dispose();
         renderer.dispose();
