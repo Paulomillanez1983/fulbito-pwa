@@ -2851,19 +2851,19 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
         clearcoatRoughness: 0.18
       });
       const trophyMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0xf4c65d,
-        roughness: 0.16,
-        metalness: 0.92,
-        clearcoat: 0.86,
-        clearcoatRoughness: 0.1,
-        reflectivity: 0.88
+        color: 0xe5edf3,
+        roughness: 0.13,
+        metalness: 0.96,
+        clearcoat: 0.9,
+        clearcoatRoughness: 0.08,
+        reflectivity: 0.92
       });
       const trophyShadowMaterial = new THREE.MeshPhysicalMaterial({
-        color: 0x3a2508,
-        roughness: 0.28,
-        metalness: 0.74,
-        clearcoat: 0.5,
-        clearcoatRoughness: 0.14
+        color: 0x8f9ca8,
+        roughness: 0.24,
+        metalness: 0.86,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.12
       });
       const darkMaterial = new THREE.MeshPhysicalMaterial({
         color: 0x07131c,
@@ -2976,28 +2976,28 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
         baseRing.rotation.x = Math.PI / 2;
         root.add(baseRing);
 
-        const frontPlateBack = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(0.7, 0.7, 0.055)), trophyMaterial);
+        const frontPlateBack = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(0.82, 0.82, 0.055)), trophyMaterial);
         frontPlateBack.position.set(0, 0.25, 0.78);
         frontPlateBack.rotation.x = -0.06;
         root.add(frontPlateBack);
-        const frontFrame = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.36, 0.026, 12, 72)), trophyMaterial);
+        const frontFrame = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.42, 0.028, 12, 72)), trophyMaterial);
         frontFrame.position.set(0, 0.25, 0.837);
         frontFrame.rotation.x = -0.06;
         root.add(frontFrame);
-        const frontBadge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.31, 72)), sponsorMaterial);
+        const frontBadge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.37, 72)), sponsorMaterial);
         frontBadge.position.set(0, 0.25, 0.846);
         frontBadge.rotation.x = -0.06;
         root.add(frontBadge);
 
-        const backPlateBack = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(0.58, 0.58, 0.045)), trophyMaterial);
+        const backPlateBack = new THREE.Mesh(addGeometry(new THREE.BoxGeometry(0.72, 0.72, 0.045)), trophyMaterial);
         backPlateBack.position.set(0, 0.18, -0.78);
         backPlateBack.rotation.set(0.06, Math.PI, 0);
         root.add(backPlateBack);
-        const backFrame = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.3, 0.022, 12, 72)), trophyMaterial);
+        const backFrame = new THREE.Mesh(addGeometry(new THREE.TorusGeometry(0.37, 0.024, 12, 72)), trophyMaterial);
         backFrame.position.set(0, 0.18, -0.835);
         backFrame.rotation.set(0.06, Math.PI, 0);
         root.add(backFrame);
-        const backBadge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.255, 72)), sponsorMaterial);
+        const backBadge = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.32, 72)), sponsorMaterial);
         backBadge.position.set(0, 0.18, -0.846);
         backBadge.rotation.set(0.06, Math.PI, 0);
         root.add(backBadge);
@@ -3012,7 +3012,7 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
         highlight.rotation.z = 0.14;
         highlight.userData.material = highlight.material;
         root.add(highlight);
-        root.scale.setScalar(0.9);
+        root.scale.setScalar(1.04);
       } else if (sceneType === "official_medal") {
         const medalGroup = new THREE.Group();
         root.add(medalGroup);
@@ -3028,20 +3028,20 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
         innerRim.position.z = 0.105;
         medalGroup.add(innerRim);
 
-        const sponsorDiscBack = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.72, 96)), darkMaterial);
+        const sponsorDiscBack = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.82, 96)), darkMaterial);
         sponsorDiscBack.position.z = 0.112;
         medalGroup.add(sponsorDiscBack);
 
-        const sponsorDisc = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.64, 96)), sponsorMaterial);
+        const sponsorDisc = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.74, 96)), sponsorMaterial);
         sponsorDisc.position.z = 0.124;
         medalGroup.add(sponsorDisc);
 
-        const backSponsorDiscBack = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.74, 96)), darkMaterial);
+        const backSponsorDiscBack = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.84, 96)), darkMaterial);
         backSponsorDiscBack.position.z = -0.112;
         backSponsorDiscBack.rotation.y = Math.PI;
         medalGroup.add(backSponsorDiscBack);
 
-        const backSponsorDisc = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.68, 96)), sponsorMaterial);
+        const backSponsorDisc = new THREE.Mesh(addGeometry(new THREE.CircleGeometry(0.76, 96)), sponsorMaterial);
         backSponsorDisc.position.z = -0.124;
         backSponsorDisc.rotation.y = Math.PI;
         medalGroup.add(backSponsorDisc);
@@ -3106,7 +3106,7 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
         glint.userData.material = glint.material;
         medalGroup.add(glint);
 
-        root.scale.setScalar(0.94);
+        root.scale.setScalar(1.12);
       } else if (sceneType === "match_ready") {
         const watch = new THREE.Mesh(addGeometry(new THREE.CylinderGeometry(0.86, 0.86, 0.24, 72)), darkMaterial);
         watch.rotation.x = Math.PI / 2;
@@ -3202,7 +3202,7 @@ function SponsorShowpiece3D({ logoUrl, advertiserName, sceneType }: { logoUrl?: 
       const ambient = new THREE.AmbientLight(0xffffff, 0.9);
       scene.add(ambient);
       if (sceneType === "official_cup" || sceneType === "official_medal") {
-        const trophyGlow = new THREE.PointLight(0xffd66d, 2.4, 5.6);
+        const trophyGlow = new THREE.PointLight(0xeaf7ff, 2.5, 5.8);
         trophyGlow.position.set(0.2, 1.25, 2.2);
         scene.add(trophyGlow);
         const coolEdge = new THREE.PointLight(0x4ef5ff, 1.25, 4.2);

@@ -20413,9 +20413,12 @@ body:has(.arena-splash) {
 }
 
 .arena-splash__ball3d--sponsor {
-  inset: -24%;
-  width: 148%;
-  height: 148%;
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: 142%;
+  height: 142%;
+  transform: translate(-50%, -50%);
   filter:
     drop-shadow(0 34px 46px rgba(0, 0, 0, .6))
     drop-shadow(0 0 40px rgba(0, 229, 255, .3))
