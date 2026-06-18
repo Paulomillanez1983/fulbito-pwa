@@ -4258,6 +4258,9 @@ body::after {
 .sponsor-splash__copy {
   display: grid;
   gap: 6px;
+  justify-items: center;
+  width: 100%;
+  text-align: center;
 }
 
 .sponsor-splash__presented {
@@ -4292,6 +4295,7 @@ body::after {
   font-size: clamp(1.55rem, 7vw, 2.35rem);
   line-height: .98;
   text-transform: uppercase;
+  text-align: center;
 }
 
 .sponsor-splash__copy p,
@@ -20323,6 +20327,301 @@ body::after,
   }
 }
 
+html:has(.arena-splash),
+body:has(.arena-splash) {
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.arena-splash {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto minmax(18px, .18fr);
+  place-items: center;
+  gap: clamp(10px, 2.1dvh, 18px);
+  padding:
+    max(16px, env(safe-area-inset-top))
+    18px
+    max(18px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 34%, rgba(0, 229, 255, .31), transparent 21%),
+    radial-gradient(circle at 42% 49%, rgba(255, 46, 209, .14), transparent 18%),
+    radial-gradient(circle at 60% 63%, rgba(255, 212, 0, .15), transparent 22%),
+    linear-gradient(116deg, transparent 0 36%, rgba(0, 229, 255, .14) 45%, transparent 55%),
+    linear-gradient(246deg, transparent 0 34%, rgba(255, 212, 0, .13) 45%, transparent 57%),
+    linear-gradient(180deg, rgba(5, 21, 31, .98), rgba(2, 6, 13, .99) 67%, #000208);
+  animation: splash-out .46s ease 3.22s forwards;
+  z-index: 9999;
+}
+
+.arena-splash__stadium {
+  opacity: .28;
+  filter: saturate(1.25) contrast(1.12);
+}
+
+.arena-splash__particles {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 28%, rgba(255,255,255,.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 78% 22%, rgba(0,229,255,.95) 0 2px, transparent 3px),
+    radial-gradient(circle at 84% 38%, rgba(255,255,255,.82) 0 2px, transparent 3px),
+    radial-gradient(circle at 25% 61%, rgba(255,212,0,.82) 0 2px, transparent 3px),
+    radial-gradient(circle at 67% 72%, rgba(255,46,209,.72) 0 2px, transparent 3px);
+  opacity: 0;
+  animation: splash-particles-in .8s ease .55s forwards, splash-particles-drift 4.4s linear .55s infinite;
+  pointer-events: none;
+}
+
+.arena-splash__scene {
+  width: min(86vw, 350px);
+  height: min(47dvh, 354px);
+  max-height: 390px;
+  transform-style: preserve-3d;
+  animation: splash-scene-reveal .7s cubic-bezier(.17, .88, .19, 1.08) .18s both, splash-scene-lift 2.4s ease-in-out .95s infinite alternate;
+}
+
+.arena-splash__ball {
+  width: clamp(190px, 48vw, 286px);
+  height: clamp(190px, 48vw, 286px);
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: splash-ball-pulse 2.4s ease-in-out .9s infinite alternate;
+  transform: translateZ(18px);
+}
+
+.arena-splash__ball3d,
+.arena-splash__ball-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.arena-splash__ball3d {
+  filter:
+    drop-shadow(0 32px 44px rgba(0, 0, 0, .58))
+    drop-shadow(0 0 36px rgba(0, 229, 255, .28))
+    drop-shadow(0 0 28px rgba(255, 212, 0, .16));
+}
+
+.arena-splash__ball3d--sponsor {
+  inset: -24%;
+  width: 148%;
+  height: 148%;
+  filter:
+    drop-shadow(0 34px 46px rgba(0, 0, 0, .6))
+    drop-shadow(0 0 40px rgba(0, 229, 255, .3))
+    drop-shadow(0 0 30px rgba(255, 212, 0, .18));
+}
+
+.arena-splash__ball3d--sponsor .sponsor-splash__showpiece3d {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.arena-splash__ball-canvas {
+  display: block;
+}
+
+.arena-splash__ball-image {
+  display: none;
+}
+
+.arena-splash__ball .arena-splash__shine {
+  z-index: 2;
+  inset: 4%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 31% 20%, rgba(255, 255, 255, .25), transparent 13%),
+    radial-gradient(circle at 72% 79%, rgba(255, 212, 0, .16), transparent 24%),
+    linear-gradient(112deg, transparent 0 48%, rgba(255, 255, 255, .1) 50%, transparent 54%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: splash-shine-sweep 2.2s ease-in-out .7s infinite alternate;
+}
+
+.arena-splash__orbit {
+  width: 118%;
+  height: 40%;
+  border: 1px solid rgba(255,255,255,.17);
+  border-radius: 50%;
+  opacity: 0;
+  transform-origin: center;
+  animation: splash-orbit-reveal .46s ease .62s forwards;
+}
+
+.arena-splash__orbit--cyan {
+  border-color: rgba(0, 229, 255, .78);
+  box-shadow: 0 0 28px rgba(0, 229, 255, .34), inset 0 0 20px rgba(0, 229, 255, .12);
+  animation: splash-orbit-reveal .46s ease .62s forwards, splash-orbit-cyan 2.8s linear .62s infinite;
+}
+
+.arena-splash__orbit--magenta {
+  width: 110%;
+  height: 37%;
+  border-color: rgba(255, 46, 209, .68);
+  box-shadow: 0 0 28px rgba(255, 46, 209, .24);
+  transform: rotateX(68deg) rotateZ(41deg);
+  animation: splash-orbit-reveal .46s ease .72s forwards, splash-orbit-magenta 3.4s linear .72s infinite reverse;
+}
+
+.arena-splash__orbit--gold {
+  width: 124%;
+  height: 43%;
+  border-color: rgba(255, 212, 0, .68);
+  box-shadow: 0 0 28px rgba(255, 212, 0, .22);
+  animation: splash-orbit-reveal .46s ease .82s forwards, splash-orbit-gold 3.8s linear .82s infinite reverse;
+}
+
+.arena-splash__ground {
+  bottom: clamp(8px, 3.4dvh, 26px);
+  width: clamp(170px, 48vw, 290px);
+  height: clamp(28px, 7vw, 48px);
+  background:
+    radial-gradient(ellipse at center, rgba(0, 229, 255, .42), rgba(0, 229, 255, .1) 42%, transparent 72%),
+    radial-gradient(ellipse at center, rgba(255, 212, 0, .17), transparent 70%);
+  border: 1px solid rgba(0, 229, 255, .22);
+  filter: blur(1px);
+  box-shadow: 0 0 36px rgba(0, 229, 255, .22);
+}
+
+.arena-splash__copy {
+  animation: splash-title-reveal .64s cubic-bezier(.18, .9, .18, 1) 1.42s both;
+}
+
+.arena-splash__copy strong {
+  color: #e8e8e8;
+  font-size: clamp(2.08rem, 9.6vw, 3.35rem);
+  line-height: .94;
+  text-shadow:
+    0 0 18px rgba(0, 229, 255, .22),
+    0 0 34px rgba(255, 212, 0, .12),
+    0 8px 22px rgba(0,0,0,.58);
+}
+
+.arena-splash__copy small {
+  padding: 8px 20px;
+  border-color: rgba(255, 212, 0, .66);
+  background: linear-gradient(180deg, rgba(255,212,0,.18), rgba(255,212,0,.08));
+  color: #ffd400;
+  box-shadow: 0 0 24px rgba(255,212,0,.18), inset 0 0 0 1px rgba(255,255,255,.08);
+}
+
+.arena-splash__loading {
+  width: min(210px, 54vw);
+  height: 5px;
+  animation: splash-title-reveal .5s ease 1.72s both;
+}
+
+.arena-splash__loading i {
+  background: linear-gradient(90deg, #00e5ff, #ff2ed1 48%, #ffd400);
+}
+
+@keyframes splash-scene-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(34px) scale(.78);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes splash-orbit-reveal {
+  from {
+    opacity: 0;
+    scale: .72;
+  }
+  to {
+    opacity: .88;
+    scale: 1;
+  }
+}
+
+@keyframes splash-orbit-magenta {
+  to {
+    transform: rotateX(68deg) rotateZ(401deg);
+  }
+}
+
+@keyframes splash-ball-pulse {
+  from {
+    filter: saturate(1.03) brightness(1);
+  }
+  to {
+    filter: saturate(1.14) brightness(1.08);
+  }
+}
+
+@keyframes splash-shine-sweep {
+  from {
+    opacity: .62;
+    transform: rotate(-8deg);
+  }
+  to {
+    opacity: .94;
+    transform: rotate(10deg);
+  }
+}
+
+@keyframes splash-title-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes splash-particles-in {
+  to {
+    opacity: .7;
+  }
+}
+
+@keyframes splash-particles-drift {
+  to {
+    transform: translateY(-18px);
+  }
+}
+
+@media (max-width: 760px) {
+  .arena-splash {
+    gap: clamp(10px, 1.9dvh, 16px);
+  }
+
+  .arena-splash__scene {
+    width: min(92vw, 330px);
+    height: min(45dvh, 330px);
+  }
+
+  .arena-splash__ball {
+    width: clamp(188px, 58vw, 260px);
+    height: clamp(188px, 58vw, 260px);
+  }
+
+  .arena-splash__copy strong {
+    font-size: clamp(2.16rem, 10.2vw, 2.82rem);
+  }
+}
+
 .sponsor-splash__scene {
   z-index: 1;
   overflow: visible;
@@ -20384,6 +20683,37 @@ body::after,
   opacity: .74;
 }
 
+.sponsor-splash--official_ball .sponsor-splash__card {
+  background:
+    linear-gradient(180deg, rgba(3, 10, 16, .32), rgba(3, 8, 13, .7) 44%, rgba(2, 5, 9, .94) 100%),
+    radial-gradient(circle at 50% 20%, rgba(255, 225, 112, .22), transparent 24%),
+    radial-gradient(circle at 18% 28%, rgba(255, 255, 255, .38), transparent 8%),
+    radial-gradient(circle at 82% 28%, rgba(255, 255, 255, .38), transparent 8%),
+    url("/assets/arena-stadium-bg-v2.webp");
+  background-size: cover;
+  background-position: center top;
+  box-shadow:
+    0 28px 74px rgba(0, 0, 0, .72),
+    inset 0 0 0 1px rgba(255, 226, 129, .25),
+    inset 0 0 72px rgba(42, 238, 255, .07);
+}
+
+.sponsor-splash--official_ball .sponsor-splash__card::before {
+  background:
+    radial-gradient(circle at 17% 27%, rgba(255, 255, 255, .5), transparent 8%),
+    radial-gradient(circle at 83% 27%, rgba(255, 255, 255, .5), transparent 8%),
+    linear-gradient(180deg, rgba(1, 8, 14, .1), rgba(1, 8, 14, .34) 50%, rgba(1, 6, 10, .78) 100%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 8px);
+  opacity: .88;
+}
+
+.sponsor-splash--official_ball .sponsor-splash__card::after {
+  background:
+    radial-gradient(ellipse at 50% 92%, rgba(18, 142, 67, .5), rgba(3, 36, 23, .18) 46%, transparent 74%),
+    linear-gradient(180deg, transparent, rgba(0, 0, 0, .46));
+  opacity: .72;
+}
+
 .sponsor-splash__stage--official_ball .sponsor-splash__photo {
   display: none;
 }
@@ -20392,17 +20722,10 @@ body::after,
   width: min(74vw, 292px);
   height: min(86vw, 372px);
   border-radius: 24px;
-  border: 1px solid rgba(255, 214, 91, .28);
+  border: 0;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 28%, rgba(255, 218, 96, .28), transparent 20%),
-    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, .72), transparent 9%),
-    radial-gradient(circle at 80% 18%, rgba(255, 255, 255, .72), transparent 9%),
-    linear-gradient(180deg, rgba(1, 9, 14, .26), rgba(1, 9, 14, .72) 34%, rgba(0,0,0,.92) 100%),
-    repeating-linear-gradient(90deg, rgba(35, 132, 66, .95) 0 32px, rgba(18, 99, 50, .95) 32px 64px);
-  box-shadow:
-    0 22px 44px rgba(0, 0, 0, .46),
-    inset 0 0 0 1px rgba(255, 255, 255, .1);
+  background: transparent;
+  box-shadow: none;
   animation: sponsor-official-ball-scene 4.2s ease-in-out both;
 }
 
@@ -20419,6 +20742,7 @@ body::after,
   box-shadow:
     0 0 0 999px rgba(0, 0, 0, .08),
     inset 0 0 30px rgba(255, 255, 255, .12);
+  display: none;
 }
 
 .sponsor-splash__stage--official_ball .sponsor-splash__scene::after {
@@ -20433,9 +20757,14 @@ body::after,
   box-shadow:
     0 -92px 0 rgba(255, 255, 255, .28),
     0 -184px 0 rgba(255, 255, 255, .16);
+  display: none;
 }
 
 .sponsor-splash__stage--official_ball .sponsor-splash__brand {
+  display: none;
+}
+
+.sponsor-splash__stage--official_ball .sponsor-splash__card-aura {
   display: none;
 }
 
@@ -20463,7 +20792,343 @@ body::after,
     radial-gradient(circle at 50% 50%, transparent 0 58%, rgba(255, 219, 86, .25) 59% 100%);
 }
 
-.sponsor-splash--official_cup .sponsor-splash__card {
+.sponsor-splash__stage--fulbito_tv_fans .sponsor-splash__photo,
+.sponsor-splash__stage--fulbito_tv_fans .sponsor-splash__brand,
+.sponsor-splash__stage--fulbito_tv_fans .sponsor-splash__card-aura {
+  display: none;
+}
+
+.sponsor-splash__stage--match_ready .sponsor-splash__photo,
+.sponsor-splash__stage--match_ready .sponsor-splash__brand,
+.sponsor-splash__stage--match_ready .sponsor-splash__card-aura {
+  display: none;
+}
+
+.sponsor-splash__stage--match_ready .sponsor-splash__scene {
+  width: min(74vw, 292px);
+  height: min(86vw, 372px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 214, 91, .28);
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(1, 8, 13, .04), rgba(1, 8, 13, .12) 44%, rgba(0, 0, 0, .24) 100%),
+    url("/assets/sponsor-scene-match-ready.webp");
+  background-size: cover;
+  background-position: center;
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, .46),
+    inset 0 0 0 1px rgba(255, 255, 255, .1),
+    inset 0 0 54px rgba(35, 238, 255, .08);
+  animation: sponsor-match-ready-photo 1.05s cubic-bezier(.18,.9,.16,1) both;
+}
+
+.sponsor-splash__stage--match_ready .sponsor-splash__scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 64% 36%, rgba(37, 229, 255, .2), transparent 18%),
+    radial-gradient(circle at 38% 34%, rgba(255, 221, 88, .16), transparent 16%),
+    linear-gradient(105deg, transparent 0 36%, rgba(255, 255, 255, .12) 43%, transparent 52%);
+  mix-blend-mode: screen;
+  opacity: .72;
+  pointer-events: none;
+}
+
+.sponsor-splash__stage--match_ready .sponsor-splash__scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, transparent 0 68%, rgba(0, 0, 0, .22) 100%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, .035) 0 1px, transparent 1px 5px);
+  pointer-events: none;
+}
+
+.sponsor-splash__match-ad {
+  position: absolute;
+  left: 66%;
+  top: min(31vw, 126px);
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  width: min(23vw, 92px);
+  min-height: min(20vw, 78px);
+  padding: 6px 7px 7px;
+  border: 1px solid rgba(255, 226, 116, .48);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 231, 114, .22), rgba(6, 14, 18, .82) 38%, rgba(4, 8, 13, .92)),
+    radial-gradient(circle at 50% 20%, rgba(42, 232, 255, .16), transparent 46%);
+  box-shadow:
+    0 18px 28px rgba(0, 0, 0, .46),
+    inset 0 0 0 1px rgba(255, 255, 255, .08),
+    inset 0 0 22px rgba(255, 221, 86, .12);
+  transform: translate(-50%, -50%) rotate(4.4deg) perspective(420px) rotateY(-16deg) scale(var(--sponsor-creative-scale, 1));
+  transform-origin: 50% 58%;
+  pointer-events: none;
+  animation: sponsor-match-ready-badge 1.12s cubic-bezier(.16,.92,.2,1.08) both;
+}
+
+.sponsor-splash__match-ad::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(120deg, transparent 0 36%, rgba(255, 255, 255, .22) 43%, transparent 54%);
+  opacity: .74;
+  pointer-events: none;
+}
+
+.sponsor-splash__match-ad-kicker {
+  position: relative;
+  z-index: 1;
+  color: #ffe27d;
+  font-size: .38rem;
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.sponsor-splash__match-ad-logo {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: min(12vw, 48px);
+  height: min(12vw, 48px);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .92);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, .34),
+    0 0 18px rgba(42, 232, 255, .16);
+  overflow: hidden;
+}
+
+.sponsor-splash__match-ad-logo img,
+.sponsor-splash__match-ad-logo svg {
+  width: 82%;
+  height: 82%;
+  object-fit: contain;
+}
+
+.sponsor-splash__match-ad strong {
+  position: relative;
+  z-index: 1;
+  max-width: 12ch;
+  color: #f6fbff;
+  font-size: .43rem;
+  font-weight: 1000;
+  line-height: .98;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(42, 232, 255, .28);
+}
+
+.sponsor-splash__stage--fulbito_tv_fans .sponsor-splash__scene {
+  width: min(74vw, 292px);
+  height: min(86vw, 372px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 214, 91, .28);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(255, 226, 112, .22), transparent 22%),
+    linear-gradient(180deg, rgba(1, 9, 14, .12), rgba(1, 9, 14, .52) 44%, rgba(0,0,0,.9) 100%),
+    url("/assets/arena-stadium-bg-v2.webp");
+  background-size: cover;
+  background-position: center 60%;
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, .46),
+    inset 0 0 0 1px rgba(255, 255, 255, .1),
+    inset 0 0 56px rgba(35, 238, 255, .1);
+}
+
+.sponsor-splash__stage--fulbito_tv_fans .sponsor-splash__scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, .22), transparent 8%),
+    radial-gradient(circle at 82% 22%, rgba(255, 255, 255, .2), transparent 8%),
+    linear-gradient(180deg, rgba(255,255,255,.08), transparent 24%, rgba(0,0,0,.28) 100%);
+  opacity: .58;
+}
+
+.sponsor-splash__stage--fulbito_tv_fans .sponsor-splash__scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 86%, rgba(28, 198, 99, .34), rgba(9, 70, 44, .14) 36%, transparent 70%),
+    radial-gradient(circle at 50% 48%, transparent 0 36%, rgba(0,0,0,.48) 100%);
+  pointer-events: none;
+}
+
+.sponsor-splash__phone-ad {
+  position: absolute;
+  left: 50%;
+  top: min(39vw, 152px);
+  z-index: 8;
+  width: min(88vw, 344px);
+  aspect-ratio: 810 / 453;
+  transform: translate(-50%, -50%) rotate(-2.8deg);
+  transform-origin: 50% 64%;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 22px 34px rgba(0, 0, 0, .6))
+    drop-shadow(0 0 20px rgba(43, 229, 255, .16));
+  animation: sponsor-phone-webp-rise 1.05s cubic-bezier(.16,.92,.2,1.08) both;
+}
+
+.sponsor-splash__phone-ad-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 20px;
+  opacity: .98;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 8%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 8%, #000 86%, transparent 100%);
+}
+
+.sponsor-splash__phone-ad::after {
+  content: "";
+  position: absolute;
+  inset: 12% 6% 9% 8%;
+  border-radius: 24px;
+  background:
+    linear-gradient(115deg, transparent 0 31%, rgba(255,255,255,.22) 36%, transparent 48%),
+    radial-gradient(circle at 76% 26%, rgba(255, 235, 160, .34), transparent 7%);
+  mix-blend-mode: screen;
+  opacity: .62;
+}
+
+.sponsor-splash__phone-ad-screen {
+  position: absolute;
+  left: 31%;
+  top: 25%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  width: 43%;
+  height: 40%;
+  border: 1px solid rgba(73, 240, 255, .32);
+  border-radius: 17px;
+  padding: 8px;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(65, 238, 255, .26), transparent 38%),
+    linear-gradient(180deg, rgba(3, 13, 21, .86), rgba(1, 6, 12, .95));
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, .44),
+    inset 0 0 0 1px rgba(255, 255, 255, .08),
+    inset 0 0 26px rgba(30, 230, 255, .1);
+  transform: rotate(-1.8deg) scale(var(--sponsor-creative-scale, 1));
+  transform-origin: 50% 50%;
+  overflow: hidden;
+}
+
+.sponsor-splash__phone-ad-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(100deg, transparent 0 36%, rgba(255,255,255,.16) 42%, transparent 55%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.04) 0 1px, transparent 1px 5px);
+  pointer-events: none;
+}
+
+.sponsor-splash__phone-ad-screen img,
+.sponsor-splash__phone-ad-screen svg {
+  position: relative;
+  z-index: 1;
+  width: 58%;
+  max-height: 48px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .42));
+}
+
+.sponsor-splash__phone-ad-screen strong {
+  position: relative;
+  z-index: 1;
+  max-width: 12ch;
+  color: #f7fbff;
+  font-size: .58rem;
+  font-weight: 1000;
+  line-height: .96;
+  text-align: center;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(38, 230, 255, .36);
+}
+
+.sponsor-splash__phone-ad-live {
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  z-index: 2;
+  border-radius: 999px;
+  padding: 2px 5px;
+  background: rgba(255, 38, 82, .92);
+  color: #fff;
+  font-size: .42rem;
+  font-weight: 1000;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.sponsor-splash__phone-ad-hearts {
+  position: absolute;
+  right: 6px;
+  top: 7px;
+  z-index: 2;
+  display: grid;
+  gap: 3px;
+}
+
+.sponsor-splash__phone-ad-hearts i {
+  width: 6px;
+  height: 6px;
+  background: #ff3d78;
+  transform: rotate(45deg);
+  animation: sponsor-phone-heart 1.6s ease-in-out infinite;
+}
+
+.sponsor-splash__phone-ad-hearts i::before,
+.sponsor-splash__phone-ad-hearts i::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: inherit;
+}
+
+.sponsor-splash__phone-ad-hearts i::before {
+  left: -3px;
+}
+
+.sponsor-splash__phone-ad-hearts i::after {
+  top: -3px;
+}
+
+.sponsor-splash__phone-ad-hearts i:nth-child(2) {
+  animation-delay: .18s;
+}
+
+.sponsor-splash__phone-ad-hearts i:nth-child(3) {
+  animation-delay: .36s;
+}
+
+.sponsor-splash__phone-ad-hearts i:nth-child(4) {
+  animation-delay: .54s;
+}
+
+.sponsor-splash--official_cup .sponsor-splash__card,
+.sponsor-splash--official_medal .sponsor-splash__card {
   background:
     linear-gradient(180deg, rgba(3, 10, 16, .38), rgba(3, 8, 13, .76) 44%, rgba(2, 5, 9, .95) 100%),
     radial-gradient(circle at 50% 24%, rgba(255, 225, 112, .23), transparent 22%),
@@ -20478,7 +21143,8 @@ body::after,
     inset 0 0 64px rgba(42, 238, 255, .06);
 }
 
-.sponsor-splash--official_cup .sponsor-splash__card::before {
+.sponsor-splash--official_cup .sponsor-splash__card::before,
+.sponsor-splash--official_medal .sponsor-splash__card::before {
   background:
     radial-gradient(circle at 18% 28%, rgba(255, 255, 255, .54), transparent 8%),
     radial-gradient(circle at 82% 28%, rgba(255, 255, 255, .54), transparent 8%),
@@ -20486,14 +21152,16 @@ body::after,
   opacity: .86;
 }
 
-.sponsor-splash--official_cup .sponsor-splash__card::after {
+.sponsor-splash--official_cup .sponsor-splash__card::after,
+.sponsor-splash--official_medal .sponsor-splash__card::after {
   background:
     radial-gradient(ellipse at 50% 92%, rgba(18, 142, 67, .5), rgba(3, 36, 23, .2) 44%, transparent 72%),
     linear-gradient(180deg, transparent, rgba(0, 0, 0, .46));
   opacity: .72;
 }
 
-.sponsor-splash__stage--official_cup {
+.sponsor-splash__stage--official_cup,
+.sponsor-splash__stage--official_medal {
   width: min(74vw, 292px);
   min-height: min(82vw, 336px);
   border-radius: 26px;
@@ -20501,11 +21169,15 @@ body::after,
 
 .sponsor-splash__stage--official_cup .sponsor-splash__photo,
 .sponsor-splash__stage--official_cup .sponsor-splash__brand,
-.sponsor-splash__stage--official_cup .sponsor-splash__card-aura {
+.sponsor-splash__stage--official_cup .sponsor-splash__card-aura,
+.sponsor-splash__stage--official_medal .sponsor-splash__photo,
+.sponsor-splash__stage--official_medal .sponsor-splash__brand,
+.sponsor-splash__stage--official_medal .sponsor-splash__card-aura {
   display: none;
 }
 
-.sponsor-splash__stage--official_cup .sponsor-splash__scene {
+.sponsor-splash__stage--official_cup .sponsor-splash__scene,
+.sponsor-splash__stage--official_medal .sponsor-splash__scene {
   width: min(74vw, 292px);
   height: min(82vw, 336px);
   border-radius: 26px;
@@ -20524,7 +21196,17 @@ body::after,
   animation: sponsor-official-cup-scene 4.4s ease-in-out both;
 }
 
-.sponsor-splash__stage--official_cup .sponsor-splash__scene::before {
+.sponsor-splash__stage--official_medal .sponsor-splash__scene {
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 218, 96, .28), transparent 20%),
+    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, .72), transparent 9%),
+    radial-gradient(circle at 80% 18%, rgba(255, 255, 255, .72), transparent 9%),
+    linear-gradient(180deg, rgba(1, 9, 14, .26), rgba(1, 9, 14, .72) 34%, rgba(0,0,0,.92) 100%),
+    repeating-linear-gradient(90deg, rgba(35, 132, 66, .95) 0 32px, rgba(18, 99, 50, .95) 32px 64px);
+}
+
+.sponsor-splash__stage--official_cup .sponsor-splash__scene::before,
+.sponsor-splash__stage--official_medal .sponsor-splash__scene::before {
   content: "";
   position: absolute;
   left: 50%;
@@ -20540,7 +21222,8 @@ body::after,
   opacity: .76;
 }
 
-.sponsor-splash__stage--official_cup .sponsor-splash__scene::after {
+.sponsor-splash__stage--official_cup .sponsor-splash__scene::after,
+.sponsor-splash__stage--official_medal .sponsor-splash__scene::after {
   content: "";
   position: absolute;
   left: 50%;
@@ -20553,7 +21236,8 @@ body::after,
   transform: translateX(-50%);
 }
 
-.sponsor-splash__showpiece3d--official_cup {
+.sponsor-splash__showpiece3d--official_cup,
+.sponsor-splash__showpiece3d--official_medal {
   top: min(40vw, 164px);
   width: min(60vw, 238px);
   height: min(70vw, 278px);
@@ -20605,11 +21289,65 @@ body::after,
     drop-shadow(0 30px 38px rgba(0, 0, 0, .64));
 }
 
+.sponsor-splash__showpiece3d--official_medal {
+  top: min(39vw, 158px);
+  width: min(62vw, 244px);
+  height: min(70vw, 276px);
+  filter:
+    drop-shadow(0 0 30px rgba(255, 214, 86, .36))
+    drop-shadow(0 28px 36px rgba(0, 0, 0, .66));
+}
+
 .sponsor-splash__showpiece3d--match_ready,
 .sponsor-splash__showpiece3d--fulbito_tv_fans {
   top: min(41vw, 170px);
   width: min(50vw, 198px);
   height: min(50vw, 198px);
+}
+
+.sponsor-splash__showpiece3d--fulbito_tv_fans {
+  top: min(41vw, 170px);
+  width: min(70vw, 276px);
+  height: min(48vw, 194px);
+  filter:
+    drop-shadow(0 0 28px rgba(35, 239, 255, .28))
+    drop-shadow(0 28px 36px rgba(0, 0, 0, .68));
+}
+
+.sponsor-splash--official_cup .sponsor-splash__card,
+.sponsor-splash--official_medal .sponsor-splash__card,
+.sponsor-splash--match_ready .sponsor-splash__card,
+.sponsor-splash--fulbito_tv_fans .sponsor-splash__card {
+  background:
+    linear-gradient(180deg, rgba(3, 10, 16, .28), rgba(3, 8, 13, .68) 42%, rgba(2, 5, 9, .94) 100%),
+    radial-gradient(circle at 50% 19%, rgba(255, 225, 112, .22), transparent 22%),
+    radial-gradient(circle at 16% 27%, rgba(255, 255, 255, .32), transparent 8%),
+    radial-gradient(circle at 84% 27%, rgba(255, 255, 255, .32), transparent 8%),
+    url("/assets/arena-stadium-bg-v2.webp");
+  background-size: cover;
+  background-position: center top;
+}
+
+.sponsor-splash__stage--official_cup .sponsor-splash__scene,
+.sponsor-splash__stage--official_medal .sponsor-splash__scene,
+.sponsor-splash__stage--match_ready .sponsor-splash__scene,
+.sponsor-splash__stage--fulbito_tv_fans .sponsor-splash__scene {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.sponsor-splash__stage--official_cup .sponsor-splash__scene::before,
+.sponsor-splash__stage--official_cup .sponsor-splash__scene::after,
+.sponsor-splash__stage--official_medal .sponsor-splash__scene::before,
+.sponsor-splash__stage--official_medal .sponsor-splash__scene::after,
+.sponsor-splash__stage--match_ready .sponsor-splash__scene::before,
+.sponsor-splash__stage--match_ready .sponsor-splash__scene::after,
+.sponsor-splash__stage--fulbito_tv_fans .sponsor-splash__scene::before,
+.sponsor-splash__stage--fulbito_tv_fans .sponsor-splash__scene::after,
+.sponsor-splash__stage--match_ready .sponsor-splash__match-ad,
+.sponsor-splash__stage--fulbito_tv_fans .sponsor-splash__phone-ad {
+  display: none;
 }
 
 .sponsor-splash__dynamic-ball {
@@ -20757,45 +21495,152 @@ body::after,
 }
 
 .sponsor-splash__stage--yellow_match .sponsor-splash__photo,
-.sponsor-splash__stage--yellow_card_premium .sponsor-splash__photo {
-  width: min(70vw, 284px);
-  height: min(86vw, 372px);
-  object-fit: contain;
-  object-position: center;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-  filter: drop-shadow(0 22px 36px rgba(0, 0, 0, .48));
-}
-
+.sponsor-splash__stage--yellow_card_premium .sponsor-splash__photo,
 .sponsor-splash__stage--yellow_match .sponsor-splash__brand,
-.sponsor-splash__stage--yellow_card_premium .sponsor-splash__brand {
-  top: min(10vw, 42px);
-  z-index: 4;
-  width: min(39vw, 128px);
-  height: min(45vw, 150px);
-  border-radius: 10px;
-  background:
-    linear-gradient(180deg, rgba(255,232,121,.12), rgba(255,184,40,.04)),
-    rgba(255,214,62,.06);
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,.08),
-    0 8px 28px rgba(0,0,0,.14);
-  transform: translateX(-57%) rotate(-2deg) scale(var(--sponsor-creative-scale));
-}
-
+.sponsor-splash__stage--yellow_card_premium .sponsor-splash__brand,
 .sponsor-splash__stage--yellow_match .sponsor-splash__card-aura,
 .sponsor-splash__stage--yellow_card_premium .sponsor-splash__card-aura {
-  width: min(46vw, 154px);
-  height: min(54vw, 180px);
-  border-radius: 18px;
-  transform: translate(-7%, -6%) rotate(-1.8deg);
+  display: none;
 }
 
-.sponsor-splash__stage--yellow_match .sponsor-splash__brand img,
-.sponsor-splash__stage--yellow_card_premium .sponsor-splash__brand img {
-  max-height: 74px;
+.sponsor-splash__stage--yellow_match .sponsor-splash__scene,
+.sponsor-splash__stage--yellow_card_premium .sponsor-splash__scene {
+  width: min(74vw, 292px);
+  height: min(86vw, 372px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 214, 91, .28);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(255, 223, 104, .22), transparent 22%),
+    linear-gradient(180deg, rgba(2, 10, 15, .18), rgba(2, 10, 15, .5) 42%, rgba(0, 0, 0, .9) 100%),
+    url("/assets/arena-stadium-bg-v2.webp");
+  background-size: cover;
+  background-position: center 58%;
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, .46),
+    inset 0 0 0 1px rgba(255, 255, 255, .1),
+    inset 0 0 54px rgba(255, 218, 89, .1);
+  animation: sponsor-yellow-real-scene 1.08s cubic-bezier(.18,.9,.16,1) both;
+}
+
+.sponsor-splash__stage--yellow_match .sponsor-splash__scene::before,
+.sponsor-splash__stage--yellow_card_premium .sponsor-splash__scene::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 24% 21%, rgba(255, 255, 255, .24), transparent 8%),
+    radial-gradient(circle at 78% 22%, rgba(255, 255, 255, .22), transparent 8%),
+    linear-gradient(104deg, transparent 0 34%, rgba(255, 255, 255, .13) 42%, transparent 52%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 5px);
+  opacity: .74;
+  pointer-events: none;
+}
+
+.sponsor-splash__stage--yellow_match .sponsor-splash__scene::after,
+.sponsor-splash__stage--yellow_card_premium .sponsor-splash__scene::after {
+  content: "";
+  position: absolute;
+  inset: auto 10% 10% 10%;
+  height: 36%;
+  border: 1px solid rgba(255, 255, 255, .28);
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0 / 42% 42% 0 0;
+  transform: perspective(420px) rotateX(64deg);
+  opacity: .58;
+  box-shadow: 0 -54px 0 -53px rgba(255,255,255,.28);
+  pointer-events: none;
+}
+
+.sponsor-splash__yellow-real-ad {
+  position: absolute;
+  left: 50%;
+  top: min(37vw, 148px);
+  z-index: 8;
+  width: min(52vw, 218px);
+  aspect-ratio: 410 / 552;
+  transform: translate(-50%, -50%) rotate(-2.4deg);
+  transform-origin: 50% 70%;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 24px 34px rgba(0, 0, 0, .58))
+    drop-shadow(0 0 18px rgba(255, 218, 92, .18));
+  animation: sponsor-yellow-real-rise 1.08s cubic-bezier(.16,.92,.2,1.08) both;
+}
+
+.sponsor-splash__yellow-real-hand {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
+  object-position: center;
+  transform: translateY(1%);
+}
+
+.sponsor-splash__yellow-real-ad::before {
+  content: "";
+  position: absolute;
+  left: 27%;
+  top: 5.5%;
+  width: 48%;
+  height: 45%;
+  border-radius: 18px;
+  background:
+    linear-gradient(118deg, transparent 0 36%, rgba(255,255,255,.24) 43%, transparent 55%),
+    radial-gradient(circle at 50% 22%, rgba(255,255,255,.2), transparent 24%);
+  z-index: 2;
+  mix-blend-mode: screen;
+  opacity: .68;
+}
+
+.sponsor-splash__yellow-real-mark {
+  position: absolute;
+  left: 32%;
+  top: 12%;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  width: 38%;
+  min-height: 28%;
+  padding: 6px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.34), rgba(255,255,255,.12)),
+    rgba(255, 227, 90, .18);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.24),
+    0 10px 18px rgba(0,0,0,.18);
+  transform: rotate(-1.8deg) scale(var(--sponsor-creative-scale, 1));
+  transform-origin: 50% 54%;
+  overflow: hidden;
+}
+
+.sponsor-splash__yellow-real-mark span {
+  color: rgba(3, 11, 15, .9);
+  font-size: .36rem;
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.sponsor-splash__yellow-real-mark img,
+.sponsor-splash__yellow-real-mark svg {
+  width: 62%;
+  max-height: 46px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.28));
+}
+
+.sponsor-splash__yellow-real-mark strong {
+  max-width: 10ch;
+  color: rgba(4, 12, 16, .92);
+  font-size: .38rem;
+  font-weight: 1000;
+  line-height: .94;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .sponsor-splash__pitch,
@@ -20820,6 +21665,89 @@ body::after,
   100% {
     opacity: 1;
     transform: translateY(0) rotate(-1.7deg) scale(1);
+  }
+}
+
+@keyframes sponsor-yellow-real-scene {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(.965);
+    filter: saturate(.82) brightness(.82);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: saturate(1.08) brightness(1);
+  }
+}
+
+@keyframes sponsor-yellow-real-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 54px) rotate(-7deg) scale(.9);
+  }
+  58% {
+    opacity: 1;
+    transform: translate(-50%, -54%) rotate(-1.5deg) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-2.4deg) scale(1);
+  }
+}
+
+@keyframes sponsor-phone-webp-rise {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 42px) rotate(-7deg) scale(.9);
+  }
+  58% {
+    opacity: 1;
+    transform: translate(-50%, -54%) rotate(-2deg) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(-2.8deg) scale(1);
+  }
+}
+
+@keyframes sponsor-phone-heart {
+  0%,
+  100% {
+    opacity: .46;
+    transform: translateY(0) rotate(45deg) scale(.82);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-5px) rotate(45deg) scale(1.16);
+  }
+}
+
+@keyframes sponsor-match-ready-photo {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(.96);
+    filter: saturate(.86) brightness(.84);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: saturate(1.08) brightness(1);
+  }
+}
+
+@keyframes sponsor-match-ready-badge {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 22px) rotate(-7deg) perspective(420px) rotateY(18deg) scale(.8);
+  }
+  62% {
+    opacity: 1;
+    transform: translate(-50%, -54%) rotate(4deg) perspective(420px) rotateY(-14deg) scale(calc(var(--sponsor-creative-scale, 1) * 1.05));
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(3.2deg) perspective(420px) rotateY(-12deg) scale(var(--sponsor-creative-scale, 1));
   }
 }
 
