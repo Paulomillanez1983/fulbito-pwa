@@ -1,4 +1,6 @@
 import { ArenaExperience } from "@/components/arena-experience";
+import { OutdoorModeToggle } from "@/components/outdoor-mode-toggle";
+import { OnboardingTour } from "@/components/onboarding-tour";
 import { getArenaData } from "@/lib/arena-data";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +14,25 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const joinParam = params?.join;
   const teamParam = params?.team;
   const friendlyParam = params?.friendly;
+  
   const joinCode = Array.isArray(joinParam) ? joinParam[0] : joinParam;
   const inviteTeamCode = Array.isArray(teamParam) ? teamParam[0] : teamParam;
   const friendlyCode = Array.isArray(friendlyParam) ? friendlyParam[0] : friendlyParam;
+  
   const data = await getArenaData({ joinCode, friendlyCode, teamCode: inviteTeamCode });
-  return <ArenaExperience data={data} friendlyCode={friendlyCode} joinCode={joinCode} inviteTeamCode={inviteTeamCode} />;
+
+  return (
+    <>
+      <div className="fixed top-3 right-3 z-40 flex items-center gap-2">
+        <OutdoorModeToggle />
+      </div>
+      <OnboardingTour userRole={data.currentUser?.role ?? "jugador"} />
+      <ArenaExperience 
+        data={data} 
+        friendlyCode={friendlyCode} 
+        joinCode={joinCode} 
+        inviteTeamCode={inviteTeamCode} 
+      />
+    </>
+  );
 }

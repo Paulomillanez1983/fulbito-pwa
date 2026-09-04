@@ -21947,3 +21947,10 @@ body:has(.arena-splash) {
     height: min(44vw, 142px);
   }
 }
+
+/* High Contrast Outdoor Mode */
+html.outdoor-mode { --bg: #000000; --ink: #ffffff; --muted: #e2e8f0; --panel: #0f172a; --panel-strong: #020617; --line: #ffffff; color-scheme: dark; }
+html.outdoor-mode body { background: #000000 !important; color: #ffffff !important; }
+html.outdoor-mode .text-zinc-400, html.outdoor-mode .text-slate-400, html.outdoor-mode .text-gray-400, html.outdoor-mode .text-muted { color: #e2e8f0 !important; }
+html.outdoor-mode .border-emerald-500\/30, html.outdoor-mode .border-slate-800 { border-color: #34d399 !important; }
+html.outdoor-mode button, html.outdoor-mode a { font-weight: 700 !important; }

@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { createPortal, useFormStatus } from "react-dom";
-import { LoaderCircle } from "lucide-react";
+import { LoaderCircle, ChevronRight, Lock } from "lucide-react";
+import { triggerHaptic } from "@/lib/haptics";
 
 function playGoalTap() {
   try {
@@ -60,212 +61,133 @@ function playGoalTap() {
     kickGain.connect(master);
     kick.start(now);
     kick.stop(now + 0.3);
-
-    const netSnap = audio.createBufferSource();
-    netSnap.buffer = crowdBuffer;
-    const snapFilter = audio.createBiquadFilter();
-    snapFilter.type = "highpass";
-    snapFilter.frequency.setValueAtTime(1800, now);
-    const snapGain = audio.createGain();
-    snapGain.gain.setValueAtTime(0.0001, now + 0.05);
-    snapGain.gain.exponentialRampToValueAtTime(0.11, now + 0.075);
-    snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-    netSnap.connect(snapFilter);
-    snapFilter.connect(snapGain);
-    snapGain.connect(master);
-    netSnap.start(now + 0.04);
-    netSnap.stop(now + 0.2);
-
-    const whistle = audio.createOscillator();
-    whistle.type = "sine";
-    whistle.frequency.setValueAtTime(1120, now + 0.16);
-    whistle.frequency.linearRampToValueAtTime(1460, now + 0.34);
-    const whistleGain = audio.createGain();
-    whistleGain.gain.setValueAtTime(0.0001, now + 0.14);
-    whistleGain.gain.exponentialRampToValueAtTime(0.12, now + 0.2);
-    whistleGain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
-    whistle.connect(whistleGain);
-    whistleGain.connect(master);
-    whistle.start(now + 0.14);
-    whistle.stop(now + 0.5);
-
-    [523.25, 659.25, 783.99].forEach((frequency, index) => {
-      const shine = audio.createOscillator();
-      shine.type = "triangle";
-      shine.frequency.setValueAtTime(frequency, now + 0.28 + index * 0.035);
-      const shineGain = audio.createGain();
-      shineGain.gain.setValueAtTime(0.0001, now + 0.26 + index * 0.035);
-      shineGain.gain.exponentialRampToValueAtTime(0.075, now + 0.3 + index * 0.035);
-      shineGain.gain.exponentialRampToValueAtTime(0.001, now + 0.94 + index * 0.035);
-      shine.connect(shineGain);
-      shineGain.connect(master);
-      shine.start(now + 0.26 + index * 0.035);
-      shine.stop(now + 1.0 + index * 0.035);
-    });
-
-    window.setTimeout(() => void audio.close(), 1800);
   } catch {
-    // Browsers may block audio when user gesture rules are stricter.
+    // Audio context fallback
   }
 }
 
-export function SlideSubmitButton({
-  idle,
-  pendingLabel,
-  disabledLabel = "Adjunta comprobante",
-  complete = false,
-  completeLabel = "Enviado",
-  disabled = false,
-  submitting
-}: {
-  idle: string;
-  pendingLabel: string;
-  disabledLabel?: string;
-  complete?: boolean;
-  completeLabel?: string;
+interface SlideSubmitButtonProps {
+  idleText?: string;
+  submittingText?: string;
+  successText?: string;
   disabled?: boolean;
-  submitting?: boolean;
-}) {
-  const formStatus = useFormStatus();
-  const trackRef = useRef<HTMLButtonElement | null>(null);
-  const progressRef = useRef(0);
-  const draggingRef = useRef(false);
-  const [dragging, setDragging] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [maxShift, setMaxShift] = useState(240);
-  const [celebrating, setCelebrating] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const isPending = submitting ?? formStatus.pending;
-  const locked = disabled || isPending || complete;
+  onConfirm?: () => void;
+  className?: string;
+}
+
+export function SlideSubmitButton({
+  idleText = "Deslizá para confirmar",
+  submittingText = "Confirmando...",
+  successText = "¡Confirmado!",
+  disabled = false,
+  onConfirm,
+  className = "",
+}: SlideSubmitButtonProps) {
+  const { pending } = useFormStatus();
+  const [sliderPos, setSliderPos] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const startXRef = useRef<number>(0);
+
+  const isLocked = disabled || pending || confirmed;
+
+  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+    if (isLocked) return;
+    setIsDragging(true);
+    triggerHaptic("light");
+    const pageX = "touches" in e ? e.touches[0].pageX : e.pageX;
+    startXRef.current = pageX - sliderPos;
+  };
+
+  const handleTouchMove = (e: TouchEvent | MouseEvent) => {
+    if (!isDragging || isLocked || !trackRef.current) return;
+    const pageX = "touches" in e ? e.touches[0].pageX : e.pageX;
+    const maxOffset = trackRef.current.clientWidth - 52;
+    let newPos = pageX - startXRef.current;
+    if (newPos < 0) newPos = 0;
+    if (newPos > maxOffset) newPos = maxOffset;
+
+    if (newPos >= maxOffset && sliderPos < maxOffset) {
+      triggerHaptic("medium");
+    }
+    setSliderPos(newPos);
+  };
+
+  const handleTouchEnd = () => {
+    if (!isDragging || isLocked || !trackRef.current) return;
+    setIsDragging(false);
+    const maxOffset = trackRef.current.clientWidth - 52;
+    if (sliderPos >= maxOffset * 0.85) {
+      setSliderPos(maxOffset);
+      setConfirmed(true);
+      triggerHaptic("success");
+      playGoalTap();
+      if (onConfirm) onConfirm();
+    } else {
+      setSliderPos(0);
+    }
+  };
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!locked) return;
-    if (celebrating) return;
-    setProgress(0);
-    progressRef.current = 0;
-    setDragging(false);
-    draggingRef.current = false;
-  }, [celebrating, locked]);
-
-  function submitFromSlide() {
-    if (locked) return;
-    const form = trackRef.current?.form;
-    if (!form) return;
-    setProgress(1);
-    progressRef.current = 1;
-    setCelebrating(true);
-    playGoalTap();
-    window.setTimeout(() => setCelebrating(false), 1800);
-    window.setTimeout(() => {
-      setProgress(0);
-      progressRef.current = 0;
-    }, 1350);
-    form.requestSubmit();
-  }
-
-  function updateProgress(clientX: number) {
-    const track = trackRef.current;
-    if (!track) return;
-    const rect = track.getBoundingClientRect();
-    const handle = 58;
-    const nextMaxShift = Math.max(96, rect.width - handle - 8);
-    setMaxShift(nextMaxShift);
-    const next = Math.min(1, Math.max(0, (clientX - rect.left - handle / 2) / nextMaxShift));
-    setProgress(next);
-    progressRef.current = next;
-  }
-
-  const stadiumConfetti = mounted
-    ? createPortal(
-        <span className={`slide-submit__stadium-confetti ${celebrating ? "is-active" : ""}`} aria-hidden="true">
-          {Array.from({ length: 36 }).map((_, index) => <i key={index} />)}
-        </span>,
-        document.body
-      )
-    : null;
+    if (isDragging) {
+      const onMove = (e: TouchEvent | MouseEvent) => handleTouchMove(e);
+      const onEnd = () => handleTouchEnd();
+      window.addEventListener("touchmove", onMove);
+      window.addEventListener("touchend", onEnd);
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onEnd);
+      return () => {
+        window.removeEventListener("touchmove", onMove);
+        window.removeEventListener("touchend", onEnd);
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onEnd);
+      };
+    }
+  }, [isDragging, sliderPos]);
 
   return (
-    <>
     <div
-      className={`slide-submit ${dragging ? "is-dragging" : ""} ${celebrating ? "is-celebrating" : ""} ${complete ? "is-complete" : ""}`}
-      style={{
-        "--slide-shift": `${Math.round(progress * maxShift)}px`,
-        "--ball-rotation": `${Math.round(progress * 720)}deg`
-      } as CSSProperties & Record<string, string>}
+      ref={trackRef}
+      className={`relative w-full h-13 rounded-full bg-slate-950 border border-emerald-500/40 p-1 flex items-center overflow-hidden select-none shadow-inner ${
+        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+      } ${className}`}
     >
-      <button
-        aria-label={`Deslizar para ${idle.toLowerCase()}`}
-        className="slide-submit__track"
-        disabled={locked}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            submitFromSlide();
-          }
+      {/* Background fill based on slide position */}
+      <div
+        className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-emerald-600/40 to-teal-500/60 transition-all"
+        style={{ width: `${sliderPos + 48}px` }}
+      />
+
+      {/* Label text */}
+      <span className="w-full text-center text-xs font-black uppercase tracking-wider text-emerald-300 pointer-events-none z-10">
+        {pending ? submittingText : confirmed ? successText : idleText}
+      </span>
+
+      {/* Handle knob */}
+      <div
+        onMouseDown={handleTouchStart}
+        onTouchStart={handleTouchStart}
+        className={`absolute z-20 w-11 h-11 rounded-full flex items-center justify-center font-bold text-black transition-transform shadow-lg ${
+          confirmed
+            ? "bg-emerald-400 text-black scale-105"
+            : pending
+            ? "bg-amber-400 text-black animate-pulse"
+            : "bg-gradient-to-br from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200"
+        }`}
+        style={{
+          transform: `translateX(${sliderPos}px)`,
+          transition: isDragging ? "none" : "transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1)",
         }}
-        onPointerCancel={() => {
-          setDragging(false);
-          draggingRef.current = false;
-          setProgress(0);
-          progressRef.current = 0;
-        }}
-        onPointerDown={(event) => {
-          if (locked) return;
-          setDragging(true);
-          draggingRef.current = true;
-          event.currentTarget.setPointerCapture(event.pointerId);
-          updateProgress(event.clientX);
-        }}
-        onPointerMove={(event) => {
-          if (!draggingRef.current || locked) return;
-          updateProgress(event.clientX);
-        }}
-        onPointerUp={(event) => {
-          if (!draggingRef.current || locked) return;
-          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-          }
-          setDragging(false);
-          draggingRef.current = false;
-          if (progressRef.current > 0.74) {
-            submitFromSlide();
-            return;
-          }
-          setProgress(0);
-          progressRef.current = 0;
-        }}
-        ref={trackRef}
-        type="button"
       >
-        <span className="slide-submit__label">
-          {isPending ? (
-            <>
-              <LoaderCircle className="button-spinner" size={16} />
-              {pendingLabel}
-            </>
-          ) : complete ? (
-            completeLabel
-          ) : disabled ? (
-            disabledLabel
-          ) : (
-            `Desliza para ${idle.toLowerCase()}`
-          )}
-        </span>
-        <span className="slide-submit__boot" aria-hidden="true" />
-        <span className="slide-submit__ball" aria-hidden="true">
-          <i />
-        </span>
-        <span className="slide-submit__goal" aria-hidden="true">GOOL</span>
-        <span className="slide-submit__confetti" aria-hidden="true">
-          {Array.from({ length: 14 }).map((_, index) => <i key={index} />)}
-        </span>
-      </button>
+        {pending ? (
+          <LoaderCircle className="w-5 h-5 animate-spin" />
+        ) : confirmed ? (
+          <Lock className="w-5 h-5 text-black" />
+        ) : (
+          <ChevronRight className="w-6 h-6 text-black" />
+        )}
+      </div>
     </div>
-    {stadiumConfetti}
-    </>
   );
 }
