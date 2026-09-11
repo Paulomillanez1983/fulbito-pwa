@@ -14,10 +14,14 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const joinParam = params?.join;
   const teamParam = params?.team;
   const friendlyParam = params?.friendly;
+  const venueRegisterParam = params?.venue_register || params?.register_venue;
+  const startParam = params?.start;
   
   const joinCode = Array.isArray(joinParam) ? joinParam[0] : joinParam;
   const inviteTeamCode = Array.isArray(teamParam) ? teamParam[0] : teamParam;
   const friendlyCode = Array.isArray(friendlyParam) ? friendlyParam[0] : friendlyParam;
+  const venueRegister = venueRegisterParam === "true" || startParam === "venue_register" || startParam === "venues_register";
+  const initialStartMode = typeof startParam === "string" ? startParam : Array.isArray(startParam) ? startParam[0] : undefined;
   
   const data = await getArenaData({ joinCode, friendlyCode, teamCode: inviteTeamCode });
 
@@ -30,8 +34,10 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <ArenaExperience 
         data={data} 
         friendlyCode={friendlyCode} 
-        joinCode={joinCode} 
+        initialStartMode={initialStartMode}
         inviteTeamCode={inviteTeamCode} 
+        joinCode={joinCode} 
+        venueRegister={venueRegister}
       />
     </>
   );

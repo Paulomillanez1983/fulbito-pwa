@@ -21954,3 +21954,159 @@ html.outdoor-mode body { background: #000000 !important; color: #ffffff !importa
 html.outdoor-mode .text-zinc-400, html.outdoor-mode .text-slate-400, html.outdoor-mode .text-gray-400, html.outdoor-mode .text-muted { color: #e2e8f0 !important; }
 html.outdoor-mode .border-emerald-500\/30, html.outdoor-mode .border-slate-800 { border-color: #34d399 !important; }
 html.outdoor-mode button, html.outdoor-mode a { font-weight: 700 !important; }
+
+/* Hub Selector Styles */
+.main-hub-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  background: radial-gradient(120% 120% at 50% 0%, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.98) 100%);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 1.25rem;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+}
+
+.main-hub-header {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.main-hub-eyebrow {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  margin-bottom: 0.5rem;
+}
+
+.main-hub-header h2 {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.main-hub-header p {
+  font-size: 0.825rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+}
+
+.main-hub-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 640px) {
+  .main-hub-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.hub-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  backdrop-filter: blur(8px);
+}
+
+.hub-card:hover, .hub-card.is-active {
+  transform: translateY(-2px);
+  background: rgba(15, 23, 42, 0.9);
+  box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.5);
+}
+
+.hub-card--friendly:hover, .hub-card--friendly.is-active {
+  border-color: rgba(52, 211, 153, 0.6);
+  box-shadow: 0 12px 24px -10px rgba(52, 211, 153, 0.25);
+}
+
+.hub-card--tournament:hover, .hub-card--tournament.is-active {
+  border-color: rgba(251, 191, 36, 0.6);
+  box-shadow: 0 12px 24px -10px rgba(251, 191, 36, 0.25);
+}
+
+.hub-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 0.85rem;
+  flex-shrink: 0;
+}
+
+.hub-card--friendly .hub-card__icon {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.hub-card--tournament .hub-card__icon {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.hub-card__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.hub-card__content span {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #64748b;
+}
+
+.hub-card__content strong {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.hub-card__content p {
+  font-size: 0.75rem;
+  color: #cbd5e1;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.hub-card__badge {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  color: #94a3b8 !important;
+}
+
+.hub-card__arrow {
+  color: #64748b;
+  transition: transform 0.2s ease;
+}
+
+.hub-card:hover .hub-card__arrow {
+  transform: translateX(4px);
+  color: #ffffff;
+}
+

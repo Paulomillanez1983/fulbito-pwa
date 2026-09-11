@@ -5591,7 +5591,21 @@ function LiveMatchPanel({
   );
 }
 
-export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }: { data: ArenaData; joinCode?: string; inviteTeamCode?: string; friendlyCode?: string }) {
+export function ArenaExperience({
+  data,
+  joinCode,
+  inviteTeamCode,
+  friendlyCode,
+  venueRegister,
+  initialStartMode
+}: {
+  data: ArenaData;
+  joinCode?: string;
+  inviteTeamCode?: string;
+  friendlyCode?: string;
+  venueRegister?: boolean;
+  initialStartMode?: string;
+}) {
   const inviteMode = Boolean(joinCode && data.activeTournament);
   const ownedTeams = useMemo(
     () => data.user ? data.teams.filter((team) => team.owner_id === data.user?.id) : [],
@@ -5643,7 +5657,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   }, [data.tournaments, data.user, data.venues, inferredAccountRoles, inviteMode, memberTeam, ownedTeam, playerInviteMode]);
 
   const [showSplash, setShowSplash] = useState(true);
-  const [active, setActive] = useState<TabId>(() => (inviteMode || playerInviteMode) && data.user ? "squad" : "home");
+  const [active, setActive] = useState<TabId>(() => (inviteMode || playerInviteMode) && data.user ? "squad" : venueRegister ? "venues" : "home");
+  const [mainHubMode, setMainHubMode] = useState<"all" | "friendly" | "tournament">(() => initialStartMode === "friendly" ? "friendly" : initialStartMode === "tournament" ? "tournament" : "all");
   const [leagueView, setLeagueView] = useState<LeagueView>("classification");
   const [formationMode, setFormationMode] = useState<FieldMode>(data.activeTournament?.field_mode ?? "7v7");
   const [formationPresetId, setFormationPresetId] = useState(formationPresets[data.activeTournament?.field_mode ?? "7v7"][0].id);
@@ -5669,9 +5684,9 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
   const [venueLocation, setVenueLocation] = useState<GeoPoint | null>(null);
   const [venueLocationAsked, setVenueLocationAsked] = useState(false);
   const [venueLocationStatus, setVenueLocationStatus] = useState("Mostrando canchas registradas.");
-  const [showVenueForm, setShowVenueForm] = useState(true);
-  const [friendlyFocus, setFriendlyFocus] = useState(Boolean(friendlyCode));
-  const [tournamentFocus, setTournamentFocus] = useState(false);
+  const [showVenueForm, setShowVenueForm] = useState(Boolean(venueRegister));
+  const [friendlyFocus, setFriendlyFocus] = useState(Boolean(friendlyCode || initialStartMode === "friendly"));
+  const [tournamentFocus, setTournamentFocus] = useState(Boolean(initialStartMode === "tournament"));
   const [loginNextTarget, setLoginNextTarget] = useState("/");
   const [sponsorTriggerKey, setSponsorTriggerKey] = useState(0);
   const activeRef = useRef<TabId>(active);
@@ -6313,7 +6328,72 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
           />
         ) : null}
 
-        {!inviteMode && !data.user && !hasCreatedTournament ? (
+        {!inviteMode && !showModeFocus ? (
+          <section className="main-hub-selector">
+            <div className="main-hub-header">
+              <span className="main-hub-eyebrow">MODOS DE JUEGO 2026</span>
+              <h2>¿Qué querés jugar hoy?</h2>
+              <p>Elegí una modalidad para ingresar a tu espacio de competencia.</p>
+            </div>
+            <div className="main-hub-grid">
+              <button 
+                className={`hub-card hub-card--friendly ${mainHubMode === "friendly" ? "is-active" : ""}`}
+                onClick={() => {
+                  setMainHubMode("friendly");
+                  setFriendlyFocus(true);
+                  setTournamentFocus(false);
+                  if (data.user) openFriendlyStarter();
+                }}
+                type="button"
+              >
+                <div className="hub-card__icon"><Flag size={30} /></div>
+                <div className="hub-card__content">
+                  <span>DESAFÍO Y ENTRENAMIENTO</span>
+                  <strong>AMISTOSOS</strong>
+                  <p>Buscá rival, armá tu partido 5v5/7v7/11v11, invitá por WhatsApp y cargá resultado.</p>
+                  <span className="hub-card__badge">✓ Partidos en vivo · Creador rápido</span>
+                </div>
+                <ChevronRight className="hub-card__arrow" size={20} />
+              </button>
+
+              <button 
+                className={`hub-card hub-card--tournament ${mainHubMode === "tournament" ? "is-active" : ""}`}
+                onClick={() => {
+                  setMainHubMode("tournament");
+                  setTournamentFocus(true);
+                  setFriendlyFocus(false);
+                  if (data.user) openTournamentStarter();
+                }}
+                type="button"
+              >
+                <div className="hub-card__icon"><Trophy size={30} /></div>
+                <div className="hub-card__content">
+                  <span>COMPETENCIA OFICIAL</span>
+                  <strong>TORNEOS</strong>
+                  <p>Mundial barrial, ligas por fecha, tabla de posiciones, sorteo de llaves y fixture.</p>
+                  <span className="hub-card__badge">✓ Tabla · Sorteos · Eliminatorias</span>
+                </div>
+                <ChevronRight className="hub-card__arrow" size={20} />
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {mainHubMode !== "all" && !inviteMode ? (
+          <button 
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-900/80 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 mb-2 transition-all"
+            onClick={() => {
+              setMainHubMode("all");
+              setFriendlyFocus(false);
+              setTournamentFocus(false);
+            }}
+            type="button"
+          >
+            ← Volver a Modos de Juego
+          </button>
+        ) : null}
+
+        {!inviteMode && !data.user && !hasCreatedTournament && mainHubMode === "all" ? (
           <section className="console-hero-panel console-hero-panel--2026">
             <img alt="" className="hero-mark" src="/assets/icon.svg" />
             <span>Fulbito Arena 2026</span>
@@ -6321,8 +6401,8 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             <p>Fixture, tabla, plantel y canchas con una experiencia de torneo para futbol amateur.</p>
             <div className="hero-actions">
               <InstallAppButton variant="hero" />
-              <button onClick={openTournamentStarter} type="button">Crear torneo</button>
-              <button onClick={openFriendlyStarter} type="button">Crear amistoso</button>
+              <button onClick={() => { setMainHubMode("tournament"); openTournamentStarter(); }} type="button">Torneos</button>
+              <button onClick={() => { setMainHubMode("friendly"); openFriendlyStarter(); }} type="button">Amistosos</button>
               <button onClick={() => setActiveTab("matches")} type="button">Ver fecha</button>
             </div>
           </section>
@@ -6751,7 +6831,13 @@ export function ArenaExperience({ data, joinCode, inviteTeamCode, friendlyCode }
             </EmptyState>
           )}
         </section>
-        <section className="venue-register-panel">
+        <section className="venue-register-panel" id="venue-register-anchor">
+          {venueRegister ? (
+            <div className="mb-3 p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-xs font-bold flex items-center gap-2 shadow-lg">
+              <MapPinned className="w-5 h-5 text-emerald-400 shrink-0 animate-bounce" />
+              <span>📍 <strong>Modo Alta Rápida de Cancha:</strong> Completá el formulario a continuación para publicar tu sede en el mapa de Fulbito Arena.</span>
+            </div>
+          ) : null}
           <button aria-expanded={showVenueForm} onClick={() => setShowVenueForm((current) => !current)} type="button">
             <span>
               <MapPinned size={18} />
