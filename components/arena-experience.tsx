@@ -6310,7 +6310,95 @@ export function ArenaExperience({
           </section>
         ) : null}
 
-        {!inviteMode && data.user && !showModeFocus ? (
+        {!inviteMode && mainHubMode === "all" ? (
+          <section className="main-hub-selector">
+            <div className="main-hub-header">
+              <span className="main-hub-eyebrow">FULBITO ARENA 2026</span>
+              <h2>¿Qué querés jugar hoy?</h2>
+              <p>Elegí una modalidad para acceder a tu espacio de competencia.</p>
+            </div>
+            <div className="main-hub-grid">
+              <button 
+                className="hub-card hub-card--friendly"
+                onClick={() => {
+                  setMainHubMode("friendly");
+                  setFriendlyFocus(true);
+                  setTournamentFocus(false);
+                }}
+                type="button"
+              >
+                <div className="hub-card__icon"><Flag size={30} /></div>
+                <div className="hub-card__content">
+                  <span>DESAFÍOS Y ENTRENAMIENTO</span>
+                  <strong>AMISTOSOS</strong>
+                  <p>Armá tu partido 5v5, 7v7 o 11v11, buscá rival y cargá marcadores.</p>
+                  <span className="hub-card__badge">✓ Partidos en vivo · Creador rápido</span>
+                </div>
+                <ChevronRight className="hub-card__arrow" size={20} />
+              </button>
+
+              <button 
+                className="hub-card hub-card--tournament"
+                onClick={() => {
+                  setMainHubMode("tournament");
+                  setTournamentFocus(true);
+                  setFriendlyFocus(false);
+                }}
+                type="button"
+              >
+                <div className="hub-card__icon"><Trophy size={30} /></div>
+                <div className="hub-card__content">
+                  <span>COMPETENCIA Y BOLILLERO</span>
+                  <strong>TORNEOS</strong>
+                  <p>Mundial barrial, sorteo de llaves, tabla de posiciones y fixture.</p>
+                  <span className="hub-card__badge">✓ Tabla · Sorteo en vivo · Eliminatorias</span>
+                </div>
+                <ChevronRight className="hub-card__arrow" size={20} />
+              </button>
+
+              <button 
+                className="hub-card hub-card--venue"
+                onClick={() => {
+                  setActiveTab("venues");
+                  setShowVenueForm(true);
+                }}
+                type="button"
+              >
+                <div className="hub-card__icon" style={{ background: "rgba(6, 182, 212, 0.15)", color: "#22d3ee", borderColor: "rgba(6, 182, 212, 0.3)" }}>
+                  <MapPinned size={30} />
+                </div>
+                <div className="hub-card__content">
+                  <span>COMPLEJOS Y CANCHAS</span>
+                  <strong>INSCRIBIR TU CANCHA</strong>
+                  <p>Registrá tu sede en el mapa, poné fotos, precios y contacto de WhatsApp.</p>
+                  <span className="hub-card__badge">✓ Publicación en mapa barrial</span>
+                </div>
+                <ChevronRight className="hub-card__arrow" size={20} />
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {mainHubMode !== "all" && !inviteMode ? (
+          <div className="flex items-center justify-between mb-3">
+            <button 
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-emerald-500/40 transition-all shadow-md"
+              onClick={() => {
+                setMainHubMode("all");
+                setFriendlyFocus(false);
+                setTournamentFocus(false);
+              }}
+              type="button"
+            >
+              ← Volver al Menú Principal
+            </button>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              {mainHubMode === "friendly" ? "⚔️ Modo Amistoso" : "🏆 Modo Torneo y Sorteo"}
+            </span>
+          </div>
+        ) : null}
+
+        {!inviteMode && data.user && mainHubMode === "tournament" ? (
           <StartGuidePanel
             data={data}
             hasCreatedTournament={hasCreatedTournament}
@@ -6328,71 +6416,6 @@ export function ArenaExperience({
           />
         ) : null}
 
-        {!inviteMode && !showModeFocus ? (
-          <section className="main-hub-selector">
-            <div className="main-hub-header">
-              <span className="main-hub-eyebrow">MODOS DE JUEGO 2026</span>
-              <h2>¿Qué querés jugar hoy?</h2>
-              <p>Elegí una modalidad para ingresar a tu espacio de competencia.</p>
-            </div>
-            <div className="main-hub-grid">
-              <button 
-                className={`hub-card hub-card--friendly ${mainHubMode === "friendly" ? "is-active" : ""}`}
-                onClick={() => {
-                  setMainHubMode("friendly");
-                  setFriendlyFocus(true);
-                  setTournamentFocus(false);
-                  if (data.user) openFriendlyStarter();
-                }}
-                type="button"
-              >
-                <div className="hub-card__icon"><Flag size={30} /></div>
-                <div className="hub-card__content">
-                  <span>DESAFÍO Y ENTRENAMIENTO</span>
-                  <strong>AMISTOSOS</strong>
-                  <p>Buscá rival, armá tu partido 5v5/7v7/11v11, invitá por WhatsApp y cargá resultado.</p>
-                  <span className="hub-card__badge">✓ Partidos en vivo · Creador rápido</span>
-                </div>
-                <ChevronRight className="hub-card__arrow" size={20} />
-              </button>
-
-              <button 
-                className={`hub-card hub-card--tournament ${mainHubMode === "tournament" ? "is-active" : ""}`}
-                onClick={() => {
-                  setMainHubMode("tournament");
-                  setTournamentFocus(true);
-                  setFriendlyFocus(false);
-                  if (data.user) openTournamentStarter();
-                }}
-                type="button"
-              >
-                <div className="hub-card__icon"><Trophy size={30} /></div>
-                <div className="hub-card__content">
-                  <span>COMPETENCIA OFICIAL</span>
-                  <strong>TORNEOS</strong>
-                  <p>Mundial barrial, ligas por fecha, tabla de posiciones, sorteo de llaves y fixture.</p>
-                  <span className="hub-card__badge">✓ Tabla · Sorteos · Eliminatorias</span>
-                </div>
-                <ChevronRight className="hub-card__arrow" size={20} />
-              </button>
-            </div>
-          </section>
-        ) : null}
-
-        {mainHubMode !== "all" && !inviteMode ? (
-          <button 
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-900/80 hover:bg-slate-800 text-emerald-400 border border-emerald-500/30 mb-2 transition-all"
-            onClick={() => {
-              setMainHubMode("all");
-              setFriendlyFocus(false);
-              setTournamentFocus(false);
-            }}
-            type="button"
-          >
-            ← Volver a Modos de Juego
-          </button>
-        ) : null}
-
         {!inviteMode && !data.user && !hasCreatedTournament && mainHubMode === "all" ? (
           <section className="console-hero-panel console-hero-panel--2026">
             <img alt="" className="hero-mark" src="/assets/icon.svg" />
@@ -6408,35 +6431,18 @@ export function ArenaExperience({
           </section>
         ) : null}
 
-        {showTournamentFocus ? (
+        {showTournamentFocus && mainHubMode === "tournament" ? (
           <section className="mode-focus-panel mode-focus-panel--tournament">
             <div>
               <span>Modo torneo</span>
               <h2>Crear torneo</h2>
-              <p>Configura copa, formato, cantidad de equipos, fechas y comprobante. Cuando Fulbito aprueba el pago, se habilita la invitacion por WhatsApp.</p>
+              <p>Configura copa, formato, cantidad de equipos, fechas y comprobante. Cuando Fulbito aprobo el pago, se habilita la invitacion por WhatsApp.</p>
             </div>
             <button onClick={() => setTournamentFocus(false)} type="button">Inicio</button>
           </section>
         ) : null}
 
-        {!inviteMode && !showModeFocus && nextMatch ? (
-          <MatchTile liveEvent={liveEventByMatch.get(nextMatch.id)} match={nextMatch} featured onOpen={() => openMatch(nextMatch)} />
-        ) : !inviteMode && data.user && !showModeFocus ? (
-          <EmptyState icon={<CalendarDays />} title="Tu calendario empieza vacio">
-            Crea un torneo, carga tu equipo o espera una invitacion. Cuando haya fixtures reales, aparecen aca.
-          </EmptyState>
-        ) : null}
-
-        {(!inviteMode || data.user) && !showModeFocus ? (
-          <section className="mini-grid">
-            <MiniStat icon={<Trophy />} label={data.activeTournament ? formatLabels[data.activeTournament.format] : "Formato"} onClick={() => setActiveTab("league")} value={data.activeTournament?.name ?? "Torneo"} />
-            <MiniStat icon={<Users />} label="Mis equipos" onClick={openPersonalSquad} value={squadTeams.length} />
-            <MiniStat icon={<CalendarDays />} label="Partidos" onClick={() => setActiveTab("matches")} value={data.matches.length} />
-            <MiniStat icon={<Trophy />} label="Mis torneos" onClick={openMyTournaments} value={data.tournaments.length} />
-          </section>
-        ) : null}
-
-        {!inviteMode && data.user && !showTournamentFocus ? (
+        {!inviteMode && data.user && mainHubMode === "friendly" ? (
           <FriendlyPanel
             data={data}
             focusMode={showFriendlyFocus}
@@ -6455,9 +6461,7 @@ export function ArenaExperience({
           />
         ) : null}
 
-        {!inviteMode && !showModeFocus ? <YouTubeFollowStrip /> : null}
-
-        {!inviteMode && data.user && !showModeFocus ? (
+        {!inviteMode && data.user && mainHubMode === "tournament" ? (
           <DrawLiveTeaser
             data={data}
             onOpenMatches={() => setActiveTab("matches")}
