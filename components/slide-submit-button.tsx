@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
-import { createPortal, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { LoaderCircle, ChevronRight, Lock } from "lucide-react";
 import { triggerHaptic } from "@/lib/haptics";
 
@@ -66,7 +65,11 @@ function playGoalTap() {
   }
 }
 
-interface SlideSubmitButtonProps {
+export interface SlideSubmitButtonProps {
+  idle?: string;
+  pendingLabel?: string;
+  disabledLabel?: string;
+  confirmText?: string;
   idleText?: string;
   submittingText?: string;
   successText?: string;
@@ -76,8 +79,11 @@ interface SlideSubmitButtonProps {
 }
 
 export function SlideSubmitButton({
-  idleText = "Deslizá para confirmar",
-  submittingText = "Confirmando...",
+  idle = "Deslizá para confirmar",
+  pendingLabel = "Confirmando...",
+  disabledLabel,
+  idleText,
+  submittingText,
   successText = "¡Confirmado!",
   disabled = false,
   onConfirm,
@@ -91,6 +97,9 @@ export function SlideSubmitButton({
   const startXRef = useRef<number>(0);
 
   const isLocked = disabled || pending || confirmed;
+  const activeIdle = idleText || idle;
+  const activePending = submittingText || pendingLabel;
+  const labelText = disabled && disabledLabel ? disabledLabel : pending ? activePending : confirmed ? successText : activeIdle;
 
   const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
     if (isLocked) return;
@@ -161,7 +170,7 @@ export function SlideSubmitButton({
 
       {/* Label text */}
       <span className="w-full text-center text-xs font-black uppercase tracking-wider text-emerald-300 pointer-events-none z-10">
-        {pending ? submittingText : confirmed ? successText : idleText}
+        {labelText}
       </span>
 
       {/* Handle knob */}
