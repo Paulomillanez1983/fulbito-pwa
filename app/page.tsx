@@ -30,7 +30,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <div className="fixed top-3 right-3 z-40 flex items-center gap-2">
         <OutdoorModeToggle />
       </div>
-      <OnboardingTour userRole={data.currentUser?.role ?? "jugador"} />
+      <OnboardingTour userRole={data.user?.roles?.[0] ?? "jugador"} />
       <ArenaExperience 
         data={data} 
         friendlyCode={friendlyCode} 
